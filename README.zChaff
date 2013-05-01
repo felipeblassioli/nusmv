@@ -1,0 +1,8 @@
+ZChaff is a powerful SAT Solver [1] that can be optionally used with
+NuSMV to perform BMC. 
+
+For information about how to compile and use ZChaff within NuSMV, and
+for other important information about ZChaff, please refer to the
+file <NuSMV-(version)/zchaff/README>.
+
+[1] See <http://www.princeton.edu/~chaff/zchaff.html>

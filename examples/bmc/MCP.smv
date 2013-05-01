@@ -1,0 +1,77 @@
+-- A simple example of the use of past operators in PLTL specifications
+-- Author: Marco Benedetti (benedetti@irst.itc.it)
+
+
+MODULE Missionaries_and_Cannibals_Problem
+
+-- THE PROBLEM:
+-- Three missionaries and three cannibals come to a river 
+-- and find a boat that holds two. If the cannibals ever 
+-- outnumber the missionaries on either bank, the missionaries 
+-- will be eaten. 
+-- How shall they cross? 
+
+VAR
+ cannibals    : 0..3;     -- number of cannibals currently on the starting bank.
+ missionaries : 0..3;     -- number of missionaries currently on the starting bank.
+ boat         : boolean;  -- TRUE iff the boat is at the starting bank
+
+INIT
+ missionaries=3 & cannibals=3 & boat=TRUE
+
+TRANS
+  -- the boat crosses the river at each transition
+  next(boat) = !boat &
+  (   
+   boat -> (
+                  -- After a cross, the number of missionars (and cannibals)
+                  --  on the starting bank is not increased
+              next(missionaries) <= missionaries &
+              next(cannibals)    <= cannibals &
+                  -- the boat holds two (at most)
+              (missionaries - next(missionaries) + cannibals - next(cannibals)) <= 2 &
+                  -- the boat is not able to cross by itself
+              (missionaries - next(missionaries) + cannibals - next(cannibals)) >= 1
+             )
+  )
+  &
+  (
+   !boat -> (
+              next(missionaries) >= missionaries &
+              next(cannibals)    >= cannibals  &
+              (next(missionaries) - missionaries + next(cannibals) - cannibals) <= 2 &
+              (next(missionaries) - missionaries + next(cannibals) - cannibals) >= 1
+             )
+  )
+
+DEFINE
+ missionaries_other_side := 3 - missionaries;  -- missionaries on the "other" side
+ cannibals_other_side    := 3 - cannibals;     -- cannibals on the "other" side
+
+
+
+MODULE main
+
+VAR  MCP: Missionaries_and_Cannibals_Problem;
+
+DEFINE
+ goal := (MCP.missionaries=0) & (MCP.cannibals=0);
+
+ -- Safety criterion: cannibals should not 
+ -- outnumber the missionaries on either bank
+ -- (appearances can be deceptive: it is a non-linear constraint!)
+ 
+ safety  := ( (MCP.missionaries            >= MCP.cannibals) |
+               MCP.missionaries=0 )  &
+            ( (MCP.missionaries_other_side >= MCP.cannibals_other_side) |
+               MCP.missionaries_other_side=0 );
+
+
+-- Now we state that it is impossible to reach the goal while maintaining safety,
+-- i.e., that whenever the goal has been reached, safety has been lost at least 
+-- once in the past.
+
+LTLSPEC G(goal -> ! H safety)
+
+-- A counterexample to this false statement is a plan to safely bring 
+-- missionaries and cannibals to the other side. 

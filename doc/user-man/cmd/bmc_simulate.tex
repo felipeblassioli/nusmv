@@ -1,0 +1,17 @@
+\begin{nusmvCommand}{bmc\_simulate} {Generates a trace of the model from 0 (zero) to k}
+
+\cmdLine{bmc\_simulate [-h | -k ]}
+
+\command{bmc\_simulate} does not require a specification to build the
+problem, because only the model is used to build it.  The problem
+length is represented by the \commandopt{k} command parameter, or by
+its default value stored in the environment variable
+\envvar{bmc\_length}.
+
+\begin{cmdOpt}
+\opt{-k \parameter{\natnum{\it length}}}{ {\it length} is the length of the generated
+simulation.}
+\end{cmdOpt}
+
+\end{nusmvCommand}
+

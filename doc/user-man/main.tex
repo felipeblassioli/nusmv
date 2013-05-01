@@ -1,0 +1,59 @@
+% header
+\documentclass[a4paper,10pt]{report}
+\usepackage{nusmv}
+
+\makeindex
+\listfiles
+
+%body 
+\begin{document}
+\bibliographystyle{alpha}
+
+\input{title}
+\pagenumbering{arabic}
+
+\tableofcontents
+
+\chapter{Introduction}
+\label{Introduction}
+\input{intro}
+
+%\chapter{Tutorial}
+%\label{Tutorial}
+%\input{tut}
+
+\chapter{Syntax}
+\label{Syntax}
+\input{syntax}
+
+\chapter{Running \nusmvhead interactively}
+\label{Running NuSMV interactively}
+\index{interactive, running \nusmv}
+\index{interactive shell}
+\input{inter}
+
+\chapter{Running \nusmvhead batch}
+\label{Running NuSMV batch} 
+\index{options}
+\index{batch, running \nusmv}
+\input{batch}
+
+% Just to include all citations 
+\input{citeall}
+
+% Print bibliography here.
+\bibliography{main}
+
+\newpage
+\appendix
+\input{app}
+
+\cleardoublepage
+
+% Print Indices here 
+\printindex[com]
+\printindex[var]
+\printindex
+
+\end{document}
+\endinput

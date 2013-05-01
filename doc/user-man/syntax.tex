@@ -1,0 +1,1258 @@
+
+We present now the complete syntax of the input language of \nusmv. In
+the following, an atom may be any sequence of characters starting with
+a character in the set \code{\{A-Za-z\_\}} and followed by a possibly
+empty sequence of characters belonging to the set
+\code{\{A-Z\linebreak[0]a-z\linebreak[0]0-9\linebreak[0]\_\$\#-$\backslash$\}}.
+A number is any sequence of digits. A digit belongs to the set
+\code{\{0-9\}}.
+
+All characters and case in a name are significant. Whitespace
+characters are space (\spc), tab (\tab) and newline (\ret). Any string
+\index{comments in \nusmv language} starting with two dashes
+(`\code{--}') and ending with a newline is a comment. Any other tokens
+recognized by the parser are enclosed in quotes in the syntax
+expressions below. Grammar productions enclosed in square brackets
+(`\code{[]}') are optional.
+
+
+\section{Expressions}
+\label{expressions}
+\index{ expressions}
+\index{expressions}
+%
+Expressions are constructed from variables, constants, and a
+collection of operators, including boolean connectives, integer
+arithmetic operators, case expressions and set expressions.
+
+\subsection{Simple Expressions}
+\label{simple expressions}
+\index{simple expressions}
+%
+Simple expressions are expressions built only from current state
+variables. Simple expressions can be used to specify sets of states,
+e.g. the initial set of states. The syntax of simple expressions is as
+follows:
+%
+\begin{Grammar}
+simple_expr ::
+          atom                           ;; a symbolic constant
+        | number                         ;; a numeric constant
+        | "TRUE"                         ;; The boolean constant 1
+        | "FALSE"                        ;; The boolean constant 0
+        | var_id                         ;; a variable identifier
+        | "(" simple_expr ")"
+        | "!" simple_expr                ;; logical not
+        | simple_expr "\&" simple_expr    ;; logical and
+        | simple_expr "|" simple_expr    ;; logical or
+        | simple_expr "xor" simple_expr  ;; logical exclusive or
+        | simple_expr "->" simple_expr   ;; logical implication
+        | simple_expr "<->" simple_expr  ;; logical equivalence
+        | simple_expr "=" simple_expr    ;; equality
+        | simple_expr "!=" simple_expr   ;; inequality
+        | simple_expr "<" simple_expr    ;; less than
+        | simple_expr ">" simple_expr    ;; greater than
+        | simple_expr "<=" simple_expr   ;; less than or equal
+        | simple_expr ">=" simple_expr   ;; greater than or equal
+        | simple_expr "+" simple_expr    ;; integer addition
+        | simple_expr "-" simple_expr    ;; integer subtraction
+        | simple_expr "*" simple_expr    ;; integer multiplication
+        | simple_expr "/" simple_expr    ;; integer division
+        | simple_expr "mod" simple_expr  ;; integer remainder
+        | set_simple_expr                ;; a set simple_expression
+        | case_simple_expr               ;; a case expression
+\end{Grammar}
+%
+A \dfn{var\_id}, (see \sref{Identifiers}) or identifier, is a symbol
+or expression which identifies an object, such as a variable or a
+defined symbol. Since a \code{var\_id} can be an \code{atom}, there is
+a possible ambiguity if a variable or defined symbol has the same name
+as a symbolic constant. Such an ambiguity is flagged by the
+interpreter as an error.
+
+The order of parsing precedence for operators from high to low is:
+%
+\begin{Grammar}
+*,/
++,-
+mod
+=,!=,<,>,<=,>=
+|,xor
+<->
+->
+\end{Grammar}
+%
+Operators of equal precedence associate to the left, except \code{->}
+that associates to the right.  Parentheses may be used to group
+expressions.
+
+\subsubsection{Case Expressions}
+\label{case expressions}
+\index{ case expressions}
+A case expression has the following syntax:
+\begin{Grammar}
+case_simple_expr ::
+          "case"
+             simple_expr ":" simple_expr ";"
+             simple_expr ":" simple_expr ";"
+             ...
+             simple_expr ":" simple_expr ";"
+          "esac"
+\end{Grammar}
+%
+A \code{case\_simple\_expr} returns the value of the first expression
+on the right hand side of `\code{:}', such that the corresponding
+condition on the left hand side evaluates to \code{1}. Thus, if
+\code{simple\_expr} on the left side is true, then the result is the
+corresponding \code{simple\_expr} on the right side. If none of the
+expressions on the left hand side evaluates to \code{1}, the result of
+the \code{case\_expression} is the numeric value \code{1}. It is an
+error for any expression on the left hand side to return a value other
+than the truth values \code{0} or \code{1}.
+
+\subsubsection{Set Expressions}
+\label{set expressions}
+\index{ set expressions}
+\index{set expressions}
+%
+A set expression has the following syntax:
+%
+\begin{Grammar}
+set_expr ::
+            "\{" set_elem "," ... "," set_elem "\}" ;; set definition
+         |  simple_expr "\code{in}" simple_expr       ;; set inclusion test
+         |  simple_expr "\code{union}" simple_expr    ;; set union
+set_elem :: simple_expr
+\end{Grammar}
+%
+A set can be defined by enumerating its elements inside curly braces
+`\{\ldots\}'. The inclusion operator `\code{in}' tests a value for
+membership in a set. The union operator `\code{union}' takes the union
+of two sets. If either argument is a number or a symbolic value
+instead of a set, it is coerced to a singleton set.
+
+\subsection{Next Expressions}
+\label{Next Expressions}
+\index{Next Expressions}
+\index{next expressions}
+%
+While simple expressions can represent sets of states, next expressions
+relate current and next state variables to express transitions in the
+FSM.  The structure of next expressions is similar to the
+structure of simple expressions (See \sref{simple expressions}). The
+difference is that next expression allow to refer to next state
+variables. The grammar is depicted below.
+%
+\begin{Grammar}
+next_expr ::
+          atom                        ;; a symbolic constant
+        | number                      ;; a numeric constant
+        | "TRUE"                      ;; The boolean constant 1
+        | "FALSE"                     ;; The boolean constant 0
+        | var_id                      ;; a variable identifier
+        | "(" next_expr ")"
+        | "next" "(" simple_expr ")"  ;; next value of an "expression"
+        | "!" next_expr               ;; logical not
+        | next_expr "&" next_expr     ;; logical and
+        | next_expr "|" next_expr     ;; logical or
+        | next_expr "xor" next_expr   ;; logical exclusive or
+        | next_expr "->" next_expr    ;; logical implication
+        | next_expr "<->" next_expr   ;; logical equivalence
+        | next_expr "=" next_expr     ;; equality
+        | next_expr "!=" next_expr    ;; inequality
+        | next_expr "<" next_expr     ;; less than
+        | next_expr ">" next_expr     ;; greater than
+        | next_expr "<=" next_expr    ;; less than or equal
+        | next_expr ">=" next_expr    ;; greater than or equal
+        | next_expr "+" next_expr     ;; integer addition
+        | next_expr "-" next_expr     ;; integer subtraction
+        | next_expr "*" next_expr     ;; integer multiplication
+        | next_expr "/" next_expr     ;; integer division
+        | next_expr "mod" next_expr   ;; integer remainder
+        | set_next_expr               ;; a set next_expression
+        | case_next_expr              ;; a case expression
+\end{Grammar}
+%
+\code{set\_next\_expr} and \code{case\_next\_expr} are the same as
+\code{set\_simple\_expr} (see \sref{set expressions}) and
+\code{case\_simple\_expr} (see \sref{case expressions}) respectively,
+with the replacement of "\code{simple}" with "\code{next}".  The only
+additional production is \code{"next" "(" simple\_expr ")"}, which
+allows to ``shift'' all the variables in \code{simple\_expr} to the
+\emph{next} state. The \code{next} operator distributes on every
+operator. For instance, the formula \code{next((A \& B) | C)} is a
+shorthand for the formula \code{(next(A) \& next(B)) | next(C)}. It is
+an error if in the scope of the \code{next} operator occurs another
+\code{next} operator.
+
+\section{Definition of the FSM}
+\subsection{State Variables}
+\label{state variables}
+\index{state variables syntax}
+\index{\code{VAR} declaration}
+%
+A state of the model is an assignment of values to a set of state
+variables. These variables (and also instances of modules) are
+declared by the notation:
+%
+\begin{Grammar}
+var_declaration :: "\code{VAR}"
+             atom ":" type ";"
+             atom ":" type ";"
+             ...
+\end{Grammar}
+%
+The type associated with a variable declaration can be either a
+boolean, a scalar, a user defined module, or an array of any of these
+(including arrays of arrays).
+
+\subsubsection{Type Specifiers}
+\label{type specifiers}
+\index{type specifiers}
+\index{type declaration}
+%
+A type specifier has the syntax:
+%
+\begin{Grammar}
+type :: \code{boolean}
+     |  "\{" val "," val "," ... val "\}"
+     |  number ".." number
+     |  "\code{array}" number ".." number "\code{of}" type
+     |  atom [ "(" simple_expr "," simple_expr "," ...  ")" ]
+     |  "\code{process}" atom [ "(" simple_expr "," ... "," simple_expr ")" ]
+val  :: atom
+     |  number
+\end{Grammar}
+%
+A variable of type \code{boolean} can take on the numerical values
+\code{0} and \code{1} (representing false and true, respectively). In
+the case of a list of values enclosed in quotes (where atoms are taken
+to be symbolic constants), the variable is a scalar which take any of
+these values. In the case of an \code{array} declaration, the first
+\code{simple\_expr} is the lower bound on the subscript and the second
+\code{simple\_expr} is the upper bound. Both of these expressions must
+evaluate to integer constants. Finally, an atom optionally followed by
+a list of expressions in parentheses indicates an instance of module
+atom (see \sref{MODULE declarations}). The keyword causes the module
+to be instantiated as an asynchronous process (see \sref{processes}).
+
+\subsection{Input Variables}
+\label{input variables}
+\index{input variables syntax}
+\index{\code{IVAR} declaration}
+%
+\code{IVAR} (input variables) are used to label transitions of the Finite
+State Machine.  The syntax for the declaration of input variables is
+the following:
+%
+\begin{Grammar}
+ivar_declaration :: "\code{IVAR}"
+             atom ":" type ";"
+             atom ":" type ";"
+             ...
+\end{Grammar}
+%
+The type associated with a variable declaration can be either a
+boolean, a scalar, a user defined module, or an array of any of these
+(including arrays of arrays) (see \sref{state variables}).
+
+\subsection{\code{ASSIGN} declarations}
+\label{ASSIGN declarations}
+%
+An assignment  has the form:
+%
+\begin{Grammar}
+assign_declaration :: "\code{ASSIGN}"
+           assign_body ";"
+           assign_body ";"
+           ...
+assign_body ::
+    atom                ":=" simple_expr     ;; normal assignment
+  | "init" "(" atom ")" ":=" simple_expr     ;; init assignment
+  | "next" "(" atom ")" ":=" next_expr       ;; next assignment
+\end{Grammar}
+%
+On the left hand side of the assignment, atom denotes the current
+value of a variable, `init(atom)' denotes its initial value, and
+`next(atom)' denotes its value in the next state.  If the expression
+on the right hand side evaluates to an integer or symbolic constant,
+the assignment simply means that the left hand side is equal to the
+right hand side.  On the other hand, if the expression evaluates to a
+set, then the assignment means that the left hand side is contained in
+that set. It is an error if the value of the expression is not
+contained in the range of the variable on the left hand side.
+
+In order for a program to be implementable, there must be some order
+in which the assignments can be executed such that no variable is
+assigned after its value is referenced. This is not the case if there
+is a circular dependency among the assignments in any given
+process. Hence, such a condition is an error. It is also an error for
+a variable to be assigned more than once at any given time. More
+precisely, it is an error if any of the following occur:
+%
+\begin{itemize}
+\item the next or current value of a variable is assigned more than once
+      in a given process
+\item the initial value of a variable is assigned more than once in the
+      program
+\item the current value and the initial value of a variable are both
+      assigned in the program
+\item the current value and the next value of a variable are both
+      assigned in the program
+\end{itemize}
+
+\subsection{\code{TRANS} declarations}
+\label{TRANS declarations}
+\index{ TRANS declarations}
+%
+The transition relation $R$ of the model is a set of current
+state/next state pairs. Whether or not a given pair is in this set is
+determined by a boolean valued expression $T$, introduced by the
+`TRANS' keyword. The syntax of a \code{TRANS} declaration is:
+%
+\begin{Grammar}
+trans_declaration :: "\code{TRANS}" trans_expr [";"]
+trans_expr        :: next_expr
+\end{Grammar}
+%
+It is an error for the expression to yield any value other than \code{0}
+or \code{1}. If there is more than one \code{TRANS} declaration, the
+transition relation is the conjunction of all of \code{TRANS}
+declarations.
+
+\subsection{\code{INIT} declarations}
+\label{INIT declaration}
+\index{ INIT declaration}
+%
+The set of initial states of the model is determined by a boolean
+expression under the `INIT' keyword. The syntax of a \code{INIT}
+declaration is:
+%
+\begin{Grammar}
+init_declaration :: "\code{INIT}" init_expr [";"]
+init_expr        :: simple_expr
+\end{Grammar}
+%
+It is an error for the expression to contain the \code{next()}
+operator, or to yield any value other than \code{0} or \code{1}. If
+there is more than one \code{INIT} declaration, the initial set is the
+conjunction of all of the \code{INIT} declarations.
+
+\subsection{\code{INVAR} declarations}
+\label{INVAR declaration}
+\index{INVAR declaration}
+%
+The set of invariant states (i.e. the analogous of normal assignments,
+as described in \sref{ASSIGN declarations}) can be specified using a
+boolean expression under the `\code{INVAR}' keyword. The syntax of a
+\code{INVAR} declaration is:
+%
+\begin{Grammar}
+invar_declaration :: "\code{INVAR}" invar_expr [";"]
+invar_expr        :: simple_expr
+\end{Grammar}
+%
+It is an error for the expression to contain the \code{next()}
+operator, or to yield any value other than \code{0} or \code{1}. If
+there is more than one \code{INVAR} declaration, the invariant set is
+the conjunction of all of the \code{INVAR} declarations.
+
+\subsection{\code{DEFINE} declarations}
+\label{DEFINE declarations}
+\index{DEFINE declarations}
+%
+In order to make descriptions more concise, a symbol can be associated
+with a commonly expression. The syntax for this kind of declaration
+is:
+%
+\begin{Grammar}
+define_declaration :: "\code{DEFINE}"
+                    atom ":=" simple_expr ";"
+                    atom ":=" simple_expr ";"
+                    ...
+                    atom ":=" simple_expr ";"
+\end{Grammar}
+%
+Whenever an identifier referring to the symbol on the left hand side
+of the \code{`:='} in a \code{DEFINE} occurs in an expression, it is
+replaced by the expression on the right hand side. The expression on
+the right hand side is always evaluated in its context (see
+\sref{MODULE declarations} for an explanation of contexts). Forward
+references to defined symbols are allowed, but circular definitions
+are not allowed, and result in an error.
+
+It is not possible to assign values to defined symbols
+non-deterministically. Another difference between defined symbols and
+variables is that while variables are statically typed, definitions
+are not.
+
+\subsection{\code{ISA} declarations}
+\label{ISA declarations}
+\index{ISA declarations}
+%
+There are cases in which some parts of a module could be shared among
+different modules, or could be used as a module themselves. In \nusmv
+it is possible to declare the common parts as separate modules, and
+then use the \code{ISA} declaration to import the common parts inside
+a module declaration. The syntax of an \code{ISA} declaration is as
+follows:
+%
+\begin{Grammar}
+isa_declaration :: "\code{ISA}" atom
+\end{Grammar}
+%
+where \code{atom} must be the name of a declared module.  The
+\code{ISA} declaration can be thought as a simple macro expansion
+command, because the body of the module referenced by an \code{ISA}
+command is replaced to the \code{ISA} declaration.
+
+\subsection {\code{MODULE} declarations}
+\label{MODULE declarations}
+\index{MODULE declarations}
+A module is an encapsulated collection of declarations. Once defined,
+a module can be reused as many times as necessary. Modules can also be
+so that each instance of a module can refer to different data
+values. A module can contain instances of other modules, allowing a
+structural hierarchy to be built. The syntax of a module declaration
+is as follows.
+%
+\begin{Grammar}
+module :: "\code{MODULE}" atom [ "(" atom "," atom "," ... atom ")" ]
+          [ var_declaration        ]
+          [ ivar_declaration       ]
+          [ assign_declaration     ]
+          [ trans_declaration      ]
+          [ init_declaration       ]
+          [ invar_declaration      ]
+          [ spec_declaration       ]
+          [ checkinvar_declaration ]
+          [ ltlspec_declaration    ]
+          [ compute_declaration    ]
+          [ fairness_declaration   ]
+          [ define_declaration     ]
+          [ isa_declaration        ]
+\end{Grammar}
+%
+The \emph{atom} immediately following the keyword "\code{MODULE}" is
+the name associated with the module. Module names are drawn from a
+separate name space from other names in the program, and hence may
+clash with names of variables and definitions. The optional list of
+atoms in parentheses are the formal parameters of the module. Whenever
+these parameters occur in expressions within the module, they are
+replaced by the actual parameters which are supplied when the module
+is instantiated (see below).
+
+An \emph{instance} of a module is created using the \code{VAR}
+declaration (see \sref{state variables}). This declaration supplies a
+name for the instance, and also a list of actual parameters, which are
+assigned to the formal parameters in the module definition. An actual
+parameter can be any legal expression. It is an error if the number of
+actual parameters is different from the number of formal
+parameters. The semantic of module instantiation is similar to
+call-by-reference. For example, in the following program fragment:
+%
+\begin{nusmvCode}
+MODULE main
+...
+ VAR
+  a : boolean;
+  b : foo(a);
+...
+MODULE foo(x)
+ ASSIGN
+   x := 1;
+\end{nusmvCode}
+%
+the variable \code{a} is assigned the value \code{1}. This
+distinguishes the call-by-reference mechanism from a call-by-value
+scheme.
+
+\noindent Now consider the following program:
+%
+\begin{nusmvCode}
+MODULE main
+...
+ DEFINE
+   a := 0;
+ VAR
+   b : bar(a);
+...
+MODULE bar(x)
+ DEFINE
+   a := 1;
+   y := x;
+\end{nusmvCode}
+%
+In this program, the value of \code{y} is \code{0}. On the other hand,
+using a call-by-name mechanism, the value of \code{y} would be
+\code{1}, since \code{a} would be substituted as an expression for
+\code{x}.
+
+\noindent Forward references to module names are allowed, but circular
+references are not, and result in an error.
+
+\subsection{Identifiers}
+\label{Identifiers}
+\index{ Identifiers}
+%
+An \code{id}, or identifier, is an expression which references an
+object. Objects are instances of modules, variables, and defined
+symbols. The syntax of an identifier is as follows.
+%
+\begin{Grammar}
+id :: atom
+    | "self"
+    | id "." atom
+    | id "[" simple_expr "]"
+\end{Grammar}
+%
+An \emph{atom} identifies the object of that name as defined in a
+\code{VAR} or \code{DEFINE} declaration. If \code{a} identifies an
+instance of a module, then the expression `\code{a.b}' identifies
+the component object named `\code{b}' of instance `\code{a}'. This
+is precisely analogous to accessing a component of a structured data
+type. Note that an actual parameter of module `\code{a}' can
+identify another module instance `\code{b}', allowing `\code{a}'
+to access components of `\code{b}', as in the following example:
+%
+\begin{nusmvCode}
+MODULE main
+...  VAR
+  a : foo(b);
+  b : bar(a);
+...
+MODULE foo(x)
+ DEFINE
+   c := x.p | x.q;
+MODULE bar(x)
+ VAR
+   p : boolean;
+   q : boolean;
+\end{nusmvCode}
+%
+Here, the value of `\code{c}' is the logical or of `\code{p}' and
+`\code{q}'.
+
+\noindent If `\code{a}' identifies an array, the expression
+`\code{a[b]}' identifies element `\code{b}' of array `\code{a}'. It is
+an error for the expression `\code{b}' to evaluate to a number outside
+the subscript bounds of array `\code{a}', or to a symbolic value.
+
+It is possible to refer the name the current module has been
+instantiated to by using the \code{self} builtin
+identifier.\index{self}
+%
+\begin{nusmvCode}
+MODULE element(above, below, token)
+ VAR
+   Token : boolean;
+ ASSIGN
+   init(Token) := token;
+   next(Token) := token-in;
+ DEFINE
+   above.token-in := Token;
+   grant-out := below.grant-out;
+MODULE cell
+ VAR
+   e2 : element(self,   e1, 0);
+   e1 : element(e1  , self, 1);
+ DEFINE
+   e2.token-in := token-in;
+   grant-out := grant-in & !e1.grant-out;
+MODULE main
+ VAR c1 : cell;
+\end{nusmvCode}
+%
+In this example the name the \code{cell} module has been instantiated
+to is passed to the submodule \code{element}. In the \code{main}
+module, declaring \code{c1} to be an instance of module \code{cell}
+and defining \code{above.token-in} in module \code{e2}, really amounts
+to defining the symbol \code{c1.token-in}. When you, in the
+\code{cell} module, declare \code{e1} to be an instance of module
+\code{element}, and you define \code{grant-out} in module \code{e1} to
+be \code{below.grant-out}, you are really defining it to be the symbol
+\code{c1.grant-out}.
+
+\subsection{The \code{main} module}
+\label{main module}
+\index{ main module}
+%
+The syntax of a \nusmv program is:
+%
+\begin{Grammar}
+program ::
+        module_1
+        module_2
+        ...
+        module_n
+\end{Grammar}
+%
+There must be one module with the name \code{main} and no formal
+parameters.  The module \code{main} is the one evaluated by the
+interpreter.
+
+\subsection{Processes}
+\label{processes}
+\index{process keyword}
+\index{processes}
+%
+Processes are used to model interleaving concurrency. A \dfn{process}
+is a module which is instantiated using the keyword `\code{process}'
+(see \sref{state variables}). The program executes a step by
+non-deterministically choosing a process, then executing all of the
+assignment statements in that process in parallel. It is implicit that
+if a given variable is not assigned by the process, then its value
+remains unchanged. Each instance of a process has a special boolean
+variable associated with it called
+\code{running}.\index{\code{running}} The value of this variable is
+\code{1} if and only if the process instance is currently selected for
+execution.  A process may run only when its parent is running. In
+addition no two processes with the same parents may be running at the
+same time.
+
+\subsection{\code{FAIRNESS} declarations}
+\label{FAIRNESS declarations}
+\index{\code{FAIRNESS} declarations}
+\index{fairness constraints}
+\index{justice constraints}
+\index{compassion constraints}
+\index{fairness constraints declaration}
+\index{fair paths}
+%
+A fairness constraint restricts the attention only to \dfn{fair
+execution paths}.  When evaluating specifications, the model checker
+considers path quantifiers to apply only to fair paths.
+
+\nusmv supports two types of fairness constraints, namely justice
+constraints and compassion constraints.  A justice constraint consists
+of a formula \code{f} which is assumed to be true infinitely often in
+all the fair paths. In \nusmv justice constraints are identified by
+keywords \code{JUSTICE} and, for backward compatibility,
+\code{FAIRNESS}.  A compassion constraint consists of a pair of
+formulas \code{(p,q)}; if property \code{p} is true infinitely often
+in a fair path, then also formula \code{q} has to be true infinitely
+often in the fair path. In \nusmv compassion constraints are
+identified by keyword \code{COMPASSION}.\footnote{In the current
+version of \nusmv, compassion constraints are supported only for
+BDD-based LTL model checking. We plan to add support for compassion
+constraints also for CTL specifications and in Bounded Model Checking
+in the next releases of \nusmv.} If compassion constraints are used
+then the model must not contain any input variables. Currently, \nusmv
+does not enforce this so it is the responsibility of the user to make
+sure that this is the case.
+
+Fairness constraints are declared using the following syntax:
+%
+\begin{Grammar}
+fairness_declaration :: 
+       "\code{FAIRNESS}" simple_expr [";"]
+     | "\code{JUSTICE}" simple_expr [";"]
+     | "\code{COMPASSION}" "(" simple_expr "," simple_expr ")" [";"]
+\end{Grammar}
+%
+A path is considered fair if and only if it satisfies all the
+constraints declared in this manner.
+
+\section{Specifications}
+%
+The specifications to be checked on the FSM can be expressed in two
+different temporal logics: the Computation Tree Logic CTL, and the
+Linear Temporal Logic LTL extended with Past Operators. It is also
+possible to analyze quantitative characteristics of the FSM by
+specifying real-time CTL specifications. Specifications can be
+positioned within modules, in which case they are preprocessed to
+rename the variables according to the containing context.
+
+CTL and LTL specifications are evaluated by \nusmv in order to
+determine their truth or falsity in the FSM. When a specification is
+discovered to be false, \nusmv constructs and prints a counterexample,
+i.e. a trace of the FSM that falsifies the property.
+
+\subsection{CTL Specifications}
+\label{CTL Specifications}
+\index{ CTL Specifications}
+%
+A CTL specification is given as a formula in the temporal logic CTL,
+introduced by the keyword `\code{SPEC}'. The syntax of this
+declaration is:
+%
+\begin{Grammar}
+spec_declaration :: "\code{SPEC}" spec_expr [";"]
+spec_expr        :: ctl_expr
+\end{Grammar}
+%
+The syntax of CTL formulas recognized by the \nusmv parser is
+as follows:
+%
+\begin{Grammar}
+ctl_expr ::
+    simple_expr                 ;; a simple boolean expression
+    | "(" ctl_expr ")"
+    | "!" ctl_expr              ;; logical not
+    | ctl_expr "&" ctl_expr     ;; logical and
+    | ctl_expr "|" ctl_expr     ;; logical or
+    | ctl_expr "xor" ctl_expr   ;; logical exclusive or
+    | ctl_expr "->" ctl_expr    ;; logical implies
+    | ctl_expr "<->" ctl_expr   ;; logical equivalence
+    | "EG" ctl_expr             ;; exists globally
+    | "EX" ctl_expr             ;; exists next state
+    | "EF" ctl_expr             ;; exists finally
+    | "AG" ctl_expr             ;; forall globally
+    | "AX" ctl_expr             ;; forall next state
+    | "AF" ctl_expr             ;; forall finally
+    | "E" "[" ctl_expr "U" ctl_expr "]" ;; exists until
+    | "A" "[" ctl_expr "U" ctl_expr "]" ;; forall until
+\end{Grammar}
+%
+It is an error for an expressions in a CTL formula to contain a
+`\code{next()}' operator, or to have non-boolean components, i.e.
+subformulas which evaluate to a value other than \code{0} or \code{1}.
+
+It is also possible to specify invariants, i.e. propositional formulas
+which must hold invariantly in the model. The corresponding command is
+`\code{INVARSPEC}', with syntax:
+%
+\begin{Grammar}
+checkinvar_declaration :: "\code{INVARSPEC}" simple_expr ";"
+\end{Grammar}
+%
+This statement corresponds to
+%
+\begin{Grammar}
+SPEC  AG simple_expr ";"
+\end{Grammar}
+%
+but can be checked by a specialized algorithm during reachability
+analysis.
+
+\subsection{LTL Specifications}
+\label{LTL Specifications}
+\index{LTL Specifications}
+%
+LTL specifications are introduced by the keyword ``\code{LTLSPEC}''. The syntax
+of this declaration is:
+%
+\begin{Grammar}
+ltlspec_declaration :: "\code{LTLSPEC}" ltl_expr [";"]
+\end{Grammar}
+%
+where
+\begin{Grammar}
+ltl_expr ::
+    simple_expr                ;; a simple boolean expression
+    | "(" ltl_expr ")"
+    | "!" ltl_expr             ;; logical not
+    | ltl_expr "&" ltl_expr    ;; logical and
+    | ltl_expr "|" ltl_expr    ;; logical or
+    | ltl_expr "xor" ltl_expr  ;; logical exclusive or
+    | ltl_expr "->" ltl_expr   ;; logical implies
+    | ltl_expr "<->" ltl_expr  ;; logical equivalence
+    ;; FUTURE
+    | "X" ltl_expr             ;; next state
+    | "G" ltl_expr             ;; globally
+    | "F" ltl_expr             ;; finally
+    | ltl_expr "U" ltl_expr    ;; until
+    | ltl_expr "V" ltl_expr    ;; releases
+    ;; PAST
+    | "Y" ltl_expr             ;; previous state
+    | "Z" ltl_expr             ;; not previous state not
+    | "H" ltl_expr             ;; historically
+    | "O" ltl_expr             ;; once 
+    | ltl_expr "S" ltl_expr    ;; since
+    | ltl_expr "T" ltl_expr    ;; triggered
+\end{Grammar}
+%
+In \nusmv, LTL specifications can be analyzed both by means of
+BDD-based reasoning, or by means of SAT-based bounded model
+checking. In the first case, \nusmv proceeds along the lines described
+in \cite{CGH97}. For each LTL specification, a tableau able to
+recognize the behaviors falsifying the property is constructed, and
+then synchronously composed with the model. With respect to
+\cite{CGH97}, the approach is fully integrated within \nusmv, and
+allows for full treatment of past temporal operators.  In the case of
+BDD-based reasoning, the counterexample generated to show the falsity
+of a LTL specification may contain state variables which have been
+introduced by the tableau construction procedure.
+%
+In the second case, a similar tableau construction is carried out to
+encode the existence of a path of limited length violating the
+property. \nusmv generates a propositional satisfiability problem,
+that is then tackled by means of an efficient SAT solver
+\cite{BCCZ99}.
+%
+In both cases, the tableau constructions are completely transparent to
+the user.
+
+\subsection{Real Time CTL Specifications and Computations}
+\label{Real Time CTL Specifications and Computations}
+\index{ Real Time CTL Specifications and Computations}
+\nusmv allows for Real Time CTL specifications
+%
+\cite{EMSS91}. \nusmv assumes that each transition takes unit time for
+execution. RTCTL extends the syntax of CTL path expressions with the
+following bounded modalities:
+%
+\begin{Grammar}
+rtctl_expr ::
+        ctl_expr
+      | "EBF" range rtctl_expr
+      | "ABF" range rtctl_expr
+      | "EBG" range rtctl_expr
+      | "ABG" range rtctl_expr
+      | "A" "[" rtctl_expr "BU" range rtctl_expr "]"
+      | "E" "[" rtctl_expr "BU" range rtctl_expr "]"
+range  :: number ".." number"
+\end{Grammar}
+%
+Intuitively, the semantics of the RTCTL operators is as follows:
+%
+\begin{itemize}
+  \item \code{EBF \textit{m}..\textit{n} \textit{p}}
+        requires that there exists a path starting from a state, such
+        that property \textit{p} holds in a future time instant
+        \textit{i}, with $m \leq i \leq n$
+  \item \code{ABF \textit{m}..\textit{n} \textit{p}}
+        requires that for all paths starting from a state, property
+        \textit{p} holds in a future time instant \textit{i}, with $m
+        \leq i \leq n$
+  \item \code{EBG \textit{m}..\textit{n} \textit{p}}
+        requires that there exists a path starting from a state, such
+        that property \textit{p} holds in all future time instants
+        \textit{i}, with $m \leq i \leq n$
+  \item \code{ABG \textit{m}..\textit{n} \textit{p}}
+        requires that for all paths starting from a state, property
+        \textit{p} holds in all future time instants \textit{i}, with
+        $m \leq i \leq n$
+  \item \code{E [ \textit{p} BU \textit{m}..\textit{n} \textit{q} ]}
+        requires that there exists a path starting from a state, such
+        that property \textit{q} holds in a future time instant
+        \textit{i}, with $m \leq i \leq n$, and property \textit{p}
+        holds in all future time instants \textit{j}, with $m \leq j <
+        i$
+  \item \code{A [ \textit{p} BU \textit{m}..\textit{n} \textit{q} ]},
+        requires that for all paths starting from a state, property
+        \textit{q} holds in a future time instant \textit{i}, with $m
+        \leq i \leq n$, and property \textit{p} holds in all future
+        time instants \textit{j}, with $m \leq j < i$
+\end{itemize}
+%
+Real time CTL specifications can be defined with the following syntax,
+which extends the syntax for CTL specifications.
+%
+\begin{Grammar}
+spec_declaration :: "\code{SPEC}" rtctl_expr [";"]
+\end{Grammar}
+%
+With the `\code{COMPUTE}' statement, it is also possible to compute
+quantitative information on the FSM. In particular, it is possible to
+compute the exact bound on the delay between two specified events,
+expressed as CTL formulas. The syntax is the following:
+%
+\begin{Grammar}
+compute_declaration :: "\code{COMPUTE}" compute_expr [";"]
+\end{Grammar}
+%
+where
+%
+\begin{Grammar}
+compute_expr :: "MIN" "[" rtctl_expr "," rtctl_expr "]"
+              | "MAX" "[" rtctl_expr "," rtctl_expr "]"
+\end{Grammar}
+%
+\code{MIN [\textit{start , final}]} computes the set of states
+reachable from \textit{start}. If at any point, we encounter a state
+satisfying \textit{final}, we return the number of steps taken to
+reach the state. If a fixed point is reached and no states intersect
+\textit{final} then \dfn{infinity} is returned.
+
+\noindent \code{MAX [\textit{start , final}]} returns the length of
+the longest path from a state in \textit{start} to a state in
+\textit{final}. If there exists an infinite path beginning in a state
+in \textit{start} that never reaches a state in \textit{final}, then
+\textit{infinity} is returned.
+
+
+\subsection{PSL Specifications}
+\label{PSL Specifications}
+\index{PSL Specifications}
+%
+\nusmv allows for PSL specifications as from version 1.01 of PSL
+Language Reference Manual \cite{PSLLRM}. PSL specifications
+are introduced by the keyword ``\code{PSLSPEC}''. The syntax of this
+declaration (as from the PSL parser distributed by IBM, \cite{PSLparser}) is:
+%
+\begin{Grammar}
+pslspec_declaration :: "\code{PSLSPEC}" psl_expr ";"
+\end{Grammar}
+%
+where
+%
+\begin{Grammar}
+psl_expr ::
+   psl_primary_expr
+ | psl_unary_expr
+ | psl_binary_expr
+ | psl_conditional_expr
+ | psl_case_expr
+ | psl_property
+\end{Grammar}
+%
+The six classes above define the building blocks for
+\code{psl\_property} and provide means of combining
+instances of that class; they are defined as follows:
+
+\begin{Grammar}
+psl_primary_expr ::
+   number                                ;; a numeric constant
+ | boolean                               ;; a boolean constant
+ | var_id                                ;; a variable identifier
+ | "\{" psl_expr "," ... "," psl_expr "\}"
+ | "\{" psl_expr "\{" psl_expr "," ... "," "psl_expr" "\}" "\}"
+ | "(" psl_expr ")"
+psl_unary_expr ::
+   "+" psl_primary_expr     
+ | "-" psl_primary_expr  
+ | "!" psl_primary_expr  
+psl_binary_expr ::
+   psl_expr "+" psl_expr    
+ | psl_expr "union" psl_expr 
+ | psl_expr "in" psl_expr 
+ | psl_expr "-" psl_expr   
+ | psl_expr "*" psl_expr   
+ | psl_expr "/" psl_expr   
+ | psl_expr "\%" psl_expr 
+ | psl_expr "==" psl_expr    
+ | psl_expr "!=" psl_expr  
+ | psl_expr "<" psl_expr       
+ | psl_expr "<=" psl_expr       
+ | psl_expr ">" psl_expr       
+ | psl_expr ">=" psl_expr       
+ | psl_expr "&" psl_expr 
+ | psl_expr "|" psl_expr 
+ | psl_expr "xor" psl_expr 
+psl_conditional_expr ::
+ psl_expr "?" psl_expr ":" psl_expr 
+psl_case_expr ::
+ "case"
+     psl_expr ":" psl_expr ";"
+     ...
+     psl_expr ":" psl_expr ";"
+ "esac"    
+\end{Grammar}
+%
+Among the subclasses of \code{psl\_expr} we depict the class
+\code{psl\_bexpr} that will be used in the following to identify purely
+propositional, i.e. not temporal, expressions. The class of PSL
+properties \code{psl\_property} is defined as follows:
+%
+\begin{Grammar}
+psl_property :: 
+   replicator psl_expr                   ;; a replicated property 
+ | FL_property "abort" psl_bexpr
+ | psl_expr "<->" psl_expr
+ | psl_expr "->" psl_expr
+ | FL_property       
+ | OBE_property      
+replicator :: 
+   "forall" var_id [index_range] "in" value_set ":" 
+index_range :: 
+   "[" range "]" 
+range :: 
+   low_bound ":" high_bound 
+low_bound :: 
+   number              
+ | identifier         
+high_bound :: 
+   number 
+ | identifier
+ | "inf"                                 ;; infite high bound 
+value_set :: 
+   "\{" value_range "," ... "," value_range "\}" 
+ | "boolean"
+value_range :: 
+   psl_expr
+ | range
+\end{Grammar}
+%
+The instances of \code{FL\_property} are temporal properties built
+using LTL operators and SEREs operators, and are defined as follows:
+%
+
+\begin{Grammar}
+FL_property ::
+ ;; PRIMITIVE LTL OPERATORS
+   "X" FL_property                      
+ | "X!" FL_property                     
+ | "F" FL_property                      
+ | "G" FL_property                      
+ | "[" FL_property "U" FL_property "]"  
+ | "[" FL_property "W" FL_property "]"  
+ ;; SIMPLE TEMPORAL OPERATORS
+ | "always" FL_property                 
+ | "never" FL_property                  
+ | "next" FL_property                   
+ | "next!" FL_property                  
+ | "eventually!" FL_property            
+ | FL_property "until!" FL_property     
+ | FL_property "until" FL_property      
+ | FL_property "until!_" FL_property                                     
+ | FL_property "until_" FL_property     
+ | FL_property "before!" FL_property    
+ | FL_property "before" FL_property     
+ | FL_property "before!_" FL_property   
+ | FL_property "before_" FL_property    
+ ;; EXTENDED NEXT OPERATORS
+ | "X" [number] "(" FL_property ")"
+ | "X!" [number] "(" FL_property ")"                     
+ | "next" [number] "(" FL_property ")"                   
+ | "next!" [number] "(" FL_property ")"                  
+ ;;
+ | "next_a" [range] "(" FL_property ")"
+ | "next_a!" [range] "(" FL_property ")"
+ | "next_e" [range] "(" FL_property ")"
+ | "next_e!" [range] "(" FL_property ")"
+ ;;
+ | "next_event!" "(" psl_bexpr ")" "(" FL_property ")"
+ | "next_event" "(" psl_bexpr ")" "(" FL_property ")"
+ | "next_event!" "(" psl_bexpr ")" "[" number "]"  "(" FL_property ")"
+ | "next_event" "(" psl_bexpr ")" "[" number "]"  "(" FL_property ")"
+ ;;
+ | "next_event_a!" "(" psl_bexpr ")" "["psl_expr"]"  "(" FL_property ")"
+ | "next_event_a" "(" psl_bexpr ")" "["psl_expr"]"  "(" FL_property ")"
+ | "next_event_e!" "(" psl_bexpr ")" "["psl_expr"]"  "(" FL_property ")"
+ | "next_event_e" "(" psl_bexpr ")" "["psl_expr"]"  "(" FL_property ")"
+ ;; OPERATORS ON SEREs
+ | sequence "(" FL_property ")"
+ | sequence "|->" sequence ["!"]
+ | sequence "|=>" sequence ["!"]
+ ;;
+ | "always" sequence
+ | "G" sequence
+ | "never" sequence
+ | "eventually!" sequence
+ ;;
+ | "within!" "(" sequence_or_psl_bexpr "," psl_bexpr ")" sequence
+ | "within" "(" sequence_or_psl_bexpr "," psl_bexpr ")" sequence
+ | "within!_" "(" sequence_or_psl_bexpr "," psl_bexpr ")" sequence
+ | "within_" "(" sequence_or_psl_bexpr "," psl_bexpr ")" sequence
+ ;;
+ | "whilenot!" "(" psl_bexpr ")" sequence
+ | "whilenot" "(" psl_bexpr ")" sequence
+ | "whilenot!_" "(" psl_bexpr ")" sequence
+ | "whilenot_" "(" psl_bexpr ")" sequence
+sequence_or_psl_bexpr ::
+   sequence
+ | psl_bexpr
+\end{Grammar}
+%
+Sequences, i.e. istances of class \code{sequence}, are defined as follows:
+%
+\begin{Grammar}
+sequence ::
+   "\{" SERE "\}"
+SERE ::
+   sequence
+ | psl_bexpr
+ ;; COMPOSITION OPERATORS
+ | SERE ";" SERE
+ | SERE ":" SERE
+ | SERE "&" SERE
+ | SERE "&&" SERE
+ | SERE "|" SERE
+ ;; RegExp QUALIFIERS
+ | SERE "[*" [count] "]"
+ | "[*" [count] "]"
+ | SERE "[+]"
+ | "[+]"
+ ;;
+ | psl_bexpr "[=" count "]"
+ | psl_bexpr "[->" count "]"
+count ::
+   number
+ | range
+\end{Grammar}
+%
+Istances of \code{OBE\_property} are CTL properties in the PSL style
+and are defined as follows:
+%
+\begin{Grammar}
+OBE_property ::
+  "AX" OBE_property
+ | "AG" OBE_property
+ | "AF" OBE_property
+ | "A" "[" OBE_property "U" OBE_property "]"
+ | "EX" OBE_property
+ | "EG" OBE_property
+ | "EF" OBE_property
+ | "E" "[" OBE_property "U" OBE_property "]"
+\end{Grammar}
+%
+The \nusmv parser allows to input any specification based on the
+grammar above, but, currently verification of PSL specifications is
+supported only for the OBE subset, and for a subset of PSL for
+which it is possible to define a translation into LTL. For the
+specifications that belongs to this subsets, it is possible to apply
+all the verification techniques that can be applied to LTL and CTL
+Specifications.
+
+
+\section{Variable Order Input}
+%
+It is possible to specify the order in which variables should appear
+in the BDD's generated by \nusmv. The file which gives the desired
+order can be read in using the \commandopt{i} option in batch mode or
+by setting the \envvar{input\_order\_file} environment variable in
+interactive mode.
+
+\subsection{Input File Syntax}
+\label{Input File Syntax}
+\index{ Input File Syntax}
+%
+The syntax for input files describing the desired variable ordering is
+as follows, where the file can be considered as a list of variable
+names, each of which must be on a separate line:
+%
+\begin{Grammar}
+vars_list :: EMPTY
+           | var_list_item vars_list
+
+var_list_item :: var_main_id
+               | var_main_id.NUMBER
+
+var_main_id :: ATOM
+             | var_main_id[NUMBER]
+             | var_main_id.var_id
+
+var_id :: ATOM
+        | var_id[NUMBER]
+        | var_id.var_id
+\end{Grammar}
+%
+That is, a list of variable names of the following forms:
+%
+\begin{Grammar}
+Complete_Var_Name        - to specify an ordinary variable
+Complete_Var_Name[index] - to specify an array variable element
+Complete_Var_Name.NUMBER - to specify a specific bit of an encoded
+                           scalar variable
+\end{Grammar}
+%
+where \texttt{Complete\_Var\_Name} is just the name of the variable if
+it appears in the module \texttt{MAIN}, otherwise it has the module
+name(s) prepended to the start, for example:\\
+
+\texttt{mod1.mod2...modN.varname}\\
+
+\noindent where \texttt{varname} is a variable in \texttt{modN}, and
+\texttt{modN.varname} is a variable in \texttt{modN-1}, and so
+on. Note that the module name \texttt{main} is implicitely prepended
+to every variable name and therefore must not be included in their
+declarations.
+
+\noindent Any variable which appears in the model file, but not the
+ordering file is placed after all the others in the
+ordering. Variables which appear in the ordering file but not the
+model file are ignored. In both cases \nusmv displays a warning
+message stating these actions.
+
+Comments can be included by using the same syntax as regular \nusmv
+files. That is, by starting the line with \texttt{--}.
+
+
+\subsection{Scalar Variables}
+\label{Scalar Variables}
+\index{Scalar Variables}
+%
+A variable which has a finite range of values that it can take is
+encoded as a set of boolean variables. These boolean variables
+represent the binary equivalents of all the possible values for the
+scalar variable. Thus, a scalar variable that can take values from 0
+to 7 would require three boolean variables to represent it.
+
+It is possible to not only declare the position of a scalar variable
+in the ordering file, but each of the boolean variables which
+represent it.
+
+\noindent If only the scalar variable itself is named then all the
+boolean variables which are actually used to encode it are grouped
+together in the BDD. 
+
+\noindent Variables which are grouped together will always remain next
+to each other in the BDD and in the same order. When dynamic variable
+re-ordering is carried out, the group of variables are treated as one
+entity and moved as such.
+
+\noindent If a scalar variable is omitted from the ordering file then
+it will be added at the end of the variable order and the specific-bit
+variables that represent it will be grouped together. However, if any
+specific-bit variables have been declared in the ordering file (see
+below) then these will not be grouped with the remaining ones.
+
+\noindent It is also possible to specify that specific-bit variables
+are placed elsewhere in the ordering. This is achieved by first
+specifying the scalar variable name in the desired location, then
+simply specifying \texttt{Complete\_Var\_Name.i} at the position where
+you want that bit variable to appear:
+%
+\begin{Grammar}
+...
+Complete\_Var\_Name
+...
+Complete\_Var\_Name.i
+...
+\end{Grammar}
+%
+The result of doing this is that the variable representing the
+\textit{$i^{th}$} bit is located in a different position to the
+remainder of the variables representing the rest of the bits. The
+specific-bit variables \textit{varname.0, ..., varname.i-1,
+varname.i+1, ..., varname.N} are grouped together as before.
+
+If any one bit occurs before the variable it belongs to, the remaining
+specific-bit variables are not grouped together:
+%
+\begin{Grammar}
+...
+Complete\_Var\_Name.i
+...
+Complete\_Var\_Name
+...
+\end{Grammar}
+%
+The variable representing the \textit{$i^{th}$} bit is located at the
+position given in the variable ordering and the remainder are located
+where the scalar variable name is declared. In this case, the
+remaining bit variables will not be grouped together.
+
+\noindent This is just a short-hand way of writing each individual
+specific-bit variable in the ordering file. The following are
+equivalent:
+
+\begin{small} 
+\begin{tabular}{ll} \texttt{...} &
+\texttt{...}\\ \texttt{Complete\_Var\_Name.0} &
+\texttt{Complete\_Var\_Name.0}\\ \texttt{Complete\_Var\_Name.1} &
+\texttt{Complete\_Var\_Name}\\ \texttt{:} & \texttt{...}\\
+\texttt{Complete\_Var\_Name.N-1}\\ \texttt{...} &
+\end{tabular}
+\end{small}
+
+\noindent where the scalar variable \texttt{Complete\_Var\_Name}
+requires N boolean variables to encode all the possible values that it
+may take.\\ \\ It is still possible to then specify other specific-bit
+variables at later points in the ordering file as before.\\
+
+\subsection{Array Variables}
+\label{Array Variables}
+\index{ Array Variables}
+
+When declaring array variables in the ordering file, each individual
+element must be specified separately. It is not permitted to specify
+just the name of the array.\\
+\\
+The reason for this is that the actual definition of an array in the
+model file is essentially a shorthand method of defining a list of
+variables that all have the same type. Nothing is gained by declaring
+it as an array over declaring each of the elements individually, and
+there is no difference in terms of the internal representation of the
+variables.

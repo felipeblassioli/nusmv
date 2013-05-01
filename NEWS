@@ -1,0 +1,531 @@
+********************** NuSMV 2.3.0 (2005/07/15) **********************
+
+This is a major release of NuSMV aiming to enable users to specify and
+check properties expressed in PSL -- the Accellera (and upcoming IEEE)
+standard Property Specification Language.
+
+PSL is becoming one of the most popular property specification
+languages across the EDA community, both in simulation and in formal
+verification. It is intuitive, and easy to learn, read, and write. In
+a nutshell, PSL extends linear temporal logics with the power of
+regular expressions, and it is thus able to capture all omega-regular
+properties. PSL is defined in four layers:
+
+* the Boolean layer allows to write expressions over states.
+
+* the Temporal layer uses Boolean expressions to specify behavior over
+  time.
+
+* the Verification layer consists of directives that specify how tools
+  should use temporal layer specifications to verify functionality of
+  a design.
+
+* the Modeling layer defines the environment within which verification
+  is to occur.
+
+PSL is defined in various flavors, each corresponding to a particular
+underlying hardware description language. The flavor determines the
+syntax of the Boolean and modeling layers, and allows easy,
+interoperable use of PSL across languages and design flows.
+
+This version of NuSMV supports PSL with a new NuSMV flavor, and is
+currently restricted to a subset of the Boolean and Temporal
+layers. More comprehensive support will be implemented in the
+forthcoming releases.
+
+This release was developed as part of the activity within the PROSYD
+project (http://www.prosyd.org -- Property-Based System Design), a
+STREP project funded under the VI framework of the IST EU program.
+
+* Minor changes
+
+  - Fixed a bug in the interactive shell that inhibited the possibility
+    to introduce and verify new properties to be interpreted and thus
+    instantiated within a module declared in the input file.
+
+  - Fixed a bug in the system interactive command 'check_fsm'.
+
+
+
+********************** NuSMV 2.2.5 (2005/05/05) **********************
+
+This is a minor release to fix a critial bug and a bunch of other
+minor bugs. Also, the usability of command line option "-load" has
+been improved.
+
+* Commands and options:
+  - The command line option '-load' now forces the interactive mode,
+    even if option '-int' is not specified. 
+
+
+* Bug fixes:
+  - Fixed a critical bug that prevented the model from being built
+    correctly when the interactive mode was used. This bug did not
+    affect the batch mode at any rate. 
+  - Fixed an overflow error in the interactive simulator.
+    Thanks to Alessandro Saiani for reporting the the bug.
+  - Fixed the setting of system variables for reachable states
+    computation in interactive mode, during system initialization.
+  - Fixed several memory leaks and wrong string manipolations. 
+  - Fixed parsing of end-of-line under Windows within ltl2smv.
+    Thanks to H. Peter Gumm for the bug report.
+  - Other minor bug fixes (see ChangeLog for details)
+
+
+
+********************** NuSMV 2.2.4 (2005/03/17) **********************
+
+This is a minor release. One critical bug has been fixed, as well as a
+few other minor bugs.  Furthermore, some commands have been enriched
+with new options, and a few new system variables have been added.
+
+* Commands and system variables:
+  - Enriched commands: 
+    * write_order supports dumping of bits (option -b).
+    * echo supports file redirection (options -o and -a).
+
+  - Added new system variables:
+    * write_order_dumps_bits: to globally control the way the 
+      command write_order dumps encoded variables.
+
+    * on_failure_script_quits: to control the behaviour of the command
+      interpreter when a non-fatal error occurs.
+
+* Bug fixes:
+  - Fixed a critical bug in the simulator that was affecting both
+    the random and deterministic modalities, not the interactive
+    mode.
+  - In commands pick_state and simulate the option -a had a wrong
+    semantics.
+  - The command check_fsm wrongly printed out inputs instead of only
+    state variables while printing deadlock states.
+  - Other non-user side fixes and improvements.	See ChangeLog for 
+    further details. 
+
+
+
+********************** NuSMV 2.2.3 (2004/12/29) **********************
+
+This is a minor release. A few bug fixes have been made, and some new 
+features have been implemented.
+
+* Improvements
+  - ltl2smv is now invoked internally instead of as an external program.
+    As result, it is not necessary to specify path to ltl2smv anymore. 
+  - Improved performances of boolean and BE conversions by caching results. 
+  - Improved performances of CNF conversion. 
+  - Fixed syntactical errors within a few distributed SMV files. 
+
+* Bug fixes:
+  - Fixed bugs in memoizing of formulas during conversion of SEXP to BEXP.
+  - Fixed several bugs concerned with memory leaks and incorrent
+    memory access.
+  - Fixed bugs in DIMACS dumping.
+  - Scalar variables with range 0..1 are now considered as boolean
+    variables.
+  - Relaxed a few too strong assertions that prevented NuSMV to
+    compile some correct SMV files. 
+	
+
+
+********************** NuSMV 2.2.2 (2004/08/06) **********************
+
+This is a minor release.  
+Incremental algorithms for Bounded Model Checking have been
+integrated, and a new generic interface to Sat solvers (incremental
+and non-incremental) has been implemented. 
+Furthermore, a few bugs that afflicted previous versions have been
+fixed.
+
+* Features:
+  - Added support for MiniSat solver. 
+  - New generic interface for incremental and non-incremental sat
+    solvers. Interfaces for Sim, ZChaff and Minisat have been
+    implemented. 
+  - New algorithms for checking of invariants and LTL properties via
+    Bounded Model Checking:
+    * for checking of LTL properties via incremental sat. 
+    * "een-sorensson" for invariants via non-incremental sat.
+    * "dual" and "zigzag" for invariants via incremental sat. See 
+      the paper "Temporal induction by incremental SAT solving" by 
+      Niklas Een and Niklas Sorensson for further information. 
+    
+    Many thanks to Tommi Junttila <junttila@irst.itc.it> for having
+    provided the first working prototype. 
+
+* Commands and system variables:
+  - Implemented new commands: 
+    * check_ltlspec_bmc_inc
+    * check_invar_bmc_inc
+
+  - Added option -a to the command check_invar_bmc (to specify
+    algorithm to be used)
+
+  - Added new system variables:
+    * bmc_invar_alg: used to choose algorithm for non-incremental
+      invariant checking. 
+    * bmc_inc_invar_alg: used to choose algorithm for incremental
+      invariant checking.
+
+  - Removed file extension ".dimacs" from default values assigned to
+    system variables:
+    * bmc_dimacs_filename
+    * bmc_invar_dimacs_filename
+
+* Improvements
+  - Improved booleanization of scalar expressions in bmc. Thanks to
+    Angela Pappagallo <angela_pappagallo@yahoo.it>. 
+  - Improved usability of commands in bmc interactive mode.
+
+* Bug fixes:
+  - Fixed several bugs of user commands for bmc. 
+  - Fixed a bug that occurred when instantiating more than once
+    a variable whose range was containing one value only. Thanks to
+    Charles Pecheur <pecheur@email.arc.nasa.gov>.
+  - Fixed a bug in the model checking code that caused assertion
+    violation due to a missing intersection with fair states while
+    starting computing counter-examples. Thanks to Charles Pecheur 
+    <pecheur@email.arc.nasa.gov>.
+  - Fixed wrong behavior of option -r in batch mode: only the number
+    of reachable states is printed out now. 
+  - Fixed wrong allocation when sat solvers but SIM were called
+    internally.
+  - Other minor bug fixes (see ChangeLog for details)
+
+********************** NuSMV 2.2.1 (2004/06/23) **********************
+
+This is a minor release. A few bug fixes have been made. 
+
+* Bug fixes
+  - Preprocessors invocation under Windows
+  - Dynamic reordering works now properly.
+  - Fixed a missing check of assignment of input variables, when
+    arrays were used.
+  - Variables are currently declared with the same order as 2.1.x
+    series.
+  - Fixed behavior of cmd line option '-o filename'.
+
+* Contributions
+  - Added examples/m4 directory containing a bunch of m4 examples, 
+    kindly provided by Roger Villemaire <villemaire.roger@uqam.ca>.
+  - Added contrib/nusmv-mode.el an (X)Emacs major-mode for editing and
+    running NuSMV sources, kindly provided by Roger Villemaire
+    <villemaire.roger@uqam.ca>.
+
+* Known bugs/problems
+  - NuSMV launched with -cpp option and no input file falls into
+    segfault.
+  - Under Windows, the usage of multiple preprocessors will make 
+    NuSMV hang. 
+
+********************** NuSMV 2.2.0 (2004/06/10) **********************
+
+This is a major release of NuSMV. Several improvements have been made
+with respect to NuSMV 2.1. The most relevant are:
+
+* Major changes
+
+  - Input variables are now interpreted as labels over transitions in
+    the Kripke structure. This solves several problems, including
+    incorrect behaviors with processes.
+
+  - Improved multiple FSM management, with APIs to enable
+    composition. Improved management of encodings from scalar
+    variables to the boolean space, with API to enable merging of
+    encodings and other functionalities.
+
+  - Packages and sub-packages have been introduced to represent the
+    most significant data structures. Each package comes with a
+    library, that can be linked separately from the rest of the
+    system. New packages include different representations of FSM
+    (i.e. Sexp, BDD, RBC), and Encodings.
+
+  - Traces can be exported in different formats: textual (original),
+    TAB separated list (to simplify import in spreadsheets), XML (for
+    web browsing). Traces in XML format can also be imported and
+    validated.
+
+   - Improved BDD variable ordering. The reordering process can now
+     work at the level of the boolean variables used to encode scalar
+     variables, and the ordering file can directly refer to boolean
+     variables. This may result in more compact BDDs (e.g. for
+     formulae like x = y). Thanks to Dan Sheridan
+     <dan.sheridan@contact.org.uk> for the contribution.
+
+
+* User Interaction
+
+  - Input files can now be preprocessed with multiple preprocessors
+    (e.g. cpp, m4); the invocation order can be defined by the
+    user. Thanks to Roger Villemaire <villemaire.roger@uqam.ca> for
+    the interface with m4.
+
+  - Trans type "Conjunctive" has been replaced by "Threshold" and is
+    no longer supported.
+
+  - Improved interactive simulator. In the choice of next states,
+    duplicated entries are no longer present, and a distinction
+    between state variables and input variables is enforced. Thanks to
+    Anthony Wilder <anthony.wilder@roke.co.uk> for the contribution.
+
+  - Added some command line options: "-dcx", to disable
+    counter-example generation for false properties; "-pre", to
+    specify a list of pre-processors to be applied to the input file.
+
+
+* Bounded Model Checking
+
+  - Improved the RBC package by introducing some new simplifications.
+    Improved the algorithm for the generation of the CNF. Thanks to
+    T. Junttila <Tommi.Junttila@hut.fi> for the contribution.
+
+
+* Porting and Other
+
+  - Porting under Mac OS X (see section 3 - Mac OS X in the file
+    README_PLATFORMS for details).
+
+  - Native compilation under windows using MinGW
+    (http://www.mingw.org/). This eliminates the requirement for
+    cygwin (http://www.cygwin.com) (see section 4 - Microsoft Windows
+    in the file README_PLATFORMS for details).
+
+  - Integration with the new version of zchaff 2003.12.04
+    (http://www.ee.princeton.edu/~chaff/zchaff.php);
+
+  - Removed dependency on the tokens generated by yacc.
+
+
+* Documentation
+
+  - The user manual of version 2.1 has been split in two parts: a user
+    manual and a tutorial.
+
+  - The user manual has been updated to describe new commands and
+    functionalities.
+
+
+* New restrictions
+
+  - Input variables can occur in LTL formulae and in fairness
+    conditions. However, they are no longer allowed within CTL and
+    invariant properties. 
+
+  - The body of DEFINEd symbols can no longer refer to next value of
+    any variable.
+
+
+* Bug fixes
+
+  - Fixed problems related to wrong results in presence of processes.
+
+  - Fixed problems in the check for recursive definitions.
+
+  - Removed BDD memory leaks in the code for dealing with LTL under
+    full fairness.
+
+
+* Performance
+
+  - The regression test w.r.t. version 2.1.2 pointed out an
+    improvement in the performances of the model checking algorithms
+    (BDD and SAT) in the majority of the considered cases.
+
+
+ * Known bugs/problems
+
+  - Some temporal formulae containing a "liberal" interpretation of
+    truth values (e.g. "(AX p) = (AX q)") are correctly parsed, but
+    may cause an internal error. A restriction will be enforced in the
+    next releases.
+
+  - In some cases, a significant degradation in performance of the SIM
+    sat solver was noticed as a consequence of the new RBC package and
+    the CNFization algorithm. The precise cause of the degradation is
+    being investigated (notice that zchaff benefits from the changes).
+
+  - Pressing Ctrl-C under Microsoft Windows Operating Systems within
+    the interactive shell will cause unpredictable behavior. 
+
+
+********************** NuSMV 2.1.2 (2002/11/22) **********************
+
+This is a bug fix release that solves a problem occurring on NuSMV
+release 2.1.1 while checking for recursive definitions. Many thanks to
+Yunja Choi for the bug report.
+
+********************** NuSMV 2.1.1 (2002/11/08) **********************
+
+This is a bug fix release that solves some problems showed by previous
+releases.
+
+* Generic
+  - fixed a problem in the checking for recursive definitions that
+    allowed to parse assignments with dependencies not broken by a
+    time delay. (affected file nusmv/src/compile/compileCheck.c)
+
+  - fixed a problem in the encoding that caused NuSMV to exit with an
+    error when the BDD dynamic variable ordering was enabled. Many
+    thanks to Yunja Choi for the bug report. (affected file
+    nusmv/src/compile/compileEncode.c)
+
+* BMC tableau generator
+  - fixed a bug in the tableau generator that erroneously ignored
+    NuSMV invariants in path of length 0. (affected file
+    nusmv/src/bmc/bmcModel.c)
+
+  - improved the performances of the Past LTL tableau generator.
+    (affected file nusmv/src/bmc/bmcTableauPLTLformula.c)
+
+* Documentation 
+  - improved the user manual. Thanks to Thomas Wahl for signaling us
+    the ambiguities. (affected file nusmv/doc/user-man/nusmv.texi)
+
+  - fixed a problem in the on-line documentation of the
+    write_boolean_model command. Many thanks to Andrea Fedeli for the
+    bug report. (affected file nusmv/src/compile/compileCmd.c)
+
+* Parsing
+  - fixed a problem in the lexical analyzer in the parsing of very
+    long comments. (affected file src/parser/input.l)
+
+  - not recognized preprocessor macros now cause a parsing error.
+    (affected file src/parser/input.l)
+  
+********************** NuSMV 2.1.0 (2002/07/03) **********************
+
+This is a major release of NuSMV. Several improvements have been done
+with respect to NuSMV 2.0. The most relevant are:
+
+* New functionalities
+
+  - Past LTL
+
+    Now LTL properties can also include *past* temporal operators.
+    Differently from standard temporal operators, that allow to
+    express properties over the future evolution of the FSM, past
+    temporal operators allow to characterize properties of the path
+    that lead to the current situation. 
+
+    Past LTL temporal operators are supported both in BDD-based Model
+    Checking and in Bounded Model Checking of LTL specifications.  The
+    extended LTL to SMV tableau translator for the past fragment of LTL
+    has been contributed by Ariel Fuxman <afuxman@cs.toronto.edu>.
+
+  - Full Fairness
+    
+    Now NuSMV supports two types of fairness constraints, namely the
+    weak fairness, or "justice", constraints and the strong fairness,
+    or "compassion", constraints. 
+
+    A justice constraint consists of a formula f which is assumed to
+    be true infinitely often in all the fair paths. A compassion
+    constraint consists of a pair of formulas (p,q); if property p is
+    true infinitely often in a fair path, then also formula q has to
+    be true infinitely often in the fair path. 
+
+    Old versions of NuSMV supports only weak fairness.  In the current
+    version of NuSMV, compassion constraints are supported only for
+    BDD-based LTL model checking.  The strong fairness model checking
+    algorithm for LTL specifications has been contributed by
+    Rik Eshuis <eshuis@cs.utwente.nl>.
+
+    We plan to add support for compassion constraints also for CTL
+    specifications and in Bounded Model Checking in the next releases
+    of NuSMV.
+
+  - ZCHAFF SAT solver
+
+    The new version of NuSMV allows for the usage of the ZCHAFF
+    library as the SAT solver in Bounded Model Checking.
+
+    ZCHAFF is a very strong state-of-the-art SAT solver developed by
+    the Princeton University. ZCHAFF won the SAT 2002 Competition as
+    the Best Complete Solver in both industrial and handmade
+    benchmarks categories. ZCHAFF has also shown a consistent speed-up
+    in the solution of Bounded Model Checking problems. 
+
+* Architecture
+
+  Several aspects of the NuSMV architecture have been improved.
+
+  - We have improved the management of the Conjunctive Partitioning
+    management of transition relations. With respect to old versions
+    of NuSMV, the new code is more modular and easier to extend.
+
+  - The Bounded Model Checking code has undergone a general revision.
+    In particular:
+    - the file organization of the bmc package has been improved
+      in order to enhance readability and extensibility;
+    - a generic interface to Boolean Expression Managers has been
+      added; it is now possible to replace the current manager of
+      boolean expressions (RBC) with more advance managers (e.g., BED);
+    - a generic interface to SAT solvers gas been defined; this 
+      makes it easier to add support for new SAT solvers in NuSMV.
+  
+* Documentation
+
+  - We have updated the user manual with the new features of NuSMV 2.
+    Moreover, we have added to the manual a tutorial that covers
+    the basic functionalities on NuSMV.
+
+* Bug fixes
+
+  Several bug fixes and minor enhancements have been done.
+
+
+********************** NuSMV 2.0.3 (2002/03/27) **********************
+
+- Fixed important bug in the management of the BDD-based 
+  representation of the Finite State Machines. This bug
+  lead to an assertion failure in the case properties were
+  checked using the cone-of-influence reduction.
+
+  Many thanks to Yunja Choi for the bug report.
+
+  (Affected files: nusmv/src/compile/compile.h,compileCmd.c,
+  compileStruct.c,compileUtil.c, nusmv/src/prop/propProc.c,
+  nusmv/src/sm/smMisc.c)
+
+- Fixed bug in the "reset: routine of the interactive shell.
+  The reachable states were not freed during the reset, thus
+  leaving garbage information that lead to failures in
+  the following commands.
+  (Affected files: nusmv/src/sm/smCmd.c)
+
+- Fixed a memory leak in some routines added to the CUDDs to fulfill
+  the needs of NuSMV. (Affected files: cudd-2.3.0.1/cudd/cuddAddOp.c,
+  cuddBddOp.c)
+
+- Extended printing routines to new operators XOR and XNOR.
+  (Affected files: nusmv/src/node/nodePrint.c,nodeWffPrint.c)
+
+- Enhanced CUDD routine that extracts the symbolic representation of BDDs.
+  (Affected files: cudd-2.3.0.1/cudd/cuddBddOp.c)
+
+********************** NuSMV 2.0.2 (2002/01/30) **********************
+
+- Fixed important bug in the optimized tableau construction of
+  SAT-based Bounded Model Checking engine. This bug lead to an
+  "assertion fail" in the verification of formulas "p U q".  
+  (Affected files: nusmv/bmc/bmcModel.c)
+
+- Fixed minor bug in main routine of the batch verification: now the
+  BDD master FSM is not built in the case of SAT-based Bounded Model
+  Checking. This fix permits a substantial gain in performance in the
+  case of Bounded Model Checking. (Affected files: nusmv/sm/smMisc.c)
+
+- Disabled printing of memory/cpu statistics under cygwin. This
+  fix allows for a clean compilation of NuSMV also on windows
+  platforms. (Affected files: cudd-2.3.0.1/util/cpu_stats.c)
+
+- Minor upgrades in the documentation and in the Makefile.
+
+********************** NuSMV 2.0.1 (2001/11/14) **********************
+
+This is a bug fix release that solves a problem occurring on SunOS systems.
+Nothing relevant changes in the Linux version.
+
+Many thanks to Rik Eshuis for the bug report.
+
+**********************************************************************

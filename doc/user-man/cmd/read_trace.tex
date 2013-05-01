@@ -1,0 +1,16 @@
+\begin{nusmvCommand} {read\_trace} {Loads a previously saved trace}
+
+\cmdLine{read\_trace [-h | -i file-name]}
+
+\begin{cmdOpt}
+\opt{-i \parameter{\filename{file-name}}}{ Reads in a trace from the
+specified file. Note that the file must only contain one trace.}
+
+\end{cmdOpt}
+
+Loads a trace which has been previously output to a file with the XML
+Format Output plugin. The model from which the trace was originally
+generated must be loaded and built using the command ``\command{go}''
+first.\\Please note that this command is only available on systems
+that have the Expat XML parser library installed.
+\end{nusmvCommand}

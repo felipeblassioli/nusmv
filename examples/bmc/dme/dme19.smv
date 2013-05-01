@@ -1,0 +1,1989 @@
+MODULE main
+
+VAR
+
+  o_cell18_q : boolean;
+  cell18_q : boolean;
+  o_cell18_f : boolean;
+  cell18_f : boolean;
+  o_cell18_d : boolean;
+  cell18_d : boolean;
+  o_cell18_b : boolean;
+  cell18_b : boolean;
+  o_cell18_i : boolean;
+  cell18_i : boolean;
+  o_cell18_h : boolean;
+  cell18_h : boolean;
+  o_cell18_n : boolean;
+  cell18_n : boolean;
+  o_cell18_u : boolean;
+  cell18_u : boolean;
+  o_cell18_a : boolean;
+  cell18_a : boolean;
+  o_cell18_c : boolean;
+  cell18_c : boolean;
+  o_cell18_g : boolean;
+  cell18_g : boolean;
+  o_cell18_e : boolean;
+  cell18_e : boolean;
+  o_cell18_k : boolean;
+  cell18_k : boolean;
+  o_cell18_l : boolean;
+  cell18_l : boolean;
+  o_cell18_p : boolean;
+  cell18_p : boolean;
+  o_cell18_m : boolean;
+  cell18_m : boolean;
+  o_cell18_r : boolean;
+  cell18_r : boolean;
+  o_cell18_j : boolean;
+  cell18_j : boolean;
+  o_cell17_q : boolean;
+  cell17_q : boolean;
+  o_cell17_f : boolean;
+  cell17_f : boolean;
+  o_cell17_d : boolean;
+  cell17_d : boolean;
+  o_cell17_b : boolean;
+  cell17_b : boolean;
+  o_cell17_i : boolean;
+  cell17_i : boolean;
+  o_cell17_h : boolean;
+  cell17_h : boolean;
+  o_cell17_n : boolean;
+  cell17_n : boolean;
+  o_cell17_u : boolean;
+  cell17_u : boolean;
+  o_cell17_a : boolean;
+  cell17_a : boolean;
+  o_cell17_c : boolean;
+  cell17_c : boolean;
+  o_cell17_g : boolean;
+  cell17_g : boolean;
+  o_cell17_e : boolean;
+  cell17_e : boolean;
+  o_cell17_k : boolean;
+  cell17_k : boolean;
+  o_cell17_l : boolean;
+  cell17_l : boolean;
+  o_cell17_p : boolean;
+  cell17_p : boolean;
+  o_cell17_m : boolean;
+  cell17_m : boolean;
+  o_cell17_r : boolean;
+  cell17_r : boolean;
+  o_cell17_j : boolean;
+  cell17_j : boolean;
+  o_cell16_q : boolean;
+  cell16_q : boolean;
+  o_cell16_f : boolean;
+  cell16_f : boolean;
+  o_cell16_d : boolean;
+  cell16_d : boolean;
+  o_cell16_b : boolean;
+  cell16_b : boolean;
+  o_cell16_i : boolean;
+  cell16_i : boolean;
+  o_cell16_h : boolean;
+  cell16_h : boolean;
+  o_cell16_n : boolean;
+  cell16_n : boolean;
+  o_cell16_u : boolean;
+  cell16_u : boolean;
+  o_cell16_a : boolean;
+  cell16_a : boolean;
+  o_cell16_c : boolean;
+  cell16_c : boolean;
+  o_cell16_g : boolean;
+  cell16_g : boolean;
+  o_cell16_e : boolean;
+  cell16_e : boolean;
+  o_cell16_k : boolean;
+  cell16_k : boolean;
+  o_cell16_l : boolean;
+  cell16_l : boolean;
+  o_cell16_p : boolean;
+  cell16_p : boolean;
+  o_cell16_m : boolean;
+  cell16_m : boolean;
+  o_cell16_r : boolean;
+  cell16_r : boolean;
+  o_cell16_j : boolean;
+  cell16_j : boolean;
+  o_cell15_q : boolean;
+  cell15_q : boolean;
+  o_cell15_f : boolean;
+  cell15_f : boolean;
+  o_cell15_d : boolean;
+  cell15_d : boolean;
+  o_cell15_b : boolean;
+  cell15_b : boolean;
+  o_cell15_i : boolean;
+  cell15_i : boolean;
+  o_cell15_h : boolean;
+  cell15_h : boolean;
+  o_cell15_n : boolean;
+  cell15_n : boolean;
+  o_cell15_u : boolean;
+  cell15_u : boolean;
+  o_cell15_a : boolean;
+  cell15_a : boolean;
+  o_cell15_c : boolean;
+  cell15_c : boolean;
+  o_cell15_g : boolean;
+  cell15_g : boolean;
+  o_cell15_e : boolean;
+  cell15_e : boolean;
+  o_cell15_k : boolean;
+  cell15_k : boolean;
+  o_cell15_l : boolean;
+  cell15_l : boolean;
+  o_cell15_p : boolean;
+  cell15_p : boolean;
+  o_cell15_m : boolean;
+  cell15_m : boolean;
+  o_cell15_r : boolean;
+  cell15_r : boolean;
+  o_cell15_j : boolean;
+  cell15_j : boolean;
+  o_cell14_q : boolean;
+  cell14_q : boolean;
+  o_cell14_f : boolean;
+  cell14_f : boolean;
+  o_cell14_d : boolean;
+  cell14_d : boolean;
+  o_cell14_b : boolean;
+  cell14_b : boolean;
+  o_cell14_i : boolean;
+  cell14_i : boolean;
+  o_cell14_h : boolean;
+  cell14_h : boolean;
+  o_cell14_n : boolean;
+  cell14_n : boolean;
+  o_cell14_u : boolean;
+  cell14_u : boolean;
+  o_cell14_a : boolean;
+  cell14_a : boolean;
+  o_cell14_c : boolean;
+  cell14_c : boolean;
+  o_cell14_g : boolean;
+  cell14_g : boolean;
+  o_cell14_e : boolean;
+  cell14_e : boolean;
+  o_cell14_k : boolean;
+  cell14_k : boolean;
+  o_cell14_l : boolean;
+  cell14_l : boolean;
+  o_cell14_p : boolean;
+  cell14_p : boolean;
+  o_cell14_m : boolean;
+  cell14_m : boolean;
+  o_cell14_r : boolean;
+  cell14_r : boolean;
+  o_cell14_j : boolean;
+  cell14_j : boolean;
+  o_cell13_q : boolean;
+  cell13_q : boolean;
+  o_cell13_f : boolean;
+  cell13_f : boolean;
+  o_cell13_d : boolean;
+  cell13_d : boolean;
+  o_cell13_b : boolean;
+  cell13_b : boolean;
+  o_cell13_i : boolean;
+  cell13_i : boolean;
+  o_cell13_h : boolean;
+  cell13_h : boolean;
+  o_cell13_n : boolean;
+  cell13_n : boolean;
+  o_cell13_u : boolean;
+  cell13_u : boolean;
+  o_cell13_a : boolean;
+  cell13_a : boolean;
+  o_cell13_c : boolean;
+  cell13_c : boolean;
+  o_cell13_g : boolean;
+  cell13_g : boolean;
+  o_cell13_e : boolean;
+  cell13_e : boolean;
+  o_cell13_k : boolean;
+  cell13_k : boolean;
+  o_cell13_l : boolean;
+  cell13_l : boolean;
+  o_cell13_p : boolean;
+  cell13_p : boolean;
+  o_cell13_m : boolean;
+  cell13_m : boolean;
+  o_cell13_r : boolean;
+  cell13_r : boolean;
+  o_cell13_j : boolean;
+  cell13_j : boolean;
+  o_cell12_q : boolean;
+  cell12_q : boolean;
+  o_cell12_f : boolean;
+  cell12_f : boolean;
+  o_cell12_d : boolean;
+  cell12_d : boolean;
+  o_cell12_b : boolean;
+  cell12_b : boolean;
+  o_cell12_i : boolean;
+  cell12_i : boolean;
+  o_cell12_h : boolean;
+  cell12_h : boolean;
+  o_cell12_n : boolean;
+  cell12_n : boolean;
+  o_cell12_u : boolean;
+  cell12_u : boolean;
+  o_cell12_a : boolean;
+  cell12_a : boolean;
+  o_cell12_c : boolean;
+  cell12_c : boolean;
+  o_cell12_g : boolean;
+  cell12_g : boolean;
+  o_cell12_e : boolean;
+  cell12_e : boolean;
+  o_cell12_k : boolean;
+  cell12_k : boolean;
+  o_cell12_l : boolean;
+  cell12_l : boolean;
+  o_cell12_p : boolean;
+  cell12_p : boolean;
+  o_cell12_m : boolean;
+  cell12_m : boolean;
+  o_cell12_r : boolean;
+  cell12_r : boolean;
+  o_cell12_j : boolean;
+  cell12_j : boolean;
+  o_cell11_q : boolean;
+  cell11_q : boolean;
+  o_cell11_f : boolean;
+  cell11_f : boolean;
+  o_cell11_d : boolean;
+  cell11_d : boolean;
+  o_cell11_b : boolean;
+  cell11_b : boolean;
+  o_cell11_i : boolean;
+  cell11_i : boolean;
+  o_cell11_h : boolean;
+  cell11_h : boolean;
+  o_cell11_n : boolean;
+  cell11_n : boolean;
+  o_cell11_u : boolean;
+  cell11_u : boolean;
+  o_cell11_a : boolean;
+  cell11_a : boolean;
+  o_cell11_c : boolean;
+  cell11_c : boolean;
+  o_cell11_g : boolean;
+  cell11_g : boolean;
+  o_cell11_e : boolean;
+  cell11_e : boolean;
+  o_cell11_k : boolean;
+  cell11_k : boolean;
+  o_cell11_l : boolean;
+  cell11_l : boolean;
+  o_cell11_p : boolean;
+  cell11_p : boolean;
+  o_cell11_m : boolean;
+  cell11_m : boolean;
+  o_cell11_r : boolean;
+  cell11_r : boolean;
+  o_cell11_j : boolean;
+  cell11_j : boolean;
+  o_cell10_q : boolean;
+  cell10_q : boolean;
+  o_cell10_f : boolean;
+  cell10_f : boolean;
+  o_cell10_d : boolean;
+  cell10_d : boolean;
+  o_cell10_b : boolean;
+  cell10_b : boolean;
+  o_cell10_i : boolean;
+  cell10_i : boolean;
+  o_cell10_h : boolean;
+  cell10_h : boolean;
+  o_cell10_n : boolean;
+  cell10_n : boolean;
+  o_cell10_u : boolean;
+  cell10_u : boolean;
+  o_cell10_a : boolean;
+  cell10_a : boolean;
+  o_cell10_c : boolean;
+  cell10_c : boolean;
+  o_cell10_g : boolean;
+  cell10_g : boolean;
+  o_cell10_e : boolean;
+  cell10_e : boolean;
+  o_cell10_k : boolean;
+  cell10_k : boolean;
+  o_cell10_l : boolean;
+  cell10_l : boolean;
+  o_cell10_p : boolean;
+  cell10_p : boolean;
+  o_cell10_m : boolean;
+  cell10_m : boolean;
+  o_cell10_r : boolean;
+  cell10_r : boolean;
+  o_cell10_j : boolean;
+  cell10_j : boolean;
+  o_cell9_q : boolean;
+  cell9_q : boolean;
+  o_cell9_f : boolean;
+  cell9_f : boolean;
+  o_cell9_d : boolean;
+  cell9_d : boolean;
+  o_cell9_b : boolean;
+  cell9_b : boolean;
+  o_cell9_i : boolean;
+  cell9_i : boolean;
+  o_cell9_h : boolean;
+  cell9_h : boolean;
+  o_cell9_n : boolean;
+  cell9_n : boolean;
+  o_cell9_u : boolean;
+  cell9_u : boolean;
+  o_cell9_a : boolean;
+  cell9_a : boolean;
+  o_cell9_c : boolean;
+  cell9_c : boolean;
+  o_cell9_g : boolean;
+  cell9_g : boolean;
+  o_cell9_e : boolean;
+  cell9_e : boolean;
+  o_cell9_k : boolean;
+  cell9_k : boolean;
+  o_cell9_l : boolean;
+  cell9_l : boolean;
+  o_cell9_p : boolean;
+  cell9_p : boolean;
+  o_cell9_m : boolean;
+  cell9_m : boolean;
+  o_cell9_r : boolean;
+  cell9_r : boolean;
+  o_cell9_j : boolean;
+  cell9_j : boolean;
+  o_cell8_q : boolean;
+  cell8_q : boolean;
+  o_cell8_f : boolean;
+  cell8_f : boolean;
+  o_cell8_d : boolean;
+  cell8_d : boolean;
+  o_cell8_b : boolean;
+  cell8_b : boolean;
+  o_cell8_i : boolean;
+  cell8_i : boolean;
+  o_cell8_h : boolean;
+  cell8_h : boolean;
+  o_cell8_n : boolean;
+  cell8_n : boolean;
+  o_cell8_u : boolean;
+  cell8_u : boolean;
+  o_cell8_a : boolean;
+  cell8_a : boolean;
+  o_cell8_c : boolean;
+  cell8_c : boolean;
+  o_cell8_g : boolean;
+  cell8_g : boolean;
+  o_cell8_e : boolean;
+  cell8_e : boolean;
+  o_cell8_k : boolean;
+  cell8_k : boolean;
+  o_cell8_l : boolean;
+  cell8_l : boolean;
+  o_cell8_p : boolean;
+  cell8_p : boolean;
+  o_cell8_m : boolean;
+  cell8_m : boolean;
+  o_cell8_r : boolean;
+  cell8_r : boolean;
+  o_cell8_j : boolean;
+  cell8_j : boolean;
+  o_cell7_q : boolean;
+  cell7_q : boolean;
+  o_cell7_f : boolean;
+  cell7_f : boolean;
+  o_cell7_d : boolean;
+  cell7_d : boolean;
+  o_cell7_b : boolean;
+  cell7_b : boolean;
+  o_cell7_i : boolean;
+  cell7_i : boolean;
+  o_cell7_h : boolean;
+  cell7_h : boolean;
+  o_cell7_n : boolean;
+  cell7_n : boolean;
+  o_cell7_u : boolean;
+  cell7_u : boolean;
+  o_cell7_a : boolean;
+  cell7_a : boolean;
+  o_cell7_c : boolean;
+  cell7_c : boolean;
+  o_cell7_g : boolean;
+  cell7_g : boolean;
+  o_cell7_e : boolean;
+  cell7_e : boolean;
+  o_cell7_k : boolean;
+  cell7_k : boolean;
+  o_cell7_l : boolean;
+  cell7_l : boolean;
+  o_cell7_p : boolean;
+  cell7_p : boolean;
+  o_cell7_m : boolean;
+  cell7_m : boolean;
+  o_cell7_r : boolean;
+  cell7_r : boolean;
+  o_cell7_j : boolean;
+  cell7_j : boolean;
+  o_cell6_q : boolean;
+  cell6_q : boolean;
+  o_cell6_f : boolean;
+  cell6_f : boolean;
+  o_cell6_d : boolean;
+  cell6_d : boolean;
+  o_cell6_b : boolean;
+  cell6_b : boolean;
+  o_cell6_i : boolean;
+  cell6_i : boolean;
+  o_cell6_h : boolean;
+  cell6_h : boolean;
+  o_cell6_n : boolean;
+  cell6_n : boolean;
+  o_cell6_u : boolean;
+  cell6_u : boolean;
+  o_cell6_a : boolean;
+  cell6_a : boolean;
+  o_cell6_c : boolean;
+  cell6_c : boolean;
+  o_cell6_g : boolean;
+  cell6_g : boolean;
+  o_cell6_e : boolean;
+  cell6_e : boolean;
+  o_cell6_k : boolean;
+  cell6_k : boolean;
+  o_cell6_l : boolean;
+  cell6_l : boolean;
+  o_cell6_p : boolean;
+  cell6_p : boolean;
+  o_cell6_m : boolean;
+  cell6_m : boolean;
+  o_cell6_r : boolean;
+  cell6_r : boolean;
+  o_cell6_j : boolean;
+  cell6_j : boolean;
+  o_cell5_q : boolean;
+  cell5_q : boolean;
+  o_cell5_f : boolean;
+  cell5_f : boolean;
+  o_cell5_d : boolean;
+  cell5_d : boolean;
+  o_cell5_b : boolean;
+  cell5_b : boolean;
+  o_cell5_i : boolean;
+  cell5_i : boolean;
+  o_cell5_h : boolean;
+  cell5_h : boolean;
+  o_cell5_n : boolean;
+  cell5_n : boolean;
+  o_cell5_u : boolean;
+  cell5_u : boolean;
+  o_cell5_a : boolean;
+  cell5_a : boolean;
+  o_cell5_c : boolean;
+  cell5_c : boolean;
+  o_cell5_g : boolean;
+  cell5_g : boolean;
+  o_cell5_e : boolean;
+  cell5_e : boolean;
+  o_cell5_k : boolean;
+  cell5_k : boolean;
+  o_cell5_l : boolean;
+  cell5_l : boolean;
+  o_cell5_p : boolean;
+  cell5_p : boolean;
+  o_cell5_m : boolean;
+  cell5_m : boolean;
+  o_cell5_r : boolean;
+  cell5_r : boolean;
+  o_cell5_j : boolean;
+  cell5_j : boolean;
+  o_cell4_q : boolean;
+  cell4_q : boolean;
+  o_cell4_f : boolean;
+  cell4_f : boolean;
+  o_cell4_d : boolean;
+  cell4_d : boolean;
+  o_cell4_b : boolean;
+  cell4_b : boolean;
+  o_cell4_i : boolean;
+  cell4_i : boolean;
+  o_cell4_h : boolean;
+  cell4_h : boolean;
+  o_cell4_n : boolean;
+  cell4_n : boolean;
+  o_cell4_u : boolean;
+  cell4_u : boolean;
+  o_cell4_a : boolean;
+  cell4_a : boolean;
+  o_cell4_c : boolean;
+  cell4_c : boolean;
+  o_cell4_g : boolean;
+  cell4_g : boolean;
+  o_cell4_e : boolean;
+  cell4_e : boolean;
+  o_cell4_k : boolean;
+  cell4_k : boolean;
+  o_cell4_l : boolean;
+  cell4_l : boolean;
+  o_cell4_p : boolean;
+  cell4_p : boolean;
+  o_cell4_m : boolean;
+  cell4_m : boolean;
+  o_cell4_r : boolean;
+  cell4_r : boolean;
+  o_cell4_j : boolean;
+  cell4_j : boolean;
+  o_cell3_q : boolean;
+  cell3_q : boolean;
+  o_cell3_f : boolean;
+  cell3_f : boolean;
+  o_cell3_d : boolean;
+  cell3_d : boolean;
+  o_cell3_b : boolean;
+  cell3_b : boolean;
+  o_cell3_i : boolean;
+  cell3_i : boolean;
+  o_cell3_h : boolean;
+  cell3_h : boolean;
+  o_cell3_n : boolean;
+  cell3_n : boolean;
+  o_cell3_u : boolean;
+  cell3_u : boolean;
+  o_cell3_a : boolean;
+  cell3_a : boolean;
+  o_cell3_c : boolean;
+  cell3_c : boolean;
+  o_cell3_g : boolean;
+  cell3_g : boolean;
+  o_cell3_e : boolean;
+  cell3_e : boolean;
+  o_cell3_k : boolean;
+  cell3_k : boolean;
+  o_cell3_l : boolean;
+  cell3_l : boolean;
+  o_cell3_p : boolean;
+  cell3_p : boolean;
+  o_cell3_m : boolean;
+  cell3_m : boolean;
+  o_cell3_r : boolean;
+  cell3_r : boolean;
+  o_cell3_j : boolean;
+  cell3_j : boolean;
+  o_cell2_q : boolean;
+  cell2_q : boolean;
+  o_cell2_f : boolean;
+  cell2_f : boolean;
+  o_cell2_d : boolean;
+  cell2_d : boolean;
+  o_cell2_b : boolean;
+  cell2_b : boolean;
+  o_cell2_i : boolean;
+  cell2_i : boolean;
+  o_cell2_h : boolean;
+  cell2_h : boolean;
+  o_cell2_n : boolean;
+  cell2_n : boolean;
+  o_cell2_u : boolean;
+  cell2_u : boolean;
+  o_cell2_a : boolean;
+  cell2_a : boolean;
+  o_cell2_c : boolean;
+  cell2_c : boolean;
+  o_cell2_g : boolean;
+  cell2_g : boolean;
+  o_cell2_e : boolean;
+  cell2_e : boolean;
+  o_cell2_k : boolean;
+  cell2_k : boolean;
+  o_cell2_l : boolean;
+  cell2_l : boolean;
+  o_cell2_p : boolean;
+  cell2_p : boolean;
+  o_cell2_m : boolean;
+  cell2_m : boolean;
+  o_cell2_r : boolean;
+  cell2_r : boolean;
+  o_cell2_j : boolean;
+  cell2_j : boolean;
+  o_cell1_q : boolean;
+  cell1_q : boolean;
+  o_cell1_f : boolean;
+  cell1_f : boolean;
+  o_cell1_d : boolean;
+  cell1_d : boolean;
+  o_cell1_b : boolean;
+  cell1_b : boolean;
+  o_cell1_i : boolean;
+  cell1_i : boolean;
+  o_cell1_h : boolean;
+  cell1_h : boolean;
+  o_cell1_n : boolean;
+  cell1_n : boolean;
+  o_cell1_u : boolean;
+  cell1_u : boolean;
+  o_cell1_a : boolean;
+  cell1_a : boolean;
+  o_cell1_c : boolean;
+  cell1_c : boolean;
+  o_cell1_g : boolean;
+  cell1_g : boolean;
+  o_cell1_e : boolean;
+  cell1_e : boolean;
+  o_cell1_k : boolean;
+  cell1_k : boolean;
+  o_cell1_l : boolean;
+  cell1_l : boolean;
+  o_cell1_p : boolean;
+  cell1_p : boolean;
+  o_cell1_m : boolean;
+  cell1_m : boolean;
+  o_cell1_r : boolean;
+  cell1_r : boolean;
+  o_cell1_j : boolean;
+  cell1_j : boolean;
+  o_cell0_q : boolean;
+  cell0_q : boolean;
+  o_cell0_f : boolean;
+  cell0_f : boolean;
+  o_cell0_d : boolean;
+  cell0_d : boolean;
+  o_cell0_b : boolean;
+  cell0_b : boolean;
+  o_cell0_i : boolean;
+  cell0_i : boolean;
+  o_cell0_h : boolean;
+  cell0_h : boolean;
+  o_cell0_n : boolean;
+  cell0_n : boolean;
+  o_cell0_u : boolean;
+  cell0_u : boolean;
+  o_cell0_a : boolean;
+  cell0_a : boolean;
+  o_cell0_c : boolean;
+  cell0_c : boolean;
+  o_cell0_g : boolean;
+  cell0_g : boolean;
+  o_cell0_e : boolean;
+  cell0_e : boolean;
+  o_cell0_k : boolean;
+  cell0_k : boolean;
+  o_cell0_l : boolean;
+  cell0_l : boolean;
+  o_cell0_p : boolean;
+  cell0_p : boolean;
+  o_cell0_m : boolean;
+  cell0_m : boolean;
+  o_cell0_r : boolean;
+  cell0_r : boolean;
+  o_cell0_j : boolean;
+  cell0_j : boolean;
+
+ASSIGN
+
+  init(cell18_q) := 0;
+  next(cell18_q) := o_cell18_q & (cell18_f & cell18_n) | !o_cell18_q & cell18_q;
+  init(cell18_f) := 0;
+  next(cell18_f) :=
+    case
+      o_cell18_f & cell18_d = cell18_i : cell18_d;
+      1 : cell18_f;
+    esac;
+  init(cell18_d) := 0;
+  next(cell18_d) := o_cell18_d & (cell18_b & !cell18_r) | !o_cell18_d & cell18_d;
+  init(cell18_b) := 0;
+  next(cell18_b) := o_cell18_b & cell0_p | !o_cell18_b & cell18_b;
+  init(cell18_i) := 0;
+  next(cell18_i) := o_cell18_i & (cell18_h & !cell18_j) | !o_cell18_i & cell18_i;
+  init(cell18_h) := 0;
+  next(cell18_h) :=
+    case
+      o_cell18_h & cell18_g = cell18_j : cell18_g;
+      1 : cell18_h;
+    esac;
+  init(cell18_n) := 0;
+  next(cell18_n) := o_cell18_n & (!cell18_e & !cell18_m) | !o_cell18_n & cell18_n;
+  init(cell18_u) := 1;
+  next(cell18_u) := o_cell18_u & !cell18_r | !o_cell18_u & cell18_u;
+  init(cell18_a) := 0;
+  next(cell18_a) := o_cell18_a & cell18_u | !o_cell18_a & cell18_a;
+  init(cell18_c) := 0;
+  next(cell18_c) := o_cell18_c & (cell18_a & !cell18_q) | !o_cell18_c & cell18_c;
+  init(cell18_g) := 0;
+  next(cell18_g) := o_cell18_g & (cell18_c | cell18_d) | !o_cell18_g & cell18_g;
+  init(cell18_e) := 0;
+  next(cell18_e) :=
+    case
+      o_cell18_e & cell18_c = cell18_i : cell18_c;
+      1 : cell18_e;
+    esac;
+  init(cell18_k) := 0;
+  next(cell18_k) := o_cell18_k & (cell18_g & !cell18_h) | !o_cell18_k & cell18_k;
+  init(cell18_l) := 0;
+  next(cell18_l) := o_cell18_l & (cell18_k & cell18_m) | !o_cell18_l & cell18_l;
+  init(cell18_p) := 0;
+  next(cell18_p) := o_cell18_p & (cell18_k & cell18_n) | !o_cell18_p & cell18_p;
+  init(cell18_m) := 1;
+  next(cell18_m) := o_cell18_m & (!cell18_f & !cell18_n) | !o_cell18_m & cell18_m;
+  init(cell18_r) := 0;
+  next(cell18_r) := o_cell18_r & (cell18_e & cell18_m) | !o_cell18_r & cell18_r;
+  init(cell18_j) := 0;
+  next(cell18_j) := o_cell18_j & (cell18_l | cell17_q) | !o_cell18_j & cell18_j;
+  init(cell17_q) := 0;
+  next(cell17_q) := o_cell17_q & (cell17_f & cell17_n) | !o_cell17_q & cell17_q;
+  init(cell17_f) := 0;
+  next(cell17_f) :=
+    case
+      o_cell17_f & cell17_d = cell17_i : cell17_d;
+      1 : cell17_f;
+    esac;
+  init(cell17_d) := 0;
+  next(cell17_d) := o_cell17_d & (cell17_b & !cell17_r) | !o_cell17_d & cell17_d;
+  init(cell17_b) := 0;
+  next(cell17_b) := o_cell17_b & cell18_p | !o_cell17_b & cell17_b;
+  init(cell17_i) := 0;
+  next(cell17_i) := o_cell17_i & (cell17_h & !cell17_j) | !o_cell17_i & cell17_i;
+  init(cell17_h) := 0;
+  next(cell17_h) :=
+    case
+      o_cell17_h & cell17_g = cell17_j : cell17_g;
+      1 : cell17_h;
+    esac;
+  init(cell17_n) := 1;
+  next(cell17_n) := o_cell17_n & (!cell17_e & !cell17_m) | !o_cell17_n & cell17_n;
+  init(cell17_u) := 0;
+  next(cell17_u) := o_cell17_u & !cell17_r | !o_cell17_u & cell17_u;
+  init(cell17_a) := 0;
+  next(cell17_a) := o_cell17_a & cell17_u | !o_cell17_a & cell17_a;
+  init(cell17_c) := 0;
+  next(cell17_c) := o_cell17_c & (cell17_a & !cell17_q) | !o_cell17_c & cell17_c;
+  init(cell17_g) := 0;
+  next(cell17_g) := o_cell17_g & (cell17_c | cell17_d) | !o_cell17_g & cell17_g;
+  init(cell17_e) := 0;
+  next(cell17_e) :=
+    case
+      o_cell17_e & cell17_c = cell17_i : cell17_c;
+      1 : cell17_e;
+    esac;
+  init(cell17_k) := 0;
+  next(cell17_k) := o_cell17_k & (cell17_g & !cell17_h) | !o_cell17_k & cell17_k;
+  init(cell17_l) := 0;
+  next(cell17_l) := o_cell17_l & (cell17_k & cell17_m) | !o_cell17_l & cell17_l;
+  init(cell17_p) := 0;
+  next(cell17_p) := o_cell17_p & (cell17_k & cell17_n) | !o_cell17_p & cell17_p;
+  init(cell17_m) := 0;
+  next(cell17_m) := o_cell17_m & (!cell17_f & !cell17_n) | !o_cell17_m & cell17_m;
+  init(cell17_r) := 0;
+  next(cell17_r) := o_cell17_r & (cell17_e & cell17_m) | !o_cell17_r & cell17_r;
+  init(cell17_j) := 0;
+  next(cell17_j) := o_cell17_j & (cell17_l | cell16_q) | !o_cell17_j & cell17_j;
+  init(cell16_q) := 0;
+  next(cell16_q) := o_cell16_q & (cell16_f & cell16_n) | !o_cell16_q & cell16_q;
+  init(cell16_f) := 0;
+  next(cell16_f) :=
+    case
+      o_cell16_f & cell16_d = cell16_i : cell16_d;
+      1 : cell16_f;
+    esac;
+  init(cell16_d) := 0;
+  next(cell16_d) := o_cell16_d & (cell16_b & !cell16_r) | !o_cell16_d & cell16_d;
+  init(cell16_b) := 0;
+  next(cell16_b) := o_cell16_b & cell17_p | !o_cell16_b & cell16_b;
+  init(cell16_i) := 0;
+  next(cell16_i) := o_cell16_i & (cell16_h & !cell16_j) | !o_cell16_i & cell16_i;
+  init(cell16_h) := 0;
+  next(cell16_h) :=
+    case
+      o_cell16_h & cell16_g = cell16_j : cell16_g;
+      1 : cell16_h;
+    esac;
+  init(cell16_n) := 1;
+  next(cell16_n) := o_cell16_n & (!cell16_e & !cell16_m) | !o_cell16_n & cell16_n;
+  init(cell16_u) := 0;
+  next(cell16_u) := o_cell16_u & !cell16_r | !o_cell16_u & cell16_u;
+  init(cell16_a) := 0;
+  next(cell16_a) := o_cell16_a & cell16_u | !o_cell16_a & cell16_a;
+  init(cell16_c) := 0;
+  next(cell16_c) := o_cell16_c & (cell16_a & !cell16_q) | !o_cell16_c & cell16_c;
+  init(cell16_g) := 0;
+  next(cell16_g) := o_cell16_g & (cell16_c | cell16_d) | !o_cell16_g & cell16_g;
+  init(cell16_e) := 0;
+  next(cell16_e) :=
+    case
+      o_cell16_e & cell16_c = cell16_i : cell16_c;
+      1 : cell16_e;
+    esac;
+  init(cell16_k) := 0;
+  next(cell16_k) := o_cell16_k & (cell16_g & !cell16_h) | !o_cell16_k & cell16_k;
+  init(cell16_l) := 0;
+  next(cell16_l) := o_cell16_l & (cell16_k & cell16_m) | !o_cell16_l & cell16_l;
+  init(cell16_p) := 0;
+  next(cell16_p) := o_cell16_p & (cell16_k & cell16_n) | !o_cell16_p & cell16_p;
+  init(cell16_m) := 0;
+  next(cell16_m) := o_cell16_m & (!cell16_f & !cell16_n) | !o_cell16_m & cell16_m;
+  init(cell16_r) := 0;
+  next(cell16_r) := o_cell16_r & (cell16_e & cell16_m) | !o_cell16_r & cell16_r;
+  init(cell16_j) := 0;
+  next(cell16_j) := o_cell16_j & (cell16_l | cell15_q) | !o_cell16_j & cell16_j;
+  init(cell15_q) := 0;
+  next(cell15_q) := o_cell15_q & (cell15_f & cell15_n) | !o_cell15_q & cell15_q;
+  init(cell15_f) := 0;
+  next(cell15_f) :=
+    case
+      o_cell15_f & cell15_d = cell15_i : cell15_d;
+      1 : cell15_f;
+    esac;
+  init(cell15_d) := 0;
+  next(cell15_d) := o_cell15_d & (cell15_b & !cell15_r) | !o_cell15_d & cell15_d;
+  init(cell15_b) := 0;
+  next(cell15_b) := o_cell15_b & cell16_p | !o_cell15_b & cell15_b;
+  init(cell15_i) := 0;
+  next(cell15_i) := o_cell15_i & (cell15_h & !cell15_j) | !o_cell15_i & cell15_i;
+  init(cell15_h) := 0;
+  next(cell15_h) :=
+    case
+      o_cell15_h & cell15_g = cell15_j : cell15_g;
+      1 : cell15_h;
+    esac;
+  init(cell15_n) := 1;
+  next(cell15_n) := o_cell15_n & (!cell15_e & !cell15_m) | !o_cell15_n & cell15_n;
+  init(cell15_u) := 0;
+  next(cell15_u) := o_cell15_u & !cell15_r | !o_cell15_u & cell15_u;
+  init(cell15_a) := 0;
+  next(cell15_a) := o_cell15_a & cell15_u | !o_cell15_a & cell15_a;
+  init(cell15_c) := 0;
+  next(cell15_c) := o_cell15_c & (cell15_a & !cell15_q) | !o_cell15_c & cell15_c;
+  init(cell15_g) := 0;
+  next(cell15_g) := o_cell15_g & (cell15_c | cell15_d) | !o_cell15_g & cell15_g;
+  init(cell15_e) := 0;
+  next(cell15_e) :=
+    case
+      o_cell15_e & cell15_c = cell15_i : cell15_c;
+      1 : cell15_e;
+    esac;
+  init(cell15_k) := 0;
+  next(cell15_k) := o_cell15_k & (cell15_g & !cell15_h) | !o_cell15_k & cell15_k;
+  init(cell15_l) := 0;
+  next(cell15_l) := o_cell15_l & (cell15_k & cell15_m) | !o_cell15_l & cell15_l;
+  init(cell15_p) := 0;
+  next(cell15_p) := o_cell15_p & (cell15_k & cell15_n) | !o_cell15_p & cell15_p;
+  init(cell15_m) := 0;
+  next(cell15_m) := o_cell15_m & (!cell15_f & !cell15_n) | !o_cell15_m & cell15_m;
+  init(cell15_r) := 0;
+  next(cell15_r) := o_cell15_r & (cell15_e & cell15_m) | !o_cell15_r & cell15_r;
+  init(cell15_j) := 0;
+  next(cell15_j) := o_cell15_j & (cell15_l | cell14_q) | !o_cell15_j & cell15_j;
+  init(cell14_q) := 0;
+  next(cell14_q) := o_cell14_q & (cell14_f & cell14_n) | !o_cell14_q & cell14_q;
+  init(cell14_f) := 0;
+  next(cell14_f) :=
+    case
+      o_cell14_f & cell14_d = cell14_i : cell14_d;
+      1 : cell14_f;
+    esac;
+  init(cell14_d) := 0;
+  next(cell14_d) := o_cell14_d & (cell14_b & !cell14_r) | !o_cell14_d & cell14_d;
+  init(cell14_b) := 0;
+  next(cell14_b) := o_cell14_b & cell15_p | !o_cell14_b & cell14_b;
+  init(cell14_i) := 0;
+  next(cell14_i) := o_cell14_i & (cell14_h & !cell14_j) | !o_cell14_i & cell14_i;
+  init(cell14_h) := 0;
+  next(cell14_h) :=
+    case
+      o_cell14_h & cell14_g = cell14_j : cell14_g;
+      1 : cell14_h;
+    esac;
+  init(cell14_n) := 1;
+  next(cell14_n) := o_cell14_n & (!cell14_e & !cell14_m) | !o_cell14_n & cell14_n;
+  init(cell14_u) := 0;
+  next(cell14_u) := o_cell14_u & !cell14_r | !o_cell14_u & cell14_u;
+  init(cell14_a) := 0;
+  next(cell14_a) := o_cell14_a & cell14_u | !o_cell14_a & cell14_a;
+  init(cell14_c) := 0;
+  next(cell14_c) := o_cell14_c & (cell14_a & !cell14_q) | !o_cell14_c & cell14_c;
+  init(cell14_g) := 0;
+  next(cell14_g) := o_cell14_g & (cell14_c | cell14_d) | !o_cell14_g & cell14_g;
+  init(cell14_e) := 0;
+  next(cell14_e) :=
+    case
+      o_cell14_e & cell14_c = cell14_i : cell14_c;
+      1 : cell14_e;
+    esac;
+  init(cell14_k) := 0;
+  next(cell14_k) := o_cell14_k & (cell14_g & !cell14_h) | !o_cell14_k & cell14_k;
+  init(cell14_l) := 0;
+  next(cell14_l) := o_cell14_l & (cell14_k & cell14_m) | !o_cell14_l & cell14_l;
+  init(cell14_p) := 0;
+  next(cell14_p) := o_cell14_p & (cell14_k & cell14_n) | !o_cell14_p & cell14_p;
+  init(cell14_m) := 0;
+  next(cell14_m) := o_cell14_m & (!cell14_f & !cell14_n) | !o_cell14_m & cell14_m;
+  init(cell14_r) := 0;
+  next(cell14_r) := o_cell14_r & (cell14_e & cell14_m) | !o_cell14_r & cell14_r;
+  init(cell14_j) := 0;
+  next(cell14_j) := o_cell14_j & (cell14_l | cell13_q) | !o_cell14_j & cell14_j;
+  init(cell13_q) := 0;
+  next(cell13_q) := o_cell13_q & (cell13_f & cell13_n) | !o_cell13_q & cell13_q;
+  init(cell13_f) := 0;
+  next(cell13_f) :=
+    case
+      o_cell13_f & cell13_d = cell13_i : cell13_d;
+      1 : cell13_f;
+    esac;
+  init(cell13_d) := 0;
+  next(cell13_d) := o_cell13_d & (cell13_b & !cell13_r) | !o_cell13_d & cell13_d;
+  init(cell13_b) := 0;
+  next(cell13_b) := o_cell13_b & cell14_p | !o_cell13_b & cell13_b;
+  init(cell13_i) := 0;
+  next(cell13_i) := o_cell13_i & (cell13_h & !cell13_j) | !o_cell13_i & cell13_i;
+  init(cell13_h) := 0;
+  next(cell13_h) :=
+    case
+      o_cell13_h & cell13_g = cell13_j : cell13_g;
+      1 : cell13_h;
+    esac;
+  init(cell13_n) := 1;
+  next(cell13_n) := o_cell13_n & (!cell13_e & !cell13_m) | !o_cell13_n & cell13_n;
+  init(cell13_u) := 0;
+  next(cell13_u) := o_cell13_u & !cell13_r | !o_cell13_u & cell13_u;
+  init(cell13_a) := 0;
+  next(cell13_a) := o_cell13_a & cell13_u | !o_cell13_a & cell13_a;
+  init(cell13_c) := 0;
+  next(cell13_c) := o_cell13_c & (cell13_a & !cell13_q) | !o_cell13_c & cell13_c;
+  init(cell13_g) := 0;
+  next(cell13_g) := o_cell13_g & (cell13_c | cell13_d) | !o_cell13_g & cell13_g;
+  init(cell13_e) := 0;
+  next(cell13_e) :=
+    case
+      o_cell13_e & cell13_c = cell13_i : cell13_c;
+      1 : cell13_e;
+    esac;
+  init(cell13_k) := 0;
+  next(cell13_k) := o_cell13_k & (cell13_g & !cell13_h) | !o_cell13_k & cell13_k;
+  init(cell13_l) := 0;
+  next(cell13_l) := o_cell13_l & (cell13_k & cell13_m) | !o_cell13_l & cell13_l;
+  init(cell13_p) := 0;
+  next(cell13_p) := o_cell13_p & (cell13_k & cell13_n) | !o_cell13_p & cell13_p;
+  init(cell13_m) := 0;
+  next(cell13_m) := o_cell13_m & (!cell13_f & !cell13_n) | !o_cell13_m & cell13_m;
+  init(cell13_r) := 0;
+  next(cell13_r) := o_cell13_r & (cell13_e & cell13_m) | !o_cell13_r & cell13_r;
+  init(cell13_j) := 0;
+  next(cell13_j) := o_cell13_j & (cell13_l | cell12_q) | !o_cell13_j & cell13_j;
+  init(cell12_q) := 0;
+  next(cell12_q) := o_cell12_q & (cell12_f & cell12_n) | !o_cell12_q & cell12_q;
+  init(cell12_f) := 0;
+  next(cell12_f) :=
+    case
+      o_cell12_f & cell12_d = cell12_i : cell12_d;
+      1 : cell12_f;
+    esac;
+  init(cell12_d) := 0;
+  next(cell12_d) := o_cell12_d & (cell12_b & !cell12_r) | !o_cell12_d & cell12_d;
+  init(cell12_b) := 0;
+  next(cell12_b) := o_cell12_b & cell13_p | !o_cell12_b & cell12_b;
+  init(cell12_i) := 0;
+  next(cell12_i) := o_cell12_i & (cell12_h & !cell12_j) | !o_cell12_i & cell12_i;
+  init(cell12_h) := 0;
+  next(cell12_h) :=
+    case
+      o_cell12_h & cell12_g = cell12_j : cell12_g;
+      1 : cell12_h;
+    esac;
+  init(cell12_n) := 1;
+  next(cell12_n) := o_cell12_n & (!cell12_e & !cell12_m) | !o_cell12_n & cell12_n;
+  init(cell12_u) := 0;
+  next(cell12_u) := o_cell12_u & !cell12_r | !o_cell12_u & cell12_u;
+  init(cell12_a) := 0;
+  next(cell12_a) := o_cell12_a & cell12_u | !o_cell12_a & cell12_a;
+  init(cell12_c) := 0;
+  next(cell12_c) := o_cell12_c & (cell12_a & !cell12_q) | !o_cell12_c & cell12_c;
+  init(cell12_g) := 0;
+  next(cell12_g) := o_cell12_g & (cell12_c | cell12_d) | !o_cell12_g & cell12_g;
+  init(cell12_e) := 0;
+  next(cell12_e) :=
+    case
+      o_cell12_e & cell12_c = cell12_i : cell12_c;
+      1 : cell12_e;
+    esac;
+  init(cell12_k) := 0;
+  next(cell12_k) := o_cell12_k & (cell12_g & !cell12_h) | !o_cell12_k & cell12_k;
+  init(cell12_l) := 0;
+  next(cell12_l) := o_cell12_l & (cell12_k & cell12_m) | !o_cell12_l & cell12_l;
+  init(cell12_p) := 0;
+  next(cell12_p) := o_cell12_p & (cell12_k & cell12_n) | !o_cell12_p & cell12_p;
+  init(cell12_m) := 0;
+  next(cell12_m) := o_cell12_m & (!cell12_f & !cell12_n) | !o_cell12_m & cell12_m;
+  init(cell12_r) := 0;
+  next(cell12_r) := o_cell12_r & (cell12_e & cell12_m) | !o_cell12_r & cell12_r;
+  init(cell12_j) := 0;
+  next(cell12_j) := o_cell12_j & (cell12_l | cell11_q) | !o_cell12_j & cell12_j;
+  init(cell11_q) := 0;
+  next(cell11_q) := o_cell11_q & (cell11_f & cell11_n) | !o_cell11_q & cell11_q;
+  init(cell11_f) := 0;
+  next(cell11_f) :=
+    case
+      o_cell11_f & cell11_d = cell11_i : cell11_d;
+      1 : cell11_f;
+    esac;
+  init(cell11_d) := 0;
+  next(cell11_d) := o_cell11_d & (cell11_b & !cell11_r) | !o_cell11_d & cell11_d;
+  init(cell11_b) := 0;
+  next(cell11_b) := o_cell11_b & cell12_p | !o_cell11_b & cell11_b;
+  init(cell11_i) := 0;
+  next(cell11_i) := o_cell11_i & (cell11_h & !cell11_j) | !o_cell11_i & cell11_i;
+  init(cell11_h) := 0;
+  next(cell11_h) :=
+    case
+      o_cell11_h & cell11_g = cell11_j : cell11_g;
+      1 : cell11_h;
+    esac;
+  init(cell11_n) := 1;
+  next(cell11_n) := o_cell11_n & (!cell11_e & !cell11_m) | !o_cell11_n & cell11_n;
+  init(cell11_u) := 0;
+  next(cell11_u) := o_cell11_u & !cell11_r | !o_cell11_u & cell11_u;
+  init(cell11_a) := 0;
+  next(cell11_a) := o_cell11_a & cell11_u | !o_cell11_a & cell11_a;
+  init(cell11_c) := 0;
+  next(cell11_c) := o_cell11_c & (cell11_a & !cell11_q) | !o_cell11_c & cell11_c;
+  init(cell11_g) := 0;
+  next(cell11_g) := o_cell11_g & (cell11_c | cell11_d) | !o_cell11_g & cell11_g;
+  init(cell11_e) := 0;
+  next(cell11_e) :=
+    case
+      o_cell11_e & cell11_c = cell11_i : cell11_c;
+      1 : cell11_e;
+    esac;
+  init(cell11_k) := 0;
+  next(cell11_k) := o_cell11_k & (cell11_g & !cell11_h) | !o_cell11_k & cell11_k;
+  init(cell11_l) := 0;
+  next(cell11_l) := o_cell11_l & (cell11_k & cell11_m) | !o_cell11_l & cell11_l;
+  init(cell11_p) := 0;
+  next(cell11_p) := o_cell11_p & (cell11_k & cell11_n) | !o_cell11_p & cell11_p;
+  init(cell11_m) := 0;
+  next(cell11_m) := o_cell11_m & (!cell11_f & !cell11_n) | !o_cell11_m & cell11_m;
+  init(cell11_r) := 0;
+  next(cell11_r) := o_cell11_r & (cell11_e & cell11_m) | !o_cell11_r & cell11_r;
+  init(cell11_j) := 0;
+  next(cell11_j) := o_cell11_j & (cell11_l | cell10_q) | !o_cell11_j & cell11_j;
+  init(cell10_q) := 0;
+  next(cell10_q) := o_cell10_q & (cell10_f & cell10_n) | !o_cell10_q & cell10_q;
+  init(cell10_f) := 0;
+  next(cell10_f) :=
+    case
+      o_cell10_f & cell10_d = cell10_i : cell10_d;
+      1 : cell10_f;
+    esac;
+  init(cell10_d) := 0;
+  next(cell10_d) := o_cell10_d & (cell10_b & !cell10_r) | !o_cell10_d & cell10_d;
+  init(cell10_b) := 0;
+  next(cell10_b) := o_cell10_b & cell11_p | !o_cell10_b & cell10_b;
+  init(cell10_i) := 0;
+  next(cell10_i) := o_cell10_i & (cell10_h & !cell10_j) | !o_cell10_i & cell10_i;
+  init(cell10_h) := 0;
+  next(cell10_h) :=
+    case
+      o_cell10_h & cell10_g = cell10_j : cell10_g;
+      1 : cell10_h;
+    esac;
+  init(cell10_n) := 1;
+  next(cell10_n) := o_cell10_n & (!cell10_e & !cell10_m) | !o_cell10_n & cell10_n;
+  init(cell10_u) := 0;
+  next(cell10_u) := o_cell10_u & !cell10_r | !o_cell10_u & cell10_u;
+  init(cell10_a) := 0;
+  next(cell10_a) := o_cell10_a & cell10_u | !o_cell10_a & cell10_a;
+  init(cell10_c) := 0;
+  next(cell10_c) := o_cell10_c & (cell10_a & !cell10_q) | !o_cell10_c & cell10_c;
+  init(cell10_g) := 0;
+  next(cell10_g) := o_cell10_g & (cell10_c | cell10_d) | !o_cell10_g & cell10_g;
+  init(cell10_e) := 0;
+  next(cell10_e) :=
+    case
+      o_cell10_e & cell10_c = cell10_i : cell10_c;
+      1 : cell10_e;
+    esac;
+  init(cell10_k) := 0;
+  next(cell10_k) := o_cell10_k & (cell10_g & !cell10_h) | !o_cell10_k & cell10_k;
+  init(cell10_l) := 0;
+  next(cell10_l) := o_cell10_l & (cell10_k & cell10_m) | !o_cell10_l & cell10_l;
+  init(cell10_p) := 0;
+  next(cell10_p) := o_cell10_p & (cell10_k & cell10_n) | !o_cell10_p & cell10_p;
+  init(cell10_m) := 0;
+  next(cell10_m) := o_cell10_m & (!cell10_f & !cell10_n) | !o_cell10_m & cell10_m;
+  init(cell10_r) := 0;
+  next(cell10_r) := o_cell10_r & (cell10_e & cell10_m) | !o_cell10_r & cell10_r;
+  init(cell10_j) := 0;
+  next(cell10_j) := o_cell10_j & (cell10_l | cell9_q) | !o_cell10_j & cell10_j;
+  init(cell9_q) := 0;
+  next(cell9_q) := o_cell9_q & (cell9_f & cell9_n) | !o_cell9_q & cell9_q;
+  init(cell9_f) := 0;
+  next(cell9_f) :=
+    case
+      o_cell9_f & cell9_d = cell9_i : cell9_d;
+      1 : cell9_f;
+    esac;
+  init(cell9_d) := 0;
+  next(cell9_d) := o_cell9_d & (cell9_b & !cell9_r) | !o_cell9_d & cell9_d;
+  init(cell9_b) := 0;
+  next(cell9_b) := o_cell9_b & cell10_p | !o_cell9_b & cell9_b;
+  init(cell9_i) := 0;
+  next(cell9_i) := o_cell9_i & (cell9_h & !cell9_j) | !o_cell9_i & cell9_i;
+  init(cell9_h) := 0;
+  next(cell9_h) :=
+    case
+      o_cell9_h & cell9_g = cell9_j : cell9_g;
+      1 : cell9_h;
+    esac;
+  init(cell9_n) := 1;
+  next(cell9_n) := o_cell9_n & (!cell9_e & !cell9_m) | !o_cell9_n & cell9_n;
+  init(cell9_u) := 0;
+  next(cell9_u) := o_cell9_u & !cell9_r | !o_cell9_u & cell9_u;
+  init(cell9_a) := 0;
+  next(cell9_a) := o_cell9_a & cell9_u | !o_cell9_a & cell9_a;
+  init(cell9_c) := 0;
+  next(cell9_c) := o_cell9_c & (cell9_a & !cell9_q) | !o_cell9_c & cell9_c;
+  init(cell9_g) := 0;
+  next(cell9_g) := o_cell9_g & (cell9_c | cell9_d) | !o_cell9_g & cell9_g;
+  init(cell9_e) := 0;
+  next(cell9_e) :=
+    case
+      o_cell9_e & cell9_c = cell9_i : cell9_c;
+      1 : cell9_e;
+    esac;
+  init(cell9_k) := 0;
+  next(cell9_k) := o_cell9_k & (cell9_g & !cell9_h) | !o_cell9_k & cell9_k;
+  init(cell9_l) := 0;
+  next(cell9_l) := o_cell9_l & (cell9_k & cell9_m) | !o_cell9_l & cell9_l;
+  init(cell9_p) := 0;
+  next(cell9_p) := o_cell9_p & (cell9_k & cell9_n) | !o_cell9_p & cell9_p;
+  init(cell9_m) := 0;
+  next(cell9_m) := o_cell9_m & (!cell9_f & !cell9_n) | !o_cell9_m & cell9_m;
+  init(cell9_r) := 0;
+  next(cell9_r) := o_cell9_r & (cell9_e & cell9_m) | !o_cell9_r & cell9_r;
+  init(cell9_j) := 0;
+  next(cell9_j) := o_cell9_j & (cell9_l | cell8_q) | !o_cell9_j & cell9_j;
+  init(cell8_q) := 0;
+  next(cell8_q) := o_cell8_q & (cell8_f & cell8_n) | !o_cell8_q & cell8_q;
+  init(cell8_f) := 0;
+  next(cell8_f) :=
+    case
+      o_cell8_f & cell8_d = cell8_i : cell8_d;
+      1 : cell8_f;
+    esac;
+  init(cell8_d) := 0;
+  next(cell8_d) := o_cell8_d & (cell8_b & !cell8_r) | !o_cell8_d & cell8_d;
+  init(cell8_b) := 0;
+  next(cell8_b) := o_cell8_b & cell9_p | !o_cell8_b & cell8_b;
+  init(cell8_i) := 0;
+  next(cell8_i) := o_cell8_i & (cell8_h & !cell8_j) | !o_cell8_i & cell8_i;
+  init(cell8_h) := 0;
+  next(cell8_h) :=
+    case
+      o_cell8_h & cell8_g = cell8_j : cell8_g;
+      1 : cell8_h;
+    esac;
+  init(cell8_n) := 1;
+  next(cell8_n) := o_cell8_n & (!cell8_e & !cell8_m) | !o_cell8_n & cell8_n;
+  init(cell8_u) := 0;
+  next(cell8_u) := o_cell8_u & !cell8_r | !o_cell8_u & cell8_u;
+  init(cell8_a) := 0;
+  next(cell8_a) := o_cell8_a & cell8_u | !o_cell8_a & cell8_a;
+  init(cell8_c) := 0;
+  next(cell8_c) := o_cell8_c & (cell8_a & !cell8_q) | !o_cell8_c & cell8_c;
+  init(cell8_g) := 0;
+  next(cell8_g) := o_cell8_g & (cell8_c | cell8_d) | !o_cell8_g & cell8_g;
+  init(cell8_e) := 0;
+  next(cell8_e) :=
+    case
+      o_cell8_e & cell8_c = cell8_i : cell8_c;
+      1 : cell8_e;
+    esac;
+  init(cell8_k) := 0;
+  next(cell8_k) := o_cell8_k & (cell8_g & !cell8_h) | !o_cell8_k & cell8_k;
+  init(cell8_l) := 0;
+  next(cell8_l) := o_cell8_l & (cell8_k & cell8_m) | !o_cell8_l & cell8_l;
+  init(cell8_p) := 0;
+  next(cell8_p) := o_cell8_p & (cell8_k & cell8_n) | !o_cell8_p & cell8_p;
+  init(cell8_m) := 0;
+  next(cell8_m) := o_cell8_m & (!cell8_f & !cell8_n) | !o_cell8_m & cell8_m;
+  init(cell8_r) := 0;
+  next(cell8_r) := o_cell8_r & (cell8_e & cell8_m) | !o_cell8_r & cell8_r;
+  init(cell8_j) := 0;
+  next(cell8_j) := o_cell8_j & (cell8_l | cell7_q) | !o_cell8_j & cell8_j;
+  init(cell7_q) := 0;
+  next(cell7_q) := o_cell7_q & (cell7_f & cell7_n) | !o_cell7_q & cell7_q;
+  init(cell7_f) := 0;
+  next(cell7_f) :=
+    case
+      o_cell7_f & cell7_d = cell7_i : cell7_d;
+      1 : cell7_f;
+    esac;
+  init(cell7_d) := 0;
+  next(cell7_d) := o_cell7_d & (cell7_b & !cell7_r) | !o_cell7_d & cell7_d;
+  init(cell7_b) := 0;
+  next(cell7_b) := o_cell7_b & cell8_p | !o_cell7_b & cell7_b;
+  init(cell7_i) := 0;
+  next(cell7_i) := o_cell7_i & (cell7_h & !cell7_j) | !o_cell7_i & cell7_i;
+  init(cell7_h) := 0;
+  next(cell7_h) :=
+    case
+      o_cell7_h & cell7_g = cell7_j : cell7_g;
+      1 : cell7_h;
+    esac;
+  init(cell7_n) := 1;
+  next(cell7_n) := o_cell7_n & (!cell7_e & !cell7_m) | !o_cell7_n & cell7_n;
+  init(cell7_u) := 0;
+  next(cell7_u) := o_cell7_u & !cell7_r | !o_cell7_u & cell7_u;
+  init(cell7_a) := 0;
+  next(cell7_a) := o_cell7_a & cell7_u | !o_cell7_a & cell7_a;
+  init(cell7_c) := 0;
+  next(cell7_c) := o_cell7_c & (cell7_a & !cell7_q) | !o_cell7_c & cell7_c;
+  init(cell7_g) := 0;
+  next(cell7_g) := o_cell7_g & (cell7_c | cell7_d) | !o_cell7_g & cell7_g;
+  init(cell7_e) := 0;
+  next(cell7_e) :=
+    case
+      o_cell7_e & cell7_c = cell7_i : cell7_c;
+      1 : cell7_e;
+    esac;
+  init(cell7_k) := 0;
+  next(cell7_k) := o_cell7_k & (cell7_g & !cell7_h) | !o_cell7_k & cell7_k;
+  init(cell7_l) := 0;
+  next(cell7_l) := o_cell7_l & (cell7_k & cell7_m) | !o_cell7_l & cell7_l;
+  init(cell7_p) := 0;
+  next(cell7_p) := o_cell7_p & (cell7_k & cell7_n) | !o_cell7_p & cell7_p;
+  init(cell7_m) := 0;
+  next(cell7_m) := o_cell7_m & (!cell7_f & !cell7_n) | !o_cell7_m & cell7_m;
+  init(cell7_r) := 0;
+  next(cell7_r) := o_cell7_r & (cell7_e & cell7_m) | !o_cell7_r & cell7_r;
+  init(cell7_j) := 0;
+  next(cell7_j) := o_cell7_j & (cell7_l | cell6_q) | !o_cell7_j & cell7_j;
+  init(cell6_q) := 0;
+  next(cell6_q) := o_cell6_q & (cell6_f & cell6_n) | !o_cell6_q & cell6_q;
+  init(cell6_f) := 0;
+  next(cell6_f) :=
+    case
+      o_cell6_f & cell6_d = cell6_i : cell6_d;
+      1 : cell6_f;
+    esac;
+  init(cell6_d) := 0;
+  next(cell6_d) := o_cell6_d & (cell6_b & !cell6_r) | !o_cell6_d & cell6_d;
+  init(cell6_b) := 0;
+  next(cell6_b) := o_cell6_b & cell7_p | !o_cell6_b & cell6_b;
+  init(cell6_i) := 0;
+  next(cell6_i) := o_cell6_i & (cell6_h & !cell6_j) | !o_cell6_i & cell6_i;
+  init(cell6_h) := 0;
+  next(cell6_h) :=
+    case
+      o_cell6_h & cell6_g = cell6_j : cell6_g;
+      1 : cell6_h;
+    esac;
+  init(cell6_n) := 1;
+  next(cell6_n) := o_cell6_n & (!cell6_e & !cell6_m) | !o_cell6_n & cell6_n;
+  init(cell6_u) := 0;
+  next(cell6_u) := o_cell6_u & !cell6_r | !o_cell6_u & cell6_u;
+  init(cell6_a) := 0;
+  next(cell6_a) := o_cell6_a & cell6_u | !o_cell6_a & cell6_a;
+  init(cell6_c) := 0;
+  next(cell6_c) := o_cell6_c & (cell6_a & !cell6_q) | !o_cell6_c & cell6_c;
+  init(cell6_g) := 0;
+  next(cell6_g) := o_cell6_g & (cell6_c | cell6_d) | !o_cell6_g & cell6_g;
+  init(cell6_e) := 0;
+  next(cell6_e) :=
+    case
+      o_cell6_e & cell6_c = cell6_i : cell6_c;
+      1 : cell6_e;
+    esac;
+  init(cell6_k) := 0;
+  next(cell6_k) := o_cell6_k & (cell6_g & !cell6_h) | !o_cell6_k & cell6_k;
+  init(cell6_l) := 0;
+  next(cell6_l) := o_cell6_l & (cell6_k & cell6_m) | !o_cell6_l & cell6_l;
+  init(cell6_p) := 0;
+  next(cell6_p) := o_cell6_p & (cell6_k & cell6_n) | !o_cell6_p & cell6_p;
+  init(cell6_m) := 0;
+  next(cell6_m) := o_cell6_m & (!cell6_f & !cell6_n) | !o_cell6_m & cell6_m;
+  init(cell6_r) := 0;
+  next(cell6_r) := o_cell6_r & (cell6_e & cell6_m) | !o_cell6_r & cell6_r;
+  init(cell6_j) := 0;
+  next(cell6_j) := o_cell6_j & (cell6_l | cell5_q) | !o_cell6_j & cell6_j;
+  init(cell5_q) := 0;
+  next(cell5_q) := o_cell5_q & (cell5_f & cell5_n) | !o_cell5_q & cell5_q;
+  init(cell5_f) := 0;
+  next(cell5_f) :=
+    case
+      o_cell5_f & cell5_d = cell5_i : cell5_d;
+      1 : cell5_f;
+    esac;
+  init(cell5_d) := 0;
+  next(cell5_d) := o_cell5_d & (cell5_b & !cell5_r) | !o_cell5_d & cell5_d;
+  init(cell5_b) := 0;
+  next(cell5_b) := o_cell5_b & cell6_p | !o_cell5_b & cell5_b;
+  init(cell5_i) := 0;
+  next(cell5_i) := o_cell5_i & (cell5_h & !cell5_j) | !o_cell5_i & cell5_i;
+  init(cell5_h) := 0;
+  next(cell5_h) :=
+    case
+      o_cell5_h & cell5_g = cell5_j : cell5_g;
+      1 : cell5_h;
+    esac;
+  init(cell5_n) := 1;
+  next(cell5_n) := o_cell5_n & (!cell5_e & !cell5_m) | !o_cell5_n & cell5_n;
+  init(cell5_u) := 0;
+  next(cell5_u) := o_cell5_u & !cell5_r | !o_cell5_u & cell5_u;
+  init(cell5_a) := 0;
+  next(cell5_a) := o_cell5_a & cell5_u | !o_cell5_a & cell5_a;
+  init(cell5_c) := 0;
+  next(cell5_c) := o_cell5_c & (cell5_a & !cell5_q) | !o_cell5_c & cell5_c;
+  init(cell5_g) := 0;
+  next(cell5_g) := o_cell5_g & (cell5_c | cell5_d) | !o_cell5_g & cell5_g;
+  init(cell5_e) := 0;
+  next(cell5_e) :=
+    case
+      o_cell5_e & cell5_c = cell5_i : cell5_c;
+      1 : cell5_e;
+    esac;
+  init(cell5_k) := 0;
+  next(cell5_k) := o_cell5_k & (cell5_g & !cell5_h) | !o_cell5_k & cell5_k;
+  init(cell5_l) := 0;
+  next(cell5_l) := o_cell5_l & (cell5_k & cell5_m) | !o_cell5_l & cell5_l;
+  init(cell5_p) := 0;
+  next(cell5_p) := o_cell5_p & (cell5_k & cell5_n) | !o_cell5_p & cell5_p;
+  init(cell5_m) := 0;
+  next(cell5_m) := o_cell5_m & (!cell5_f & !cell5_n) | !o_cell5_m & cell5_m;
+  init(cell5_r) := 0;
+  next(cell5_r) := o_cell5_r & (cell5_e & cell5_m) | !o_cell5_r & cell5_r;
+  init(cell5_j) := 0;
+  next(cell5_j) := o_cell5_j & (cell5_l | cell4_q) | !o_cell5_j & cell5_j;
+  init(cell4_q) := 0;
+  next(cell4_q) := o_cell4_q & (cell4_f & cell4_n) | !o_cell4_q & cell4_q;
+  init(cell4_f) := 0;
+  next(cell4_f) :=
+    case
+      o_cell4_f & cell4_d = cell4_i : cell4_d;
+      1 : cell4_f;
+    esac;
+  init(cell4_d) := 0;
+  next(cell4_d) := o_cell4_d & (cell4_b & !cell4_r) | !o_cell4_d & cell4_d;
+  init(cell4_b) := 0;
+  next(cell4_b) := o_cell4_b & cell5_p | !o_cell4_b & cell4_b;
+  init(cell4_i) := 0;
+  next(cell4_i) := o_cell4_i & (cell4_h & !cell4_j) | !o_cell4_i & cell4_i;
+  init(cell4_h) := 0;
+  next(cell4_h) :=
+    case
+      o_cell4_h & cell4_g = cell4_j : cell4_g;
+      1 : cell4_h;
+    esac;
+  init(cell4_n) := 1;
+  next(cell4_n) := o_cell4_n & (!cell4_e & !cell4_m) | !o_cell4_n & cell4_n;
+  init(cell4_u) := 0;
+  next(cell4_u) := o_cell4_u & !cell4_r | !o_cell4_u & cell4_u;
+  init(cell4_a) := 0;
+  next(cell4_a) := o_cell4_a & cell4_u | !o_cell4_a & cell4_a;
+  init(cell4_c) := 0;
+  next(cell4_c) := o_cell4_c & (cell4_a & !cell4_q) | !o_cell4_c & cell4_c;
+  init(cell4_g) := 0;
+  next(cell4_g) := o_cell4_g & (cell4_c | cell4_d) | !o_cell4_g & cell4_g;
+  init(cell4_e) := 0;
+  next(cell4_e) :=
+    case
+      o_cell4_e & cell4_c = cell4_i : cell4_c;
+      1 : cell4_e;
+    esac;
+  init(cell4_k) := 0;
+  next(cell4_k) := o_cell4_k & (cell4_g & !cell4_h) | !o_cell4_k & cell4_k;
+  init(cell4_l) := 0;
+  next(cell4_l) := o_cell4_l & (cell4_k & cell4_m) | !o_cell4_l & cell4_l;
+  init(cell4_p) := 0;
+  next(cell4_p) := o_cell4_p & (cell4_k & cell4_n) | !o_cell4_p & cell4_p;
+  init(cell4_m) := 0;
+  next(cell4_m) := o_cell4_m & (!cell4_f & !cell4_n) | !o_cell4_m & cell4_m;
+  init(cell4_r) := 0;
+  next(cell4_r) := o_cell4_r & (cell4_e & cell4_m) | !o_cell4_r & cell4_r;
+  init(cell4_j) := 0;
+  next(cell4_j) := o_cell4_j & (cell4_l | cell3_q) | !o_cell4_j & cell4_j;
+  init(cell3_q) := 0;
+  next(cell3_q) := o_cell3_q & (cell3_f & cell3_n) | !o_cell3_q & cell3_q;
+  init(cell3_f) := 0;
+  next(cell3_f) :=
+    case
+      o_cell3_f & cell3_d = cell3_i : cell3_d;
+      1 : cell3_f;
+    esac;
+  init(cell3_d) := 0;
+  next(cell3_d) := o_cell3_d & (cell3_b & !cell3_r) | !o_cell3_d & cell3_d;
+  init(cell3_b) := 0;
+  next(cell3_b) := o_cell3_b & cell4_p | !o_cell3_b & cell3_b;
+  init(cell3_i) := 0;
+  next(cell3_i) := o_cell3_i & (cell3_h & !cell3_j) | !o_cell3_i & cell3_i;
+  init(cell3_h) := 0;
+  next(cell3_h) :=
+    case
+      o_cell3_h & cell3_g = cell3_j : cell3_g;
+      1 : cell3_h;
+    esac;
+  init(cell3_n) := 1;
+  next(cell3_n) := o_cell3_n & (!cell3_e & !cell3_m) | !o_cell3_n & cell3_n;
+  init(cell3_u) := 0;
+  next(cell3_u) := o_cell3_u & !cell3_r | !o_cell3_u & cell3_u;
+  init(cell3_a) := 0;
+  next(cell3_a) := o_cell3_a & cell3_u | !o_cell3_a & cell3_a;
+  init(cell3_c) := 0;
+  next(cell3_c) := o_cell3_c & (cell3_a & !cell3_q) | !o_cell3_c & cell3_c;
+  init(cell3_g) := 0;
+  next(cell3_g) := o_cell3_g & (cell3_c | cell3_d) | !o_cell3_g & cell3_g;
+  init(cell3_e) := 0;
+  next(cell3_e) :=
+    case
+      o_cell3_e & cell3_c = cell3_i : cell3_c;
+      1 : cell3_e;
+    esac;
+  init(cell3_k) := 0;
+  next(cell3_k) := o_cell3_k & (cell3_g & !cell3_h) | !o_cell3_k & cell3_k;
+  init(cell3_l) := 0;
+  next(cell3_l) := o_cell3_l & (cell3_k & cell3_m) | !o_cell3_l & cell3_l;
+  init(cell3_p) := 0;
+  next(cell3_p) := o_cell3_p & (cell3_k & cell3_n) | !o_cell3_p & cell3_p;
+  init(cell3_m) := 0;
+  next(cell3_m) := o_cell3_m & (!cell3_f & !cell3_n) | !o_cell3_m & cell3_m;
+  init(cell3_r) := 0;
+  next(cell3_r) := o_cell3_r & (cell3_e & cell3_m) | !o_cell3_r & cell3_r;
+  init(cell3_j) := 0;
+  next(cell3_j) := o_cell3_j & (cell3_l | cell2_q) | !o_cell3_j & cell3_j;
+  init(cell2_q) := 0;
+  next(cell2_q) := o_cell2_q & (cell2_f & cell2_n) | !o_cell2_q & cell2_q;
+  init(cell2_f) := 0;
+  next(cell2_f) :=
+    case
+      o_cell2_f & cell2_d = cell2_i : cell2_d;
+      1 : cell2_f;
+    esac;
+  init(cell2_d) := 0;
+  next(cell2_d) := o_cell2_d & (cell2_b & !cell2_r) | !o_cell2_d & cell2_d;
+  init(cell2_b) := 0;
+  next(cell2_b) := o_cell2_b & cell3_p | !o_cell2_b & cell2_b;
+  init(cell2_i) := 0;
+  next(cell2_i) := o_cell2_i & (cell2_h & !cell2_j) | !o_cell2_i & cell2_i;
+  init(cell2_h) := 0;
+  next(cell2_h) :=
+    case
+      o_cell2_h & cell2_g = cell2_j : cell2_g;
+      1 : cell2_h;
+    esac;
+  init(cell2_n) := 1;
+  next(cell2_n) := o_cell2_n & (!cell2_e & !cell2_m) | !o_cell2_n & cell2_n;
+  init(cell2_u) := 0;
+  next(cell2_u) := o_cell2_u & !cell2_r | !o_cell2_u & cell2_u;
+  init(cell2_a) := 0;
+  next(cell2_a) := o_cell2_a & cell2_u | !o_cell2_a & cell2_a;
+  init(cell2_c) := 0;
+  next(cell2_c) := o_cell2_c & (cell2_a & !cell2_q) | !o_cell2_c & cell2_c;
+  init(cell2_g) := 0;
+  next(cell2_g) := o_cell2_g & (cell2_c | cell2_d) | !o_cell2_g & cell2_g;
+  init(cell2_e) := 0;
+  next(cell2_e) :=
+    case
+      o_cell2_e & cell2_c = cell2_i : cell2_c;
+      1 : cell2_e;
+    esac;
+  init(cell2_k) := 0;
+  next(cell2_k) := o_cell2_k & (cell2_g & !cell2_h) | !o_cell2_k & cell2_k;
+  init(cell2_l) := 0;
+  next(cell2_l) := o_cell2_l & (cell2_k & cell2_m) | !o_cell2_l & cell2_l;
+  init(cell2_p) := 0;
+  next(cell2_p) := o_cell2_p & (cell2_k & cell2_n) | !o_cell2_p & cell2_p;
+  init(cell2_m) := 0;
+  next(cell2_m) := o_cell2_m & (!cell2_f & !cell2_n) | !o_cell2_m & cell2_m;
+  init(cell2_r) := 0;
+  next(cell2_r) := o_cell2_r & (cell2_e & cell2_m) | !o_cell2_r & cell2_r;
+  init(cell2_j) := 0;
+  next(cell2_j) := o_cell2_j & (cell2_l | cell1_q) | !o_cell2_j & cell2_j;
+  init(cell1_q) := 0;
+  next(cell1_q) := o_cell1_q & (cell1_f & cell1_n) | !o_cell1_q & cell1_q;
+  init(cell1_f) := 0;
+  next(cell1_f) :=
+    case
+      o_cell1_f & cell1_d = cell1_i : cell1_d;
+      1 : cell1_f;
+    esac;
+  init(cell1_d) := 0;
+  next(cell1_d) := o_cell1_d & (cell1_b & !cell1_r) | !o_cell1_d & cell1_d;
+  init(cell1_b) := 0;
+  next(cell1_b) := o_cell1_b & cell2_p | !o_cell1_b & cell1_b;
+  init(cell1_i) := 0;
+  next(cell1_i) := o_cell1_i & (cell1_h & !cell1_j) | !o_cell1_i & cell1_i;
+  init(cell1_h) := 0;
+  next(cell1_h) :=
+    case
+      o_cell1_h & cell1_g = cell1_j : cell1_g;
+      1 : cell1_h;
+    esac;
+  init(cell1_n) := 1;
+  next(cell1_n) := o_cell1_n & (!cell1_e & !cell1_m) | !o_cell1_n & cell1_n;
+  init(cell1_u) := 0;
+  next(cell1_u) := o_cell1_u & !cell1_r | !o_cell1_u & cell1_u;
+  init(cell1_a) := 0;
+  next(cell1_a) := o_cell1_a & cell1_u | !o_cell1_a & cell1_a;
+  init(cell1_c) := 0;
+  next(cell1_c) := o_cell1_c & (cell1_a & !cell1_q) | !o_cell1_c & cell1_c;
+  init(cell1_g) := 0;
+  next(cell1_g) := o_cell1_g & (cell1_c | cell1_d) | !o_cell1_g & cell1_g;
+  init(cell1_e) := 0;
+  next(cell1_e) :=
+    case
+      o_cell1_e & cell1_c = cell1_i : cell1_c;
+      1 : cell1_e;
+    esac;
+  init(cell1_k) := 0;
+  next(cell1_k) := o_cell1_k & (cell1_g & !cell1_h) | !o_cell1_k & cell1_k;
+  init(cell1_l) := 0;
+  next(cell1_l) := o_cell1_l & (cell1_k & cell1_m) | !o_cell1_l & cell1_l;
+  init(cell1_p) := 0;
+  next(cell1_p) := o_cell1_p & (cell1_k & cell1_n) | !o_cell1_p & cell1_p;
+  init(cell1_m) := 0;
+  next(cell1_m) := o_cell1_m & (!cell1_f & !cell1_n) | !o_cell1_m & cell1_m;
+  init(cell1_r) := 0;
+  next(cell1_r) := o_cell1_r & (cell1_e & cell1_m) | !o_cell1_r & cell1_r;
+  init(cell1_j) := 0;
+  next(cell1_j) := o_cell1_j & (cell1_l | cell0_q) | !o_cell1_j & cell1_j;
+  init(cell0_q) := 0;
+  next(cell0_q) := o_cell0_q & (cell0_f & cell0_n) | !o_cell0_q & cell0_q;
+  init(cell0_f) := 0;
+  next(cell0_f) :=
+    case
+      o_cell0_f & cell0_d = cell0_i : cell0_d;
+      1 : cell0_f;
+    esac;
+  init(cell0_d) := 0;
+  next(cell0_d) := o_cell0_d & (cell0_b & !cell0_r) | !o_cell0_d & cell0_d;
+  init(cell0_b) := 0;
+  next(cell0_b) := o_cell0_b & cell1_p | !o_cell0_b & cell0_b;
+  init(cell0_i) := 0;
+  next(cell0_i) := o_cell0_i & (cell0_h & !cell0_j) | !o_cell0_i & cell0_i;
+  init(cell0_h) := 0;
+  next(cell0_h) :=
+    case
+      o_cell0_h & cell0_g = cell0_j : cell0_g;
+      1 : cell0_h;
+    esac;
+  init(cell0_n) := 1;
+  next(cell0_n) := o_cell0_n & (!cell0_e & !cell0_m) | !o_cell0_n & cell0_n;
+  init(cell0_u) := 0;
+  next(cell0_u) := o_cell0_u & !cell0_r | !o_cell0_u & cell0_u;
+  init(cell0_a) := 0;
+  next(cell0_a) := o_cell0_a & cell0_u | !o_cell0_a & cell0_a;
+  init(cell0_c) := 0;
+  next(cell0_c) := o_cell0_c & (cell0_a & !cell0_q) | !o_cell0_c & cell0_c;
+  init(cell0_g) := 0;
+  next(cell0_g) := o_cell0_g & (cell0_c | cell0_d) | !o_cell0_g & cell0_g;
+  init(cell0_e) := 0;
+  next(cell0_e) :=
+    case
+      o_cell0_e & cell0_c = cell0_i : cell0_c;
+      1 : cell0_e;
+    esac;
+  init(cell0_k) := 0;
+  next(cell0_k) := o_cell0_k & (cell0_g & !cell0_h) | !o_cell0_k & cell0_k;
+  init(cell0_l) := 0;
+  next(cell0_l) := o_cell0_l & (cell0_k & cell0_m) | !o_cell0_l & cell0_l;
+  init(cell0_p) := 0;
+  next(cell0_p) := o_cell0_p & (cell0_k & cell0_n) | !o_cell0_p & cell0_p;
+  init(cell0_m) := 0;
+  next(cell0_m) := o_cell0_m & (!cell0_f & !cell0_n) | !o_cell0_m & cell0_m;
+  init(cell0_r) := 0;
+  next(cell0_r) := o_cell0_r & (cell0_e & cell0_m) | !o_cell0_r & cell0_r;
+  init(cell0_j) := 0;
+  next(cell0_j) := o_cell0_j & (cell0_l | cell18_q) | !o_cell0_j & cell0_j;
+FAIRNESS o_cell18_q
+FAIRNESS o_cell18_f
+FAIRNESS o_cell18_d
+FAIRNESS o_cell18_b
+FAIRNESS o_cell18_i
+FAIRNESS o_cell18_h
+FAIRNESS o_cell18_n
+FAIRNESS o_cell18_u
+FAIRNESS o_cell18_a
+FAIRNESS o_cell18_c
+FAIRNESS o_cell18_g
+FAIRNESS o_cell18_e
+FAIRNESS o_cell18_k
+FAIRNESS o_cell18_l
+FAIRNESS o_cell18_p
+FAIRNESS o_cell18_m
+FAIRNESS o_cell18_r
+FAIRNESS o_cell18_j
+FAIRNESS o_cell17_q
+FAIRNESS o_cell17_f
+FAIRNESS o_cell17_d
+FAIRNESS o_cell17_b
+FAIRNESS o_cell17_i
+FAIRNESS o_cell17_h
+FAIRNESS o_cell17_n
+FAIRNESS o_cell17_u
+FAIRNESS o_cell17_a
+FAIRNESS o_cell17_c
+FAIRNESS o_cell17_g
+FAIRNESS o_cell17_e
+FAIRNESS o_cell17_k
+FAIRNESS o_cell17_l
+FAIRNESS o_cell17_p
+FAIRNESS o_cell17_m
+FAIRNESS o_cell17_r
+FAIRNESS o_cell17_j
+FAIRNESS o_cell16_q
+FAIRNESS o_cell16_f
+FAIRNESS o_cell16_d
+FAIRNESS o_cell16_b
+FAIRNESS o_cell16_i
+FAIRNESS o_cell16_h
+FAIRNESS o_cell16_n
+FAIRNESS o_cell16_u
+FAIRNESS o_cell16_a
+FAIRNESS o_cell16_c
+FAIRNESS o_cell16_g
+FAIRNESS o_cell16_e
+FAIRNESS o_cell16_k
+FAIRNESS o_cell16_l
+FAIRNESS o_cell16_p
+FAIRNESS o_cell16_m
+FAIRNESS o_cell16_r
+FAIRNESS o_cell16_j
+FAIRNESS o_cell15_q
+FAIRNESS o_cell15_f
+FAIRNESS o_cell15_d
+FAIRNESS o_cell15_b
+FAIRNESS o_cell15_i
+FAIRNESS o_cell15_h
+FAIRNESS o_cell15_n
+FAIRNESS o_cell15_u
+FAIRNESS o_cell15_a
+FAIRNESS o_cell15_c
+FAIRNESS o_cell15_g
+FAIRNESS o_cell15_e
+FAIRNESS o_cell15_k
+FAIRNESS o_cell15_l
+FAIRNESS o_cell15_p
+FAIRNESS o_cell15_m
+FAIRNESS o_cell15_r
+FAIRNESS o_cell15_j
+FAIRNESS o_cell14_q
+FAIRNESS o_cell14_f
+FAIRNESS o_cell14_d
+FAIRNESS o_cell14_b
+FAIRNESS o_cell14_i
+FAIRNESS o_cell14_h
+FAIRNESS o_cell14_n
+FAIRNESS o_cell14_u
+FAIRNESS o_cell14_a
+FAIRNESS o_cell14_c
+FAIRNESS o_cell14_g
+FAIRNESS o_cell14_e
+FAIRNESS o_cell14_k
+FAIRNESS o_cell14_l
+FAIRNESS o_cell14_p
+FAIRNESS o_cell14_m
+FAIRNESS o_cell14_r
+FAIRNESS o_cell14_j
+FAIRNESS o_cell13_q
+FAIRNESS o_cell13_f
+FAIRNESS o_cell13_d
+FAIRNESS o_cell13_b
+FAIRNESS o_cell13_i
+FAIRNESS o_cell13_h
+FAIRNESS o_cell13_n
+FAIRNESS o_cell13_u
+FAIRNESS o_cell13_a
+FAIRNESS o_cell13_c
+FAIRNESS o_cell13_g
+FAIRNESS o_cell13_e
+FAIRNESS o_cell13_k
+FAIRNESS o_cell13_l
+FAIRNESS o_cell13_p
+FAIRNESS o_cell13_m
+FAIRNESS o_cell13_r
+FAIRNESS o_cell13_j
+FAIRNESS o_cell12_q
+FAIRNESS o_cell12_f
+FAIRNESS o_cell12_d
+FAIRNESS o_cell12_b
+FAIRNESS o_cell12_i
+FAIRNESS o_cell12_h
+FAIRNESS o_cell12_n
+FAIRNESS o_cell12_u
+FAIRNESS o_cell12_a
+FAIRNESS o_cell12_c
+FAIRNESS o_cell12_g
+FAIRNESS o_cell12_e
+FAIRNESS o_cell12_k
+FAIRNESS o_cell12_l
+FAIRNESS o_cell12_p
+FAIRNESS o_cell12_m
+FAIRNESS o_cell12_r
+FAIRNESS o_cell12_j
+FAIRNESS o_cell11_q
+FAIRNESS o_cell11_f
+FAIRNESS o_cell11_d
+FAIRNESS o_cell11_b
+FAIRNESS o_cell11_i
+FAIRNESS o_cell11_h
+FAIRNESS o_cell11_n
+FAIRNESS o_cell11_u
+FAIRNESS o_cell11_a
+FAIRNESS o_cell11_c
+FAIRNESS o_cell11_g
+FAIRNESS o_cell11_e
+FAIRNESS o_cell11_k
+FAIRNESS o_cell11_l
+FAIRNESS o_cell11_p
+FAIRNESS o_cell11_m
+FAIRNESS o_cell11_r
+FAIRNESS o_cell11_j
+FAIRNESS o_cell10_q
+FAIRNESS o_cell10_f
+FAIRNESS o_cell10_d
+FAIRNESS o_cell10_b
+FAIRNESS o_cell10_i
+FAIRNESS o_cell10_h
+FAIRNESS o_cell10_n
+FAIRNESS o_cell10_u
+FAIRNESS o_cell10_a
+FAIRNESS o_cell10_c
+FAIRNESS o_cell10_g
+FAIRNESS o_cell10_e
+FAIRNESS o_cell10_k
+FAIRNESS o_cell10_l
+FAIRNESS o_cell10_p
+FAIRNESS o_cell10_m
+FAIRNESS o_cell10_r
+FAIRNESS o_cell10_j
+FAIRNESS o_cell9_q
+FAIRNESS o_cell9_f
+FAIRNESS o_cell9_d
+FAIRNESS o_cell9_b
+FAIRNESS o_cell9_i
+FAIRNESS o_cell9_h
+FAIRNESS o_cell9_n
+FAIRNESS o_cell9_u
+FAIRNESS o_cell9_a
+FAIRNESS o_cell9_c
+FAIRNESS o_cell9_g
+FAIRNESS o_cell9_e
+FAIRNESS o_cell9_k
+FAIRNESS o_cell9_l
+FAIRNESS o_cell9_p
+FAIRNESS o_cell9_m
+FAIRNESS o_cell9_r
+FAIRNESS o_cell9_j
+FAIRNESS o_cell8_q
+FAIRNESS o_cell8_f
+FAIRNESS o_cell8_d
+FAIRNESS o_cell8_b
+FAIRNESS o_cell8_i
+FAIRNESS o_cell8_h
+FAIRNESS o_cell8_n
+FAIRNESS o_cell8_u
+FAIRNESS o_cell8_a
+FAIRNESS o_cell8_c
+FAIRNESS o_cell8_g
+FAIRNESS o_cell8_e
+FAIRNESS o_cell8_k
+FAIRNESS o_cell8_l
+FAIRNESS o_cell8_p
+FAIRNESS o_cell8_m
+FAIRNESS o_cell8_r
+FAIRNESS o_cell8_j
+FAIRNESS o_cell7_q
+FAIRNESS o_cell7_f
+FAIRNESS o_cell7_d
+FAIRNESS o_cell7_b
+FAIRNESS o_cell7_i
+FAIRNESS o_cell7_h
+FAIRNESS o_cell7_n
+FAIRNESS o_cell7_u
+FAIRNESS o_cell7_a
+FAIRNESS o_cell7_c
+FAIRNESS o_cell7_g
+FAIRNESS o_cell7_e
+FAIRNESS o_cell7_k
+FAIRNESS o_cell7_l
+FAIRNESS o_cell7_p
+FAIRNESS o_cell7_m
+FAIRNESS o_cell7_r
+FAIRNESS o_cell7_j
+FAIRNESS o_cell6_q
+FAIRNESS o_cell6_f
+FAIRNESS o_cell6_d
+FAIRNESS o_cell6_b
+FAIRNESS o_cell6_i
+FAIRNESS o_cell6_h
+FAIRNESS o_cell6_n
+FAIRNESS o_cell6_u
+FAIRNESS o_cell6_a
+FAIRNESS o_cell6_c
+FAIRNESS o_cell6_g
+FAIRNESS o_cell6_e
+FAIRNESS o_cell6_k
+FAIRNESS o_cell6_l
+FAIRNESS o_cell6_p
+FAIRNESS o_cell6_m
+FAIRNESS o_cell6_r
+FAIRNESS o_cell6_j
+FAIRNESS o_cell5_q
+FAIRNESS o_cell5_f
+FAIRNESS o_cell5_d
+FAIRNESS o_cell5_b
+FAIRNESS o_cell5_i
+FAIRNESS o_cell5_h
+FAIRNESS o_cell5_n
+FAIRNESS o_cell5_u
+FAIRNESS o_cell5_a
+FAIRNESS o_cell5_c
+FAIRNESS o_cell5_g
+FAIRNESS o_cell5_e
+FAIRNESS o_cell5_k
+FAIRNESS o_cell5_l
+FAIRNESS o_cell5_p
+FAIRNESS o_cell5_m
+FAIRNESS o_cell5_r
+FAIRNESS o_cell5_j
+FAIRNESS o_cell4_q
+FAIRNESS o_cell4_f
+FAIRNESS o_cell4_d
+FAIRNESS o_cell4_b
+FAIRNESS o_cell4_i
+FAIRNESS o_cell4_h
+FAIRNESS o_cell4_n
+FAIRNESS o_cell4_u
+FAIRNESS o_cell4_a
+FAIRNESS o_cell4_c
+FAIRNESS o_cell4_g
+FAIRNESS o_cell4_e
+FAIRNESS o_cell4_k
+FAIRNESS o_cell4_l
+FAIRNESS o_cell4_p
+FAIRNESS o_cell4_m
+FAIRNESS o_cell4_r
+FAIRNESS o_cell4_j
+FAIRNESS o_cell3_q
+FAIRNESS o_cell3_f
+FAIRNESS o_cell3_d
+FAIRNESS o_cell3_b
+FAIRNESS o_cell3_i
+FAIRNESS o_cell3_h
+FAIRNESS o_cell3_n
+FAIRNESS o_cell3_u
+FAIRNESS o_cell3_a
+FAIRNESS o_cell3_c
+FAIRNESS o_cell3_g
+FAIRNESS o_cell3_e
+FAIRNESS o_cell3_k
+FAIRNESS o_cell3_l
+FAIRNESS o_cell3_p
+FAIRNESS o_cell3_m
+FAIRNESS o_cell3_r
+FAIRNESS o_cell3_j
+FAIRNESS o_cell2_q
+FAIRNESS o_cell2_f
+FAIRNESS o_cell2_d
+FAIRNESS o_cell2_b
+FAIRNESS o_cell2_i
+FAIRNESS o_cell2_h
+FAIRNESS o_cell2_n
+FAIRNESS o_cell2_u
+FAIRNESS o_cell2_a
+FAIRNESS o_cell2_c
+FAIRNESS o_cell2_g
+FAIRNESS o_cell2_e
+FAIRNESS o_cell2_k
+FAIRNESS o_cell2_l
+FAIRNESS o_cell2_p
+FAIRNESS o_cell2_m
+FAIRNESS o_cell2_r
+FAIRNESS o_cell2_j
+FAIRNESS o_cell1_q
+FAIRNESS o_cell1_f
+FAIRNESS o_cell1_d
+FAIRNESS o_cell1_b
+FAIRNESS o_cell1_i
+FAIRNESS o_cell1_h
+FAIRNESS o_cell1_n
+FAIRNESS o_cell1_u
+FAIRNESS o_cell1_a
+FAIRNESS o_cell1_c
+FAIRNESS o_cell1_g
+FAIRNESS o_cell1_e
+FAIRNESS o_cell1_k
+FAIRNESS o_cell1_l
+FAIRNESS o_cell1_p
+FAIRNESS o_cell1_m
+FAIRNESS o_cell1_r
+FAIRNESS o_cell1_j
+FAIRNESS o_cell0_q
+FAIRNESS o_cell0_f
+FAIRNESS o_cell0_d
+FAIRNESS o_cell0_b
+FAIRNESS o_cell0_i
+FAIRNESS o_cell0_h
+FAIRNESS o_cell0_n
+FAIRNESS o_cell0_u
+FAIRNESS o_cell0_a
+FAIRNESS o_cell0_c
+FAIRNESS o_cell0_g
+FAIRNESS o_cell0_e
+FAIRNESS o_cell0_k
+FAIRNESS o_cell0_l
+FAIRNESS o_cell0_p
+FAIRNESS o_cell0_m
+FAIRNESS o_cell0_r
+FAIRNESS o_cell0_j
+
+TRANS
+
+  !(next(cell18_b) & next(cell18_a)) &
+  !(next(cell18_a) & next(cell18_b)) &
+  !(next(cell17_b) & next(cell17_a)) &
+  !(next(cell17_a) & next(cell17_b)) &
+  !(next(cell16_b) & next(cell16_a)) &
+  !(next(cell16_a) & next(cell16_b)) &
+  !(next(cell15_b) & next(cell15_a)) &
+  !(next(cell15_a) & next(cell15_b)) &
+  !(next(cell14_b) & next(cell14_a)) &
+  !(next(cell14_a) & next(cell14_b)) &
+  !(next(cell13_b) & next(cell13_a)) &
+  !(next(cell13_a) & next(cell13_b)) &
+  !(next(cell12_b) & next(cell12_a)) &
+  !(next(cell12_a) & next(cell12_b)) &
+  !(next(cell11_b) & next(cell11_a)) &
+  !(next(cell11_a) & next(cell11_b)) &
+  !(next(cell10_b) & next(cell10_a)) &
+  !(next(cell10_a) & next(cell10_b)) &
+  !(next(cell9_b) & next(cell9_a)) &
+  !(next(cell9_a) & next(cell9_b)) &
+  !(next(cell8_b) & next(cell8_a)) &
+  !(next(cell8_a) & next(cell8_b)) &
+  !(next(cell7_b) & next(cell7_a)) &
+  !(next(cell7_a) & next(cell7_b)) &
+  !(next(cell6_b) & next(cell6_a)) &
+  !(next(cell6_a) & next(cell6_b)) &
+  !(next(cell5_b) & next(cell5_a)) &
+  !(next(cell5_a) & next(cell5_b)) &
+  !(next(cell4_b) & next(cell4_a)) &
+  !(next(cell4_a) & next(cell4_b)) &
+  !(next(cell3_b) & next(cell3_a)) &
+  !(next(cell3_a) & next(cell3_b)) &
+  !(next(cell2_b) & next(cell2_a)) &
+  !(next(cell2_a) & next(cell2_b)) &
+  !(next(cell1_b) & next(cell1_a)) &
+  !(next(cell1_a) & next(cell1_b)) &
+  !(next(cell0_b) & next(cell0_a)) &
+  !(next(cell0_a) & next(cell0_b)) &
+  1
+
+LTLSPEC F cell18_r

@@ -1,0 +1,11 @@
+\begin{nusmvCommand} {quit} {exits \nusmvhead}
+ 
+\cmdLine{quit [-h] [-s]}
+
+Stops the program.  Does not save the current network before
+exiting.\\
+\begin{cmdOpt}
+\opt{-s}{ Frees all the used memory before quitting.  This is slower,
+and it is used for finding memory leaks.}
+\end{cmdOpt}
+\end{nusmvCommand}

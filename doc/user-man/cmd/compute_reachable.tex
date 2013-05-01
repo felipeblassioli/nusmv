@@ -1,0 +1,13 @@
+\begin{nusmvCommand}{compute\_reachable} {Computes the set of reachable states}
+
+\cmdLine{compute\_reachable [-h]}
+
+Computes the set of reachable states. The result is then used to
+simplify image and preimage computations. This can result in improved
+performances for models with sparse state spaces. Sometimes this
+option may slow down the performances because the computation of
+reachable states may be very expensive. The environment variable
+\envvar{forward\_search} is set during the execution of this
+command.
+
+\end{nusmvCommand}

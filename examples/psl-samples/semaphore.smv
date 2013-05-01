@@ -1,0 +1,42 @@
+MODULE main
+VAR
+  semaphore : boolean;
+  proc[1] : process user(semaphore);
+  proc[2] : process user(semaphore);
+
+ASSIGN
+  init(semaphore) := 0;
+SPEC
+  AG (proc[1].state = entering -> AF proc[1].state = critical)
+
+SPEC
+  AG (proc[2].state = entering -> AF proc[2].state = critical)
+
+PSLSPEC
+ forall i in {1:2}: (AG ((proc[i].state = entering) -> AF (proc[i].state = critical))) ;
+
+PSLSPEC
+ forall i in {1:2}: (always ((proc[i].state = entering) -> eventually! (proc[i].state = critical))) ;
+
+
+MODULE user(semaphore)
+VAR
+  state : {idle,entering,critical,exiting};
+ASSIGN
+  init(state) := idle;
+  next(state) := 
+    case 
+      state = idle : {idle,entering};
+      state = entering & !semaphore : critical;
+      state = critical : {critical,exiting};
+      state = exiting : idle;
+      1 : state;
+    esac;
+  next(semaphore) := 
+    case
+      state = entering : 1;
+      state = exiting : 0;
+      1 : semaphore;
+    esac;
+FAIRNESS
+  running

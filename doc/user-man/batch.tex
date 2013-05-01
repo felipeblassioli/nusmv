@@ -1,0 +1,210 @@
+When the \commandopt{int} option is not specified, \nusmv
+runs as a batch program, in the style of \smv, performing (some
+of) the steps described in previous section in a fixed sequence.
+\begin{alltt}
+\shellprompt \shelltext{\nusmvtxt [command line options] {\it input-file}} \ret
+\end{alltt}
+The program described in {\it input-file} is processed, and the
+corresponding finite state machine is built.  Then, if \emph{input-file}
+contains formulas to verify, their truth in the specified structure is
+evaluated. For each formula which is not true a counterexample is
+printed.\\
+The batch mode can be controlled with
+the following command line options:\\
+\begin{alltt}
+\nusmv [-h | -help] [-v {\it vl}] [-int] [-load {\it script\_file}] [-s]
+       [-cpp] [-pre {\it pps}] [-ofm {\it fm\_file}] [-obm {\it bm\_file}]
+       [-lp] [-n {\it idx}] [-is] [-ic] [-ils] [-ips] [-ii] 
+       [-ctt] [-f] [-r] [-AG]  [-coi]
+       [-i {\it iv\_file}] [-o {\it ov\_file}] [-reorder] [-dynamic] [-m {\it method}]
+       [[-mono]|[-thresh {\it cp\_t}]|[-cp {\it cp\_t}]|[-iwls95 {\it cp\_t}]]
+       [-noaffinity] [-iwls95preorder]
+       [-bmc] [-sat\_solver {\it name}] [-bmc\_length {\it k}]
+       [{\it input-file}]
+\end{alltt}
+where the meaning of the options is described below. If
+{\it input-file} is not provided in batch mode, then the model is read
+from standard input.\\
+
+\begin{nusmvTable}
+
+\opt{-help}{ }
+
+\opt{-h}{
+\index{ \code{-help}}
+\index{ \code{-h}}
+Prints the command line help.}
+
+\opt{-v {\it verbose-level}}{
+\index{\code{-v} {\it verbose-level}}
+Enables printing of additional information on the internal operations of
+\nusmv. Setting {\it verbose-level} to \code{1} gives the basic
+information. Using this option makes you feel better, since otherwise
+the program prints nothing until it finishes, and there is no evidence
+that it is doing anything at all. Setting the {\it verbose-level}
+higher than 1 enables printing of much extra information.}
+
+\opt{-int}{
+\index{ \code{-int}}
+Starts interactive shell.}
+
+\opt{-load {\it cmd-file}}{
+\index{ \code{-load} {\it cmd-file}}
+Starts the interactive shell and then executes \nusmv commands from
+file {\it cmd-file}. If an error occurs during a command execution,
+commands that follow will not be executed. See also the variable
+\varName{ on\_failure\_script\_quits}. }
+
+\opt{-s} {
+Avoids to load the \nusmv commands contained in \code{
+\~/.nusmvrc} or in \code{.nusmvrc}  or in 
+\code{\$\$\{\stdsyslib\}/master.nusmvrc}.} 
+\vindex{\stdsyslib}
+\index{master.nusmvrc}
+\index{.nusmvrc}
+\index{\~/.nusmvrc}
+
+\opt{-cpp}{
+\index{\code{-cpp}}
+Runs preprocessor on \smv files before any of those specified with the
+-pre option.}
+
+\opt{-pre {\it pps}}{
+\index{\code{-pre} {\it pps}}
+Specifies a list of pre-processors to run (in the order given) on the
+input file before it is parsed by \nusmv. Note that if the
+\commandopt{cpp} command is used, then the pre-processors specified by
+this command will be run after the input file has been pre-processed
+by that pre-processor. {\it pps} is either one single pre-processor
+name (with or without double quotes) or it is a space-seperated list
+of pre-processor names contained within double quotes.}
+
+\opt{-ofm {\it fm\_file}}{
+\index{ \code{-ofm} {\it fm\_file}}
+prints flattened model to file {\it fn\_file}}
+
+\opt{-obm {\it bm\_file}} {
+\index{ \code{-obm} {\it bm\_file}}
+Prints boolean model to file {\it bn\_file}}
+
+\opt{-lp}{
+\index{\code{-lp}}
+Lists all properties in \smv model}
+
+\opt{-n {\it idx}}{
+\index{\code{-n} {\it idx}}
+Specifies which property of \smv model should be checked}
+
+\opt{-is}{
+\index{\code{-is}}
+Does not check \code{SPEC}}
+
+\opt{-ic}{
+\index{\code{-ic}}
+Does not check \code{COMPUTE}}
+
+\opt{-ils}{
+\index{\code{-ils}}
+Does not check \code{LTLSPEC}}
+
+\opt{-ips}{
+\index{\code{-ips}}
+Does not check \code{PSLSPEC}}
+
+\opt{-ii}{
+\index{ \code{-ii}}
+Does not check \code{INVARSPEC}}
+
+\opt{-ctt}{
+\index{\code{-ctt}}
+Checks whether the transition relation is total.}
+
+\opt{-f}{
+\index{ \code{-f}}
+Computes the set of reachable states before evaluating CTL expressions.}
+
+\opt{-r}{
+\index{ \code{-r}}
+Prints the number of reachable states before exiting. If the \commandopt{f}
+option is not used, the set of reachable states is computed.}
+
+\opt{-AG}{
+\index{ \code{-AG}}
+Verifies only AG formulas using an ad hoc algorithm (see documentation for
+the \envvar{ag\_only\_search} environment variable).}
+
+\opt{-coi} {
+\index{ \code{-coi}}
+Enables cone of influence reduction }
+
+\opt{-i {\it iv\_file}} {
+\index{ \code{-i} {\it iv\_file}}
+Reads the variable ordering from file {\it iv\_file}. }
+
+\opt{-o {\it ov\_file}}{
+\index{ \code{-o} {\it ov\_file}}
+Reads the variable ordering from file {\it ov\_file}.}
+
+\opt{-reorder}{
+\index{ \code{-reorder}}
+Enables variable reordering after having checked all the specification if
+any.}
+
+\opt{-dynamic}{
+\index{ \code{-dynamic}}
+Enables dynamic reordering of variables}
+
+\end{nusmvTable}
+
+
+\begin{nusmvTable}
+
+\opt{-m  {\it method}} {
+\index{ \code{-m} {\it method}}
+Uses {\it method} when variable ordering is enabled. Possible values for
+method are those allowed for the \envvar{reorder\_method} environment
+variable (see \sref{Interface to DD package}).}
+
+\opt{-mono}{
+\index{ \code{-mono}}
+Enables monolithic transition relation}
+
+\opt{-thresh {\it cp\_t}}{ 
+\index{ \code{-thresh} {\it cp\_t}}
+conjunctive partitioning with threshold of each
+partition set to {\it cp\_t} (DEFAULT, with {\it cp\_t}=1000)}
+
+\opt{-cp {\it cp\_t}}{
+\index{ \code{-cp} {\it cp\_t}}
+DEPRECATED: use \command{thresh} instead.}
+
+\opt{-iwls95 {\it cp\_t}}{
+\index{ \code{-iwls95} {\it cp\_t}}
+Enables Iwls95 conjunctive partitioning and sets
+the threshold of each partition to {\it cp\_t}}
+
+\opt{-noaffinity}{
+\index{ \code{-noaffinity}}
+Disables affinity clustering }
+
+\opt{-iwls95preoder} {
+\index{ \code{-iwls95preorder}}
+Enables \Iwls preordering}
+
+\opt{-bmc} {
+\index{ \code{-bmc}}
+Enables BMC instead of BDD model checking (works only for LTL
+properties and PSL properties that can be translated into LTL)}
+
+\opt{-sat\_solver {\it name}} {
+\index{\code{-sat\_solver} {\it name}}
+Sets the default SAT Solver to be used with BMC}
+
+\opt{-bmc\_length {\it k}}{
+\index{ \code{-bmc} {\it k}}
+Sets \envvar{bmc\_length} variable, used by BMC}
+
+\end{nusmvTable}
+
+
+

@@ -1,0 +1,12 @@
+MODULE main
+VAR
+  request : {Tr, Fa};
+  state : {ready, busy};
+ASSIGN
+  init(state) := ready;
+  next(state) := case
+                   state = ready & (request = Tr): busy;
+                   1 : {ready,busy};
+                 esac;
+SPEC
+  AG((request = Tr) -> AF state = busy)

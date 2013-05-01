@@ -1,0 +1,25 @@
+\begin{nusmvCommand}{process\_model} {Performs the batch steps and then returns control to the interactive shell.}
+
+\cmdLine{process\_model [-h] [-i model-file] [-m Method]}
+
+Reads the model, compiles it into BDD and performs the model checking
+of all the specification contained in it. If the environment variable
+\envvar{forward\_search} has been set before, then the set of
+reachable states is computed. If the environment variables
+\envvar{enable\_reorder} and \envvar{reorder\_method} are set, then
+the reordering of variables is performed accordingly. This command
+simulates the batch behavior of \nusmv and then returns the control to
+the interactive shell.
+
+\begin{cmdOpt}
+ 
+\opt{-i \parameter{\filename{model-file}}}{Sets the environment variable
+\envvar{input\_file} to file \filename{model-file}, and reads the
+model from file \filename{model-file}.}
+ 
+\opt{-m \parameter{\set{Method}{Monolithic, Threshold, Iwls95CP}}}{Sets the environment variable
+\envvar{partition\_method} to \code{Method} and uses it as
+partitioning method.}
+
+\end{cmdOpt}
+\end{nusmvCommand}

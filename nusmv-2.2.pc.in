@@ -1,0 +1,13 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+includedir=@includedir@
+libdir=${exec_prefix}/lib
+datadir=@datadir@/nusmv
+cuddname=@cuddname@
+
+Name: NuSMV-2.2
+Description: New Symbolic Model Verifier
+Requires: 
+Version: @VERSION@
+Cflags: -I. -I.. -I${includedir}/nusmv -I${includedir}/${cuddname} 
+Libs: -L${libdir} -lnusmv

@@ -1,0 +1,48 @@
+MODULE main
+VAR
+  bit[0] : counter_cell(1);
+  bit[1] : counter_cell(bit[0].carry_out);
+  bit[2] : counter_cell(bit[1].carry_out);
+
+SPEC
+  AG AF bit[2].carry_out
+
+SPEC
+  AG AF bit[1].carry_out
+
+SPEC
+  AG AF bit[0].carry_out
+
+PSLSPEC
+  AG AF bit[1].carry_out;
+
+PSLSPEC
+  G F bit[1].carry_out;
+
+PSLSPEC
+  always eventually! bit[1].carry_out;
+
+PSLSPEC
+  AG AF bit[2].carry_out;
+
+PSLSPEC
+  G F bit[2].carry_out;
+
+PSLSPEC
+  always eventually! bit[2].carry_out;
+
+PSLSPEC
+  forall i in {0:2}: G F bit[i].carry_out;
+
+PSLSPEC
+  forall i in {0:2}: always eventually! bit[i].carry_out;
+
+  
+MODULE counter_cell(carry_in)
+VAR
+  value : boolean;
+ASSIGN
+  init(value) := 0;
+  next(value) := value + carry_in mod 2;
+DEFINE
+  carry_out := value & carry_in;

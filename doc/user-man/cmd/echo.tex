@@ -1,0 +1,17 @@
+\begin{nusmvCommand}{echo} {Merely echoes the arguments}
+
+\cmdLine{echo [-h] [-o filename [-a]] <string>}
+
+Echoes the specified string either to standard output, or to
+\filename{filename} if the option \commandopt{o} is specified.
+\begin{cmdOpt}
+\opt{-o \parameter{\filename{filename}}} { Echoes to the specified
+filename instead of to standard output. If the option \commandopt{a}
+is not specified, the file \filename{filename} will be overwritten 
+if it already exists. }
+
+\opt{-a} {Appends the output to the file specified by option
+\commandopt{o}, instead of overwritting it. Use only with the option 
+\commandopt{o}.}
+\end{cmdOpt}
+\end{nusmvCommand}

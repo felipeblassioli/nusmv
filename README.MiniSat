@@ -1,0 +1,9 @@
+Since NuSMV version 2.3.1 MiniSAT [1] is the default SAT solver. When
+not available, the default SAT solver will be SIM, as in previous
+versions.
+
+For information about how to compile and use MiniSAT within NuSMV, and
+for other important information about MiniSAT, please refer to the
+file <NuSMV-(version)/MiniSat/README>.
+
+[1] See <http://www.cs.chalmers.se/Cs/Research/FormalMethods/MiniSat/Main.html>

@@ -1,0 +1,34 @@
+MODULE main
+VAR
+  semaphore : boolean;
+  proc1 : process user(semaphore);
+  proc2 : process user(semaphore);
+ASSIGN
+  init(semaphore) := 0;
+SPEC
+  AG (proc1.state = entering -> AF proc1.state = critical)
+
+LTLSPEC
+  G (proc1.state = entering -> F proc1.state = critical) 
+
+MODULE user(semaphore)
+VAR
+  state : {idle,entering,critical,exiting};
+ASSIGN
+  init(state) := idle;
+  next(state) := 
+    case 
+      state = idle : {idle,entering};
+      state = entering & !semaphore : critical;
+      state = critical : {critical,exiting};
+      state = exiting : idle;
+      1 : state;
+    esac;
+  next(semaphore) := 
+    case
+      state = entering : 1;
+      state = exiting : 0;
+      1 : semaphore;
+    esac;
+FAIRNESS
+  running
