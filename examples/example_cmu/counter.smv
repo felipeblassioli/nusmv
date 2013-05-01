@@ -1,6 +1,6 @@
 MODULE main
 VAR
-  bit0 : counter_cell(1);
+  bit0 : counter_cell(TRUE);
   bit1 : counter_cell(bit0.carry_out);
   bit2 : counter_cell(bit1.carry_out);
 SPEC
@@ -12,7 +12,7 @@ MODULE counter_cell(carry_in)
 VAR
   value : boolean;
 ASSIGN
-  init(value) := 0;
-  next(value) := (value + carry_in) mod 2;
+  init(value) := FALSE;
+  next(value) := value xor carry_in;
 DEFINE
   carry_out := value & carry_in;

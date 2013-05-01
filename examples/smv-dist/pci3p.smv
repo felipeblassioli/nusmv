@@ -46,7 +46,7 @@
 --
 
 
-MODULE arb_bank_2in(req0, req1, policy, grant, granted)
+MODULE arb_bank_2in(req0, req1, policy, granted)
 -- see use of granted in assignment to last.
 VAR last: {0, 1};
 --VAR grant: {0, 1, idle};
@@ -57,7 +57,7 @@ DEFINE
                case
                  req0: 0;
                  req1: 1;
-                 1:    idle;
+                 TRUE:    idle;
                esac;
              policy = RR:
                case
@@ -65,13 +65,13 @@ DEFINE
                    case
                      req1: 1;
                      req0: 0;
-                     1:    idle;
+                     TRUE:    idle;
                    esac;
                  last = 1:
                    case
                      req0: 0;
                      req1: 1;
-                     1:    idle;
+                     TRUE:    idle;
                    esac;
                esac;
            esac;
@@ -89,7 +89,7 @@ ASSIGN
                   !granted: last;
                   grant = 0: 0;
                   grant = 1: 1;
-                  1:         last;
+                  TRUE:         last;
                 esac;
 
 --SPEC AG(req1 -> A[req1 U (grant = 1 | req0)])
@@ -97,7 +97,7 @@ ASSIGN
 --SPEC AG((req1 & policy = RR) -> A[req1 U grant = 1])
 
 
-MODULE arb_bank_3in(req0, req1, req2, policy, grant, change_now)
+MODULE arb_bank_3in(req0, req1, req2, policy, change_now)
 VAR last: {0, 1, 2};
 --    grant: {0, 1, 2, idle};
 --ASSIGN
@@ -108,7 +108,7 @@ DEFINE
                  req0: 0;
                  req1: 1;
                  req2: 2;
-                 1:    idle;
+                 TRUE:    idle;
                esac;
              policy = RR:
                case
@@ -117,21 +117,21 @@ DEFINE
                      req1: 1;
                      req2: 2;
                      req0: 0;
-                     1:    idle;
+                     TRUE:    idle;
                    esac;
                  last = 1:
                    case
                      req2: 2;
                      req0: 0;
                      req1: 1;
-                     1:    idle;
+                     TRUE:    idle;
                    esac;
                  last = 2:
                    case
                      req0: 0;
                      req1: 1;
                      req2: 2;
-                     1:    idle;
+                     TRUE:    idle;
                    esac;
                esac;
            esac;
@@ -142,7 +142,7 @@ ASSIGN
                   grant = 0: 0;
                   grant = 1: 1;
                   grant = 2: 2;
-                  1:         last;
+                  TRUE:         last;
                 esac;
 
 --SPEC AG(req1 -> A[req1 U (grant = 1 | req0)])
@@ -162,7 +162,7 @@ ASSIGN
 --SPEC AG((req2 & policy = RR) -> (A[req2 U grant = 2] | AX !req2))
 
 
-MODULE arbiter(req0, req1, req2, req3, req4, req5, grant, b_frame_switch)
+MODULE arbiter(req0, req1, req2, req3, req4, req5, b_frame_switch)
 
 VAR
     policy0: {FP, RR};
@@ -170,45 +170,45 @@ VAR
     policy2: {FP, RR};
     policy3: {FP, RR};
 
-    bank0: arb_bank_2in(req0, req1, policy0, grant0, (grant2 = 0));
-    bank1: arb_bank_2in(req2, req3, policy1, grant1, (grant2 = 1));
-    bank2: arb_bank_3in(reqbank0, reqbank1, reqbank3, policy2, grant2,
+    bank0: arb_bank_2in(req0, req1, policy0, (bank2.grant = 0));
+    bank1: arb_bank_2in(req2, req3, policy1, (bank2.grant = 1));
+    bank2: arb_bank_3in(reqbank0, reqbank1, reqbank3, policy2,
                           change_now);
-    bank3: arb_bank_2in(req4, req5, policy3, grant3, (grant2 = 2));
+    bank3: arb_bank_2in(req4, req5, policy3, (bank2.grant = 2));
 
     grant: {0, 1, 2, 3, 4, 5, idle};
 --    grant_aux: {0, 1, 2, 3, 4, 5, idle};
 
 DEFINE
-  reqbank0 := !(grant0 = idle);
-  reqbank1 := !(grant1 = idle);
-  reqbank3 := !(grant3 = idle);
+  reqbank0 := !(bank0.grant = idle);
+  reqbank1 := !(bank1.grant = idle);
+  reqbank3 := !(bank3.grant = idle);
 
-  change_now := !(!b_frame_switch & !grant = idle);
+  change_now := !(!b_frame_switch & !(grant = idle));
 
 ASSIGN
   init(grant) := idle;
   next(grant) := --grant_aux;
 --  grant_aux :=
            case
-             !b_frame_switch & !grant = idle: grant;
+             !b_frame_switch & !(grant = idle): grant;
                                    -- only change grant when b_frame goes up.
                                    -- except when the bus is idle.
-             grant2 = idle: idle;
-             grant2 = 0:
+             bank2.grant = idle: idle;
+             bank2.grant = 0:
                case
-                 grant0 = 0: 0;
-                 1:          1;
+                 bank0.grant = 0: 0;
+                 TRUE:               1;
                esac;
-             grant2 = 1:
+             bank2.grant = 1:
                case
-                 grant1 = 0: 2;
-                 1:          3;
+                 bank1.grant = 0: 2;
+                 TRUE:               3;
                esac;
-             grant2 = 2:
+             bank2.grant = 2:
                case
-                 grant3 = 0: 4;
-                 1:          5;
+                 bank3.grant = 0: 4;
+                 TRUE:               5;
                esac;
            esac;
 
@@ -259,15 +259,13 @@ ASSIGN
 
 MODULE bus_master(-- in parameter:
                   id, b_frame_switch, abort, abort_count,
-                  -- out parameters, values sent to the bus:
-                  ad, c_bd, frame, irdy, trdy, req,
                   -- values received from the bus:
                   b_gnt, b_c_bd, b_frame, b_irdy, b_trdy, b_stop, b_lock)
 VAR
   req: boolean;
   state: {idle, address, data};
 --  state_aux: {idle, address, data};
-  count: 0..3;                            -- counts how many cache lines
+  _count: 0..3;                            -- counts how many cache lines
                                            -- will be sent (or received).
   c_bd: {IDLE, MEM_READ, MEM_WRITE};
   irdy: boolean;
@@ -285,21 +283,21 @@ DEFINE
   start_transaction := b_gnt & bus_idle;
                                            -- transaction ends when
                                            -- all data has been sent.
-  end_transaction   := state = data & count = 0;
+  end_transaction   := state = data & _count = 0;
 
 --ASSIGN
-  frame := (state = address) | (state = data & count > 0);
+  frame := (state = address) | (state = data & _count > 0);
 ASSIGN
-  init(req) := 0;
+  init(req) := FALSE;
   next(req) := case
-                 frame & abort: 1;
+                 frame & abort: TRUE;
                  !req: case
-                         issue_next: 1;
-                        !issue_next: 0;
+                         issue_next: TRUE;
+                        !issue_next: FALSE;
                        esac;
                  req: case
-                        b_gnt:  0;
-                        1:      1;
+                        b_gnt:  FALSE;
+                        TRUE:      TRUE;
                       esac;
                esac;
 
@@ -311,28 +309,28 @@ case
                    state = idle:
                      case
                        !start_transaction: idle;
-                       1: address;         -- just been granted the bus,
+                       TRUE: address;         -- just been granted the bus,
                                            -- start a new transaction.
                      esac;
                    state = address: data;
                    state = data:
                      case
-                       count = 0: idle;    -- count to see if all data
-                       1:         data;    -- has been sent.
+                       _count = 0: idle;    -- count to see if all data
+                       TRUE:         data;    -- has been sent.
                      esac;
                  esac;
 
-  init(count) := 0;
-  next(count) := case
+  init(_count) := 0;
+  next(_count) := case
                    abort: 0;
                    start_transaction: --{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
                                       -- {12, 13, 14, 15};
                                       {1, 2, 3};
                    end_transaction: 0;
-                   !state = data: count;    -- sends data only in data state
-                   !b_trdy: count;          -- and only if target is ready
-                   count > 0: count - 1;
-                   1: count;
+                   !(state = data): _count;    -- sends data only in data state
+                   !b_trdy: _count;          -- and only if target is ready
+                   _count > 0: _count - 1;
+                   TRUE: _count;
                  esac;
 
   init(c_bd) := IDLE;
@@ -343,36 +341,36 @@ case
                            -- MEM_WRITE, MEM_READ_MULT, MEM_READ_LINE,
                            -- MEM_WRITE_INV};
                   end_transaction: IDLE;
-                  1: c_bd;
+                  TRUE: c_bd;
                 esac;
 
-  init(irdy) := 0;
+  init(irdy) := FALSE;
   next(irdy) := case
-                  abort: 0;
-                  state = address: 1;
-                  end_transaction: 0;
-                  1: irdy;
+                  abort: FALSE;
+                  state = address: TRUE;
+                  end_transaction: FALSE;
+                  TRUE: irdy;
                 esac;
 
-  init(trdy) := 0;
+  init(trdy) := FALSE;
   next(trdy) := case
-                  abort: 0;
-                  !state = idle: 0;            -- we don't assert trdy
+                  abort: FALSE;
+                  !(state = idle): FALSE;            -- we don't assert trdy
                                                -- if we are the master.
                   !trdy: case                  -- conditions for assertion
-                           b_c_bd = MEM_READ & b_irdy: 1;
+                           b_c_bd = MEM_READ & b_irdy: TRUE;
                                                -- the condition above asserts
                                                -- one cycle after irdy,
                                                -- creating a turnaround cycle
-                           b_c_bd = MEM_WRITE & b_frame: 1;
+                           b_c_bd = MEM_WRITE & b_frame: TRUE;
                                                -- the condition above asserts
                                                -- at the same cycle at irdy,
                                                -- no turnaround cycle
-                           1: 0;
+                           TRUE: FALSE;
                          esac;
                   trdy: case                   -- conditions for deassertion
-                           b_frame: 1;
-                           1:     0;           -- reset at end of trans.
+                           b_frame: TRUE;
+                           TRUE:    FALSE;           -- reset at end of trans.
                          esac;
                 esac;
 
@@ -456,65 +454,58 @@ case
 --
 MODULE bus_master_null(-- in parameters:
                   id, b_frame_switch, abort, abort_count,
-                  -- out parameters, values sent to the bus:
-                  ad, c_bd, frame, irdy, trdy, req,
                   -- values received from the bus:
                   b_gnt, b_c_bd, b_frame, b_irdy, b_trdy, b_stop, b_lock)
 DEFINE
   c_bd  := 0;
   ad    := 0;
-  frame := 0;
-  irdy  := 0;
-  trdy  := 0;
+  frame := FALSE;
+  irdy  := FALSE;
+  trdy  := FALSE;
 
-  req   := 0;
+  req   := FALSE;
 
 
 -------------------------------------------------------------------------
 MODULE main
 
 VAR
-    arb: arbiter(req0, req1, req2, req3, req4, req5, grant, b_frame_switch);
+    arb: arbiter(isa_bridge.req, scsi_ctrl.req, vga_ctrl.req,
+                 slot0.req, processor.req, slot1.req, b_frame_switch);
 
     isa_bridge: bus_master_null(0, b_frame_switch, abort, abort_count,
-                                ad0, c_bd0, frame0, irdy0, trdy0, req0,
-                                (grant = 0), b_c_bd, b_frame, b_irdy, b_trdy,
+                                (arb.grant = 0), b_c_bd, b_frame, b_irdy, b_trdy,
                                   b_stop, b_lock);
     scsi_ctrl:  bus_master(1, b_frame_switch, abort, abort_count,
-                           ad1, c_bd1, frame1, irdy1, trdy1, req1,
-                           (grant = 1), b_c_bd, b_frame, b_irdy, b_trdy,
+                           (arb.grant = 1), b_c_bd, b_frame, b_irdy, b_trdy,
                              b_stop, b_lock);
     vga_ctrl:   bus_master(2, b_frame_switch, abort, abort_count,
-                           ad2, c_bd2, frame2, irdy2, trdy2, req2,
-                           (grant = 2), b_c_bd, b_frame, b_irdy, b_trdy,
+                           (arb.grant = 2), b_c_bd, b_frame, b_irdy, b_trdy,
                              b_stop, b_lock);
     slot0:      bus_master_null(3, b_frame_switch, abort, abort_count,
-                                ad3, c_bd3, frame3, irdy3, trdy3, req3,
-                                (grant = 3), b_c_bd, b_frame, b_irdy, b_trdy,
+                                (arb.grant = 3), b_c_bd, b_frame, b_irdy, b_trdy,
                                   b_stop, b_lock);
     processor:  bus_master(4, b_frame_switch, abort, abort_count,
-                           ad4, c_bd4, frame4, irdy4, trdy4, req4,
-                           (grant = 4), b_c_bd, b_frame, b_irdy, b_trdy,
+                           (arb.grant = 4), b_c_bd, b_frame, b_irdy, b_trdy,
                               b_stop, b_lock);
     slot1:      bus_master_null(5, b_frame_switch, abort, abort_count,
-                                ad5, c_bd5, frame5, irdy5, trdy5, req5,
-                                (grant = 5), b_c_bd, b_frame, b_irdy, b_trdy,
+                                (arb.grant = 5), b_c_bd, b_frame, b_irdy, b_trdy,
                                   b_stop, b_lock);
 
 --
 -- Bus signals
 --
 DEFINE
-  b_frame := frame0 | frame1 | frame2 | frame3 | frame4 | frame5;
-  b_irdy  := irdy0 | irdy1 | irdy2 | irdy3 | irdy4 | irdy5;
-  b_trdy  := trdy0 | trdy1 | trdy2 | trdy3 | trdy4 | trdy5;
+  b_frame := isa_bridge.frame | scsi_ctrl.frame | vga_ctrl.frame | slot0.frame | processor.frame | slot1.frame;
+  b_irdy  := isa_bridge.irdy | scsi_ctrl.irdy | vga_ctrl.irdy | slot0.irdy | processor.irdy | slot1.irdy;
+  b_trdy  := isa_bridge.trdy | scsi_ctrl.trdy | vga_ctrl.trdy | slot0.trdy | processor.trdy | slot1.trdy;
   b_c_bd  := case
-               frame0: c_bd0;
-               frame1: c_bd1;
-               frame2: c_bd2;
-               frame3: c_bd3;
-               frame4: c_bd4;
-               1:      c_bd5;
+               isa_bridge.frame: isa_bridge.c_bd;
+               scsi_ctrl.frame: scsi_ctrl.c_bd;
+               vga_ctrl.frame: vga_ctrl.c_bd;
+               slot0.frame: slot0.c_bd;
+               processor.frame: processor.c_bd;
+               TRUE:      slot1.c_bd;
              esac;
 
   bus_idle := !b_frame & !b_irdy;
@@ -522,7 +513,7 @@ DEFINE
 VAR
   b_frame_old: boolean;
 ASSIGN
-  init(b_frame_old) := 0;
+  init(b_frame_old) := FALSE;
   next(b_frame_old) := b_frame;
 DEFINE
   b_frame_switch := b_frame & !b_frame_old;
@@ -540,14 +531,14 @@ ASSIGN
                          abort:
                            case
                              abort_count = 3: 3;
-                             1: abort_count + 1;
+                             TRUE: abort_count + 1;
                            esac;
-                         1: abort_count;
+                         TRUE: abort_count;
                        esac;
                          
 DEFINE
 --  abort := abort_random & b_frame;
-  abort := 0;
+  abort := FALSE;
 
 --TRANS (abort_count = 0)
 --TRANS (abort_count = 0 | abort_count = 1)
@@ -570,52 +561,52 @@ DEFINE
 --
 -- If we do a complete RR scheduling, no starvation can occur
 --
---SPEC AG(req0 -> A[req0 U grant = 0])             -- 0 NEVER starves!
---SPEC AG((req1 & all_RR) -> A[req1 U grant = 1])
---SPEC AG((req2 & all_RR) -> A[req2 U grant = 2])
---SPEC AG((req3 & all_RR) -> A[req3 U grant = 3])
---SPEC AG((req4 & all_RR) -> A[req4 U grant = 4])
---SPEC AG((req5 & all_RR) -> A[req5 U grant = 5])
+--SPEC AG(isa_bridge.req -> A[isa_bridge.req U arb.grant = 0])             -- 0 NEVER starves!
+--SPEC AG((scsi_ctrl.req & all_RR) -> A[scsi_ctrl.req U arb.grant = 1])
+--SPEC AG((vga_ctrl.req & all_RR) -> A[vga_ctrl.req U arb.grant = 2])
+--SPEC AG((slot0.req & all_RR) -> A[slot0.req U arb.grant = 3])
+--SPEC AG((processor.req & all_RR) -> A[processor.req U arb.grant = 4])
+--SPEC AG((slot1.req & all_RR) -> A[slot1.req U arb.grant = 5])
 --
 -- We don't starve because of processors of lower priority
 --
---SPEC AG(req1 -> A[req1 U (grant = 1 | req0)])
---SPEC AG(req2 -> A[req2 U (grant = 2 | req0 | req1)])
---SPEC AG(req3 -> A[req3 U (grant = 3 | req0 | req1 | req2)])
---SPEC AG(req4 -> A[req4 U (grant = 4 | req0 | req1 | req2 | req3)])
---SPEC AG(req5 -> A[req5 U (grant = 5 | req0 | req1 | req2 | req3 | req5)])
+--SPEC AG(scsi_ctrl.req -> A[scsi_ctrl.req U (arb.grant = 1 | isa_bridge.req)])
+--SPEC AG(vga_ctrl.req -> A[vga_ctrl.req U (arb.grant = 2 | isa_bridge.req | scsi_ctrl.req)])
+--SPEC AG(slot0.req -> A[slot0.req U (arb.grant = 3 | isa_bridge.req | scsi_ctrl.req | vga_ctrl.req)])
+--SPEC AG(processor.req -> A[processor.req U (arb.grant = 4 | isa_bridge.req | scsi_ctrl.req | vga_ctrl.req | slot0.req)])
+--SPEC AG(slot1.req -> A[slot1.req U (arb.grant = 5 | isa_bridge.req | scsi_ctrl.req | vga_ctrl.req | slot0.req | slot1.req)])
 
 --
 -- What is the maximum time to get the bus (If we eventually get the bus) ?
 --
---COMPUTE MAX[req0, grant = 0]
---COMPUTE MAX[req1 & all_RR, grant = 1]
---COMPUTE MAX[req2 & all_RR, grant = 2]
---COMPUTE MAX[req3 & all_RR, grant = 3]
---COMPUTE MAX[req4 & all_RR, grant = 4]
---COMPUTE MAX[req5 & all_RR, grant = 5]
+--COMPUTE MAX[isa_bridge.req, arb.grant = 0]
+--COMPUTE MAX[scsi_ctrl.req & all_RR, arb.grant = 1]
+--COMPUTE MAX[vga_ctrl.req & all_RR, arb.grant = 2]
+--COMPUTE MAX[slot0.req & all_RR, arb.grant = 3]
+--COMPUTE MAX[processor.req & all_RR, arb.grant = 4]
+--COMPUTE MAX[slot1.req & all_RR, arb.grant = 5]
 --
 ---------------------------------------------------------------------------
 
 --
 -- Compute minimum and maximum delays for transactions
 --
---COMPUTE MIN[req0, isa_bridge.end_transaction]
---COMPUTE MAX[req0, isa_bridge.end_transaction]
---COMPUTE MIN[req1 & !grant = 1, grant = 1]
---COMPUTE MAX[req1 & !grant = 1, grant = 1]
---COMPUTE MIN[req1 & !grant = 1, scsi_ctrl.end_transaction]
---COMPUTE MAX[req1 & !grant = 1, scsi_ctrl.end_transaction]
---COMPUTE MIN[req2, vga_ctrl.end_transaction]
---COMPUTE MAX[req2, vga_ctrl.end_transaction]
---COMPUTE MIN[req3, slot0.end_transaction]
---COMPUTE MAX[req3, slot0.end_transaction]
---COMPUTE MIN[req4 & !grant = 4, grant = 4]
---COMPUTE MAX[req4 & !grant = 4, grant = 4]
---COMPUTE MIN[req4 & !grant = 4, processor.end_transaction]
---COMPUTE MAX[req4 & !grant = 4, processor.end_transaction]
---COMPUTE MIN[req5, slot1.end_transaction]
---COMPUTE MAX[req5, slot1.end_transaction]
+--COMPUTE MIN[isa_bridge.req, isa_bridge.end_transaction]
+--COMPUTE MAX[isa_bridge.req, isa_bridge.end_transaction]
+--COMPUTE MIN[scsi_ctrl.req & arb.grant != 1, arb.grant = 1]
+--COMPUTE MAX[scsi_ctrl.req & arb.grant != 1, arb.grant = 1]
+--COMPUTE MIN[scsi_ctrl.req & arb.grant != 1, scsi_ctrl.end_transaction]
+--COMPUTE MAX[scsi_ctrl.req & arb.grant != 1, scsi_ctrl.end_transaction]
+--COMPUTE MIN[vga_ctrl.req, vga_ctrl.end_transaction]
+--COMPUTE MAX[vga_ctrl.req, vga_ctrl.end_transaction]
+--COMPUTE MIN[slot0.req, slot0.end_transaction]
+--COMPUTE MAX[slot0.req, slot0.end_transaction]
+--COMPUTE MIN[processor.req & arb.grant != 4, arb.grant = 4]
+--COMPUTE MAX[processor.req & arb.grant != 4, arb.grant = 4]
+--COMPUTE MIN[processor.req & arb.grant != 4, processor.end_transaction]
+--COMPUTE MAX[processor.req & arb.grant != 4, processor.end_transaction]
+--COMPUTE MIN[slot1.req, slot1.end_transaction]
+--COMPUTE MAX[slot1.req, slot1.end_transaction]
 
 --SPEC AG((processor.start_transaction) -> AG !(scsi_ctrl.end_transaction))
 

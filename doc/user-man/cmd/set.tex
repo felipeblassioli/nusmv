@@ -1,3 +1,4 @@
+% -*-latex-*-
 \begin{nusmvCommand} {set} {Sets an environment variable}
  
 \cmdLine{set [-h] [<name>] [<value>]}
@@ -13,6 +14,11 @@ all variables.\\
 \opt{<value>} {Value to be assigned to the variable.}
 
 \end{cmdOpt}
+
+Using the \command{set} command to set a variable, without giving any
+explicit value is allowed, and sets the variable to \code{1}:\\
+\code{\nusmvprompt \command{set} foo}\\
+will set the variable foo to \code{1}.\\
 
 Interpolation of variables is allowed when using the \command{set}
 command. The variables are referred to with the prefix of '\$'. So for

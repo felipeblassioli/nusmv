@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``sat'' package of NuSMV version 2. 
-  Copyright (C) 2004 by ITC-irst.
+  Copyright (C) 2004 by FBK-irst.
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,20 +31,21 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: SatIncSolver.h,v 1.1.2.3 2005/11/16 12:09:46 nusmv Exp $]
+  Revision    [$Id: SatIncSolver.h,v 1.1.2.2.2.2.6.1 2010-02-18 10:00:03 nusmv Exp $]
 
 ******************************************************************************/
 
 #ifndef __SAT_SOLVER_SAT_INC_SOLVER__H
 #define __SAT_SOLVER_SAT_INC_SOLVER__H
 
-#include "SatSolver.h" 
+#include "SatSolver.h"
+#include "utils/Olist.h"
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -63,10 +64,10 @@ typedef struct SatIncSolver_TAG* SatIncSolver_ptr;
 /* Macro declarations                                                        */
 /*---------------------------------------------------------------------------*/
 #define SAT_INC_SOLVER(x) \
-	 ((SatIncSolver_ptr) x)
+         ((SatIncSolver_ptr) x)
 
 #define SAT_INC_SOLVER_CHECK_INSTANCE(x) \
-	 (nusmv_assert(SAT_INC_SOLVER(x) != SAT_INC_SOLVER(NULL)))
+         (nusmv_assert(SAT_INC_SOLVER(x) != SAT_INC_SOLVER(NULL)))
 
 /**AutomaticStart*************************************************************/
 /*---------------------------------------------------------------------------*/
@@ -75,25 +76,25 @@ typedef struct SatIncSolver_TAG* SatIncSolver_ptr;
 /* SatIncSolver Destructors */
 EXTERN void SatIncSolver_destroy ARGS((SatIncSolver_ptr self));
 
-EXTERN VIRTUAL SatSolverGroup 
+EXTERN VIRTUAL SatSolverGroup
 SatIncSolver_create_group ARGS((const SatIncSolver_ptr self));
 
-EXTERN VIRTUAL void 
+EXTERN VIRTUAL void
 SatIncSolver_destroy_group ARGS((const SatIncSolver_ptr self,
-				 SatSolverGroup group));
+                                 SatSolverGroup group));
 
-EXTERN VIRTUAL void 
-SatIncSolver_move_to_permanent_and_destroy_group 
+EXTERN VIRTUAL void
+SatIncSolver_move_to_permanent_and_destroy_group
                                        ARGS((const SatIncSolver_ptr self,
-					     SatSolverGroup group));
+                                             SatSolverGroup group));
 
 EXTERN VIRTUAL SatSolverResult
 SatIncSolver_solve_groups ARGS((const SatIncSolver_ptr self,
-				const lsList groups));
+                                const Olist_ptr groups));
 
 EXTERN VIRTUAL SatSolverResult
 SatIncSolver_solve_without_groups ARGS((const SatIncSolver_ptr self,
-					const lsList groups));
+                                        const Olist_ptr groups));
 
 /**AutomaticEnd***************************************************************/
 

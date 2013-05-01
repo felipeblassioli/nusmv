@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``trans.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,13 +31,13 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: bdd.h,v 1.1.2.2 2004/05/31 10:00:00 nusmv Exp $]
+  Revision    [$Id: bdd.h,v 1.1.2.2.4.1 2005-03-03 12:32:23 nusmv Exp $]
 
 ******************************************************************************/
 

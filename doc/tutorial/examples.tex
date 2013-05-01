@@ -1,7 +1,13 @@
+% -*-latex-*-
 \index{Input Language}
 In this section we describe the input language of \nusmv by
 presenting some examples of \nusmv models. A complete description
 of the \nusmv language can be found in the \NuSMV User Manual.
+Also, all mentioned example files can be found in the distributed
+archive of \NuSMV, or can be individually downloaded from the \nusmv
+web pages, at the URL 
+\texttt{<http://nusmv.fbk.eu/examples/examples.html>}.
+\\
 
 The input language of \nusmv is designed to allow for the
 description of Finite State Machines (FSMs from now on) which range from
@@ -57,8 +63,8 @@ VAR
 ASSIGN
   init(state) := ready;
   next(state) := case
-                   state = ready & request = 1 : busy;
-                   1                        : \{ready, busy\};
+                   state = ready & request = TRUE : busy;
+                   TRUE                        : \{ready, busy\};
                  esac;
 \end{alltt}
 
@@ -66,19 +72,20 @@ The space of states of the
 FSM is determined by the declarations of the state
 variables (in the above example \code{request} and \code{state}). The
 variable \code{request} is declared to be of (predefined) type
-\code{boolean}.  This means that it can assume the (integer) values
-\code{0} and \code{1}. The variable \code{state} is a scalar variable,
-which can take the symbolic values \code{ready} or \code{busy}.
-The following assignment sets the initial value of the variable
+\code{boolean}.  This means that it can assume the (boolean) values
+\code{FALSE} and \code{TRUE}. The variable \code{state} is a scalar variable,
+which can take the symbolic values \code{ready} or \code{busy}.  The
+following assignment sets the initial value of the variable
 \code{state} to \code{ready}. The initial value of \code{request} is
-completely unspecified, i.e. it can be either \code{0} or \code{1}.
-The transition relation of the FSM is expressed by defining
-the value of variables in the next state (i.e. after each transition),
-given the value of variables in the current states (i.e. before the
-transition). The \code{case} segment sets the next value of the variable
+completely unspecified, i.e. it can be either \code{FALSE}
+or \code{TRUE}.  The transition relation of the FSM is expressed by
+defining the value of variables in the next state (i.e. after each
+transition), given the value of variables in the current states
+(i.e. before the transition). The \code{case} segment sets the next
+value of the variable
 \code{state} to the value \code{busy} (after the colon) if its current
-value is \code{ready} and \code{request} is \code{1} (i.e. true).
-Otherwise (the \code{1} before the colon) the next value for
+value is \code{ready} and \code{request} is \code{TRUE}.  Otherwise
+(the \code{TRUE} before the colon) the next value for
 \code{state} can be any in the set \code{\{ready, busy\}}.
 The variable \code{request} is not assigned. This means that there are
 no constraints on its values, and thus it can assume any value.
@@ -106,13 +113,13 @@ MODULE counter_cell(carry_in)
  VAR
    value : boolean;
  ASSIGN
-   init(value) := 0;
-   next(value) := (value + carry_in) mod 2;
+   init(value) := FALSE;
+   next(value) := value xor carry_in;
  DEFINE
   carry_out := value & carry_in;
 MODULE main
  VAR
-   bit0 : counter_cell(1);
+   bit0 : counter_cell(TRUE);
    bit1 : counter_cell(bit0.carry_out);
    bit2 : counter_cell(bit1.carry_out);
 \end{alltt}
@@ -122,13 +129,13 @@ type \code{counter\_cell} in the module \code{main}, with the names
 \code{bit0}, \code{bit1} and \code{bit2} respectively. The \code{counter\_cell} 
 module has one formal parameter \code{carry\_in}. In
 the instance \code{bit0}, this parameter is given the actual value
-\code{1}. In the instance \code{bit1}, \code{carry\_in} is given the
+\code{TRUE}. In the instance \code{bit1}, \code{carry\_in} is given the
 value of the expression \code{bit0.carry\_out}. This expression is
 evaluated in the context of the \code{main} module. However, an
-expression of the form `$a.b$' denotes component
-`$b$' of module `$a$', just as if the module
-`$a$' were a data structure in a standard programming
-language. Hence, the \code{carry\_in} of module \code{bit1} is the
+expression of the form `$a.b$' denotes component `$b$' of module
+`$a$', just as if the module `$a$' were a data structure in a standard
+programming language. Hence, the \code{carry\_in} of
+module \code{bit1} is the
 \code{carry\_out} of module \code{bit0}.
 
 \index{DEFINE keyword}
@@ -157,6 +164,18 @@ definitions this is not the case.
 \label{Asynchronous Systems}
 \index{Asynchronous Systems}
 
+\fbox{\parbox[t]{\textwidth} {
+\emph{Important!} \\
+Since \nusmv version 2.5.0 processes are \emph{deprecated}.
+In future versions of \nusmv processes may be no longer supported,
+and only synchronous systems will be supported by the input language.
+Modeling of asynchronous systems will have to be resolved at
+higher level.
+}}
+%
+%
+\vspace{3mm}
+
 The previous examples describe synchronous systems, where the
 assignments statements are taken into account in parallel and
 simultaneously. \nusmv allows to model asynchronous systems.  It
@@ -178,7 +197,7 @@ MODULE inverter(input)
  VAR
    output : boolean;
  ASSIGN
-   init(output) := 0;
+   init(output) := FALSE;
    next(output) := !input;
 MODULE main
  VAR
@@ -204,7 +223,7 @@ use a fairness constraint.
 A fairness constraint restricts the attention of the model checker to
 only those execution paths along which a given formula is true
 infinitely often. Each process has a special variable called
-\code{running} which is \code{1} if and only if that process is
+\code{running} which is \code{TRUE} if and only if that process is
 currently executing.\\
 By adding the declaration:\\
 \begin{alltt}
@@ -223,7 +242,7 @@ MODULE inverter(input)
  VAR
    output : boolean;
  ASSIGN
-  init(output) := 0;
+  init(output) := FALSE;
   next(output) := (!input) union output;
 MODULE main
  VAR
@@ -288,10 +307,10 @@ model. It uses a variable semaphore to implement mutual exclusion
 between two asynchronous processes.  Each process has four states:
 \code{idle}, \code{entering}, \code{critical} and \code{exiting}. The
 \code{entering} state indicates that the process wants to enter its
-critical region. If the variable \code{semaphore} is \code{0}, it goes
-to the \code{critical} state, and sets \code{semaphore} to \code{1}. On
+critical region. If the variable \code{semaphore} is \code{FALSE}, it goes
+to the \code{critical} state, and sets \code{semaphore} to \code{TRUE}. On
 exiting its critical region, the process sets \code{semaphore} to
-\code{0} again.\\
+\code{FALSE} again.\\
 \begin{alltt}
 MODULE main
  VAR
@@ -299,7 +318,7 @@ MODULE main
    proc1     : process user(semaphore);
    proc2     : process user(semaphore);
  ASSIGN
-   init(semaphore) := 0;
+   init(semaphore) := FALSE;
 MODULE user(semaphore)
  VAR
    state : \{idle, entering, critical, exiting\};
@@ -311,13 +330,13 @@ MODULE user(semaphore)
        state = entering & !semaphore : critical;
        state = critical              : \{critical, exiting\};
        state = exiting               : idle;
-       1                             : state;
+       TRUE                          : state;
      esac;
    next(semaphore) :=
      case
-       state = entering : 1;
-       state = exiting  : 0;
-       1                : semaphore;
+       state = entering : TRUE;
+       state = exiting  : FALSE;
+       TRUE             : semaphore;
      esac;
  FAIRNESS
    running
@@ -351,7 +370,7 @@ MODULE inverter(input)
  VAR
    output : boolean;
  INIT
-   output = 0
+   output = FALSE
  TRANS
    next(output) = !input | next(output) = output
 \end{alltt}

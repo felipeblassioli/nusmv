@@ -17,7 +17,7 @@
 
   Copyright   [
   This file is part of the ``fsm.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -33,11 +33,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -48,14 +48,11 @@
 #include "utils/error.h"
 #include "parser/symbols.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: FairnessList.c,v 1.1.2.5 2004/05/07 13:04:48 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: FairnessList.c,v 1.1.2.5.4.1.6.1 2007-04-30 11:52:55 nusmv Exp $";
 
 
 #define FAIRNESS_LIST_ITERATOR(x) \
        ((FairnessListIterator_ptr) x)
-
-#define NODE_PTR(x) \
-       ((node_ptr) x)
 
 #define END_ITERATOR \
        FAIRNESS_LIST_ITERATOR(Nil)
@@ -94,12 +91,12 @@ typedef struct CompassionList_TAG
 static void fairness_list_finalize ARGS((Object_ptr object, void* dummy));
 
 static void fairness_list_init ARGS((FairnessList_ptr self, 
-				     DdManager* dd_manager));
+                                     DdManager* dd_manager));
 
 static void fairness_list_deinit ARGS((FairnessList_ptr self));
 
 static void fairness_list_deinit_aux ARGS((FairnessList_ptr self, 
-					   FairnessListIterator_ptr iter));
+                                           FairnessListIterator_ptr iter));
 
 static void fairness_list_finalize ARGS((Object_ptr object, void* dummy));
 
@@ -107,7 +104,7 @@ static Object_ptr fairness_list_copy ARGS((const Object_ptr self));
 
 static node_ptr 
 fairness_list_copy_aux ARGS((const FairnessList_ptr self, 
-			     const FairnessListIterator_ptr iter));
+                             const FairnessListIterator_ptr iter));
 
 
 /**Function********************************************************************
@@ -220,7 +217,7 @@ JusticeList_ptr JusticeList_create(DdManager* dd_manager)
 
 ******************************************************************************/
 BddStates JusticeList_get_p(const JusticeList_ptr self, 
-			    const FairnessListIterator_ptr iter)
+                            const FairnessListIterator_ptr iter)
 {
   BddStates res; 
   node_ptr bdd;
@@ -257,7 +254,7 @@ void JusticeList_append_p(JusticeList_ptr self, BddStates p)
 
   new = new_node(BDD, (node_ptr) p, Nil);
   FAIRNESS_LIST(self)->first = cons((node_ptr) new, 
-				    FAIRNESS_LIST(self)->first);
+                                    FAIRNESS_LIST(self)->first);
 }
 
 
@@ -273,7 +270,7 @@ void JusticeList_append_p(JusticeList_ptr self, BddStates p)
 
 ******************************************************************************/
 void JusticeList_apply_synchronous_product(JusticeList_ptr self, 
-					   const JusticeList_ptr other)
+                                           const JusticeList_ptr other)
 {
   FairnessListIterator_ptr iter;
 
@@ -322,7 +319,7 @@ CompassionList_ptr CompassionList_create(DdManager* dd_manager)
 
 ******************************************************************************/
 BddStates CompassionList_get_p(const CompassionList_ptr self, 
-			       const FairnessListIterator_ptr iter)
+                               const FairnessListIterator_ptr iter)
 {
   BddStates res;
   node_ptr couple;
@@ -354,7 +351,7 @@ BddStates CompassionList_get_p(const CompassionList_ptr self,
 
 ******************************************************************************/
 BddStates CompassionList_get_q(const CompassionList_ptr self, 
-			       const FairnessListIterator_ptr iter)
+                               const FairnessListIterator_ptr iter)
 {
   BddStates res;
   node_ptr couple;
@@ -387,7 +384,7 @@ BddStates CompassionList_get_q(const CompassionList_ptr self,
 
 ******************************************************************************/
 void CompassionList_append_p_q(CompassionList_ptr self, 
-			       BddStates p, BddStates q)
+                               BddStates p, BddStates q)
 {
   node_ptr bdd_l, bdd_r;
   node_ptr couple;
@@ -416,7 +413,7 @@ void CompassionList_append_p_q(CompassionList_ptr self,
 
 ******************************************************************************/
 void CompassionList_apply_synchronous_product(CompassionList_ptr self, 
-					      const CompassionList_ptr other)
+                                              const CompassionList_ptr other)
 {
   FairnessListIterator_ptr iter;
 
@@ -453,7 +450,7 @@ void CompassionList_apply_synchronous_product(CompassionList_ptr self,
 
 ******************************************************************************/
 static void fairness_list_init(FairnessList_ptr self, 
-			       DdManager* dd_manager)
+                               DdManager* dd_manager)
 {
   /* initializes the base class */
   object_init(OBJECT(self));
@@ -475,16 +472,16 @@ static void fairness_list_deinit(FairnessList_ptr self)
 
 
 static void fairness_list_deinit_aux(FairnessList_ptr self, 
-				     FairnessListIterator_ptr iter)
+                                     FairnessListIterator_ptr iter)
 {
   if( ! FairnessListIterator_is_end(iter) ) {
 
     switch(node_get_type(NODE_PTR(iter))) {
     case CONS:
       fairness_list_deinit_aux( self, 
-				FAIRNESS_LIST_ITERATOR(car(NODE_PTR(iter))) );
+                                FAIRNESS_LIST_ITERATOR(car(NODE_PTR(iter))) );
       fairness_list_deinit_aux( self, 
-				FAIRNESS_LIST_ITERATOR(cdr(NODE_PTR(iter))) );
+                                FAIRNESS_LIST_ITERATOR(cdr(NODE_PTR(iter))) );
       break;
 
     case BDD:
@@ -493,7 +490,7 @@ static void fairness_list_deinit_aux(FairnessList_ptr self,
 
     default:
       internal_error("fairness_list_deinit_aux: unexpected  %d-type node.", 
-		     node_get_type(NODE_PTR(iter)));  
+                     node_get_type(NODE_PTR(iter)));  
     }
     
     free_node(NODE_PTR(iter));
@@ -530,7 +527,7 @@ static Object_ptr fairness_list_copy(const Object_ptr object)
 
 
 static node_ptr fairness_list_copy_aux(const FairnessList_ptr self, 
-				       const FairnessListIterator_ptr iter)
+                                       const FairnessListIterator_ptr iter)
 {
   node_ptr res;
 
@@ -546,18 +543,18 @@ static node_ptr fairness_list_copy_aux(const FairnessList_ptr self,
       left  = FAIRNESS_LIST_ITERATOR(car(iter2));
       right = FAIRNESS_LIST_ITERATOR(cdr(iter2));
       res = cons( fairness_list_copy_aux(self, left), 
-		  fairness_list_copy_aux(self, right) );
+                  fairness_list_copy_aux(self, right) );
       break;
 
     case BDD:
       res = new_node(BDD, 
-		     NODE_PTR(bdd_dup((bdd_ptr) car(iter2)) ), 
-		     Nil);
+                     NODE_PTR(bdd_dup((bdd_ptr) car(iter2)) ), 
+                     Nil);
       break;
 
     default:
       internal_error("fairness_list_copy_aux: unexpected  %d-type node.", 
-		     node_get_type(iter2));  
+                     node_get_type(iter2));  
     }
     
   }

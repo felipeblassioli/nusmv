@@ -20,7 +20,7 @@
 
   Copyright   [
   This file is part of the ``compile'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst.
+  Copyright (C) 2000-2001 by FBK-irst.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -36,15 +36,18 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "compileInt.h"
+
+#include "compile/symb_table/SymbTable.h"
+
 #include "set/set.h"
 #include "utils/ustring.h"
 #include "utils/assoc.h"
@@ -52,11 +55,21 @@
 #include "utils/error.h"
 #include "enc/enc.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: compileCone.c,v 1.11.4.12.2.1 2005/07/14 15:58:25 nusmv Exp $";
+
+#include "parser/psl/psl_symbols.h"
+#include "parser/psl/pslNode.h"
+
+#include "compile/symb_table/ResolveSymbol.h"
+
+static char rcsid[] UTIL_UNUSED = "$Id: compileCone.c,v 1.11.4.12.4.15.4.38 2010-01-29 15:22:32 nusmv Exp $";
+
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
 /*---------------------------------------------------------------------------*/
+
+const int _UNTIMED_CURRENT = -2;
+const int _UNTIMED_NEXT = -1;
 
 
 /*---------------------------------------------------------------------------*/
@@ -78,6 +91,35 @@ static char rcsid[] UTIL_UNUSED = "$Id: compileCone.c,v 1.11.4.12.2.1 2005/07/14
 ******************************************************************************/
 #define BUILDING_DEP_SET (Set_t)-10
 
+
+/**Macro***********************************************************************
+
+  Synopsis     [Indicates that the dependency is empty]
+
+  Description  []
+
+  SideEffects  []
+
+  SeeAlso      []
+
+******************************************************************************/
+#define EMPTY_DEP_SET (Set_t)-11
+
+
+/**Macro***********************************************************************
+
+  Synopsis     [Indicates that no dependency has been yet computed.]
+
+  Description  []
+
+  SideEffects  []
+
+  SeeAlso      []
+
+******************************************************************************/
+#define NO_DEP_SET (Set_t)-12
+
+
 /**Macro***********************************************************************
 
   Synopsis     [Indicates that the COI computation should be verbose.]
@@ -89,7 +131,24 @@ static char rcsid[] UTIL_UNUSED = "$Id: compileCone.c,v 1.11.4.12.2.1 2005/07/14
   SeeAlso      []
 
 ******************************************************************************/
-#define COI_VERBOSE (opt_verbose_level_gt(options, 2))
+#define COI_VERBOSE (opt_verbose_level_gt(OptsHandler_get_instance(), 2))
+
+
+/**Macro***********************************************************************
+
+  Synopsis     [Clears and frees (with entries) given hash]
+
+  Description  []
+
+  SeeAlso      []
+
+******************************************************************************/
+#define FREE_HASH_ENTRIES(hash, func) \
+  if (hash != (hash_ptr) NULL) {      \
+    clear_assoc_and_free_entries(hash, func); \
+    free_assoc(hash);                         \
+    hash = (hash_ptr) NULL;                   \
+  }
 
 
 /*---------------------------------------------------------------------------*/
@@ -116,32 +175,38 @@ static char rcsid[] UTIL_UNUSED = "$Id: compileCone.c,v 1.11.4.12.2.1 2005/07/14
   SeeAlso     []
 
 ******************************************************************************/
-static hash_ptr coi_hash = (hash_ptr)NULL;
+static hash_ptr coi_hash = (hash_ptr) NULL;
 void init_coi_hash() {
-  coi_hash = new_assoc();
-  nusmv_assert(coi_hash != (hash_ptr)NULL);
+  if (coi_hash == (hash_ptr) NULL) {
+    coi_hash = new_assoc();
+    nusmv_assert(coi_hash != (hash_ptr) NULL);
+  }
 }
 void insert_coi_hash(node_ptr key, Set_t value) {
   nusmv_assert(coi_hash != (hash_ptr)NULL);
+  if (value != BUILDING_DEP_SET && value != NO_DEP_SET && value != NULL) {
+    value = Set_Freeze(value);
+    value = Set_Copy(value);
+  }
   insert_assoc(coi_hash, key, (node_ptr)value);
 }
 Set_t lookup_coi_hash(node_ptr key) {
   nusmv_assert(coi_hash != (hash_ptr)NULL);
-  return((Set_t)find_assoc(coi_hash, key));
+  return (Set_t) find_assoc(coi_hash, key);
 }
 
 static assoc_retval coi_hash_free(char *key, char *data, char * arg)
 {
-  Set_t element = (node_ptr)data;
+  Set_t element = (Set_t) data;
 
-  if (element != (Set_t)NULL) {
+  if (((Set_t)NULL != element) && (NO_DEP_SET != element)) {
     Set_ReleaseSet(element);
   }
-  return(ASSOC_DELETE);
+  return ASSOC_DELETE;
 }
 
 void clear_coi_hash() {
-  clear_assoc_and_free_entries(coi_hash, coi_hash_free);
+  FREE_HASH_ENTRIES(coi_hash, coi_hash_free);
 }
 
 
@@ -161,27 +226,33 @@ void init_define_dep_hash() {
   nusmv_assert(define_dep_hash != (hash_ptr)NULL);
 }
 void insert_define_dep_hash(node_ptr key, Set_t value) {
-  nusmv_assert(define_dep_hash != (hash_ptr)NULL);
-  insert_assoc(define_dep_hash, key, (node_ptr)value);
+  nusmv_assert(define_dep_hash != (hash_ptr) NULL);
+
+  if (value != BUILDING_DEP_SET && value != NULL && value != EMPTY_DEP_SET) {
+    value = Set_Freeze(value);
+    value = Set_Copy(value);
+  }
+  insert_assoc(define_dep_hash, key, (node_ptr) value);
 }
 Set_t lookup_define_dep_hash(node_ptr key) {
   nusmv_assert(define_dep_hash != (hash_ptr)NULL);
-  return((Set_t)find_assoc(define_dep_hash, key));
+  return (Set_t) find_assoc(define_dep_hash, key);
 }
 
 static assoc_retval define_dep_hash_free(char *key, char *data, char * arg)
 {
-  Set_t element = (node_ptr)data;
+  Set_t element = (Set_t) data;
 
-  if ((element != (Set_t) NULL) && (element != BUILDING_DEP_SET)) {
+  if ((element != (Set_t) NULL) && (element != BUILDING_DEP_SET) &&
+      (element != EMPTY_DEP_SET)) {
     Set_ReleaseSet(element);
   }
-  return(ASSOC_DELETE);
+  return ASSOC_DELETE;
 }
 
-void clear_define_dep_hash() 
+void clear_define_dep_hash()
 {
-  clear_assoc_and_free_entries(define_dep_hash, define_dep_hash_free);
+  FREE_HASH_ENTRIES(define_dep_hash, define_dep_hash_free);
 }
 
 
@@ -202,45 +273,178 @@ void init_dependencies_hash() {
 }
 void insert_dependencies_hash(node_ptr key, Set_t value) {
   nusmv_assert(dependencies_hash != (hash_ptr)NULL);
-  insert_assoc(dependencies_hash, key, (node_ptr)value);
+  if (value != BUILDING_DEP_SET && value != NULL && value != EMPTY_DEP_SET) {
+    value = Set_Freeze(value);
+    value = Set_Copy(value);
+  }
+  insert_assoc(dependencies_hash, key, NODE_PTR(value));
 }
 Set_t lookup_dependencies_hash(node_ptr key) {
   nusmv_assert(dependencies_hash != (hash_ptr)NULL);
-  return((Set_t)find_assoc(dependencies_hash, key));
+  return (Set_t) find_assoc(dependencies_hash, key);
 }
 
 static assoc_retval dependencies_hash_free(char *key, char *data, char * arg)
 {
-  Set_t element = (node_ptr)data;
+  Set_t element = (Set_t) data;
 
-  if (element != (Set_t)NULL) {
+  if (element != (Set_t)NULL && element != BUILDING_DEP_SET &&
+      element != EMPTY_DEP_SET) {
     Set_ReleaseSet(element);
   }
-  return(ASSOC_DELETE);
+  return ASSOC_DELETE;
 }
 
 void clear_dependencies_hash() {
-  clear_assoc_and_free_entries(dependencies_hash, dependencies_hash_free);
+  FREE_HASH_ENTRIES(dependencies_hash, dependencies_hash_free);
 }
 
-static node_ptr mk_hash_key(node_ptr e, node_ptr c) {
-  return(find_node(CONTEXT, c, e));
+static node_ptr mk_hash_key(node_ptr e, node_ptr c, SymbFilterType filter,
+                            boolean preserve_time, int time)
+{
+  return find_node(CONS,
+                   NODE_FROM_INT(time),
+                   find_node(CONS,
+                             find_node(CONS,
+                                       find_node(CONTEXT, c, e),
+                                       NODE_FROM_INT(filter)),
+                             NODE_FROM_INT(preserve_time)));
 }
 
+
+
+/**Variable********************************************************************
+
+  Synopsis    [The hash of constants of a given formula.]
+
+  Description [This hash associates to each formula the corresponding
+  set of constants]
+
+  SeeAlso     []
+
+******************************************************************************/
+static  hash_ptr consts_hash = (hash_ptr)NULL;
+void init_consts_hash()
+{
+  consts_hash = new_assoc();
+  nusmv_assert(consts_hash != (hash_ptr)NULL);
+}
+void insert_consts_hash(node_ptr key, Set_t value)
+{
+  nusmv_assert(consts_hash != (hash_ptr)NULL);
+  if (value != NULL && value != EMPTY_DEP_SET) {
+    value = Set_Copy(Set_Freeze(value));
+  }
+  insert_assoc(consts_hash, key, (node_ptr) value);
+}
+Set_t lookup_consts_hash(node_ptr key)
+{
+  nusmv_assert(consts_hash != (hash_ptr)NULL);
+  return (Set_t) find_assoc(consts_hash, key);
+}
+static assoc_retval consts_hash_free(char *key, char *data, char * arg)
+{
+  Set_t element = (Set_t) data;
+
+  if (element != (Set_t)NULL && element != EMPTY_DEP_SET) {
+    Set_ReleaseSet(element);
+  }
+  return ASSOC_DELETE;
+}
+void clear_consts_hash()
+{
+  FREE_HASH_ENTRIES(consts_hash, consts_hash_free);
+}
+
+
+/**Variable********************************************************************
+
+  Synopsis    [The hash of cone at depth 0 for a variable]
+
+  Description [This hash associates to a variable the corresponding
+  cone of influence at depth 0, once it has been computes.]
+
+  SeeAlso     []
+
+******************************************************************************/
+static hash_ptr coi0_hash = (hash_ptr) NULL;
+void init_coi0_hash() {
+  if (coi0_hash == (hash_ptr) NULL) {
+    coi0_hash = new_assoc();
+    nusmv_assert(coi0_hash != (hash_ptr) NULL);
+  }
+}
+void insert_coi0_hash(node_ptr key, Set_t value) {
+  nusmv_assert(coi0_hash != (hash_ptr)NULL);
+  if (value != BUILDING_DEP_SET && value != NO_DEP_SET && value != NULL) {
+    value = Set_Freeze(value);
+    value = Set_Copy(value);
+  }
+  insert_assoc(coi0_hash, key, (node_ptr)value);
+}
+Set_t lookup_coi0_hash(node_ptr key) {
+  nusmv_assert(coi0_hash != (hash_ptr)NULL);
+  return (Set_t) find_assoc(coi0_hash, key);
+}
+
+static assoc_retval coi0_hash_free(char *key, char *data, char * arg)
+{
+  Set_t element = (Set_t) data;
+
+  if (((Set_t)NULL != element) && (NO_DEP_SET != element)) {
+    Set_ReleaseSet(element);
+  }
+  return ASSOC_DELETE;
+}
+
+void clear_coi0_hash() {
+  FREE_HASH_ENTRIES(coi0_hash, coi0_hash_free);
+}
 
 /**AutomaticStart*************************************************************/
 
 /*---------------------------------------------------------------------------*/
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
-static Set_t 
-formulaGetDependenciesRecur ARGS((const Encoding_ptr senc, 
-				  node_ptr, node_ptr));
+static Set_t
+formulaGetDependenciesRecur ARGS((const SymbTable_ptr,
+                                  node_ptr, node_ptr,
+                                  SymbFilterType, boolean, int));
 
-static Set_t 
-formulaGetDefinitionDependencies ARGS((const Encoding_ptr senc, node_ptr));
 
-static void coiInit ARGS((const Encoding_ptr senc));
+static Set_t
+formulaGetDefinitionDependencies ARGS((const SymbTable_ptr, node_ptr,
+                                       SymbFilterType,
+                                       boolean preserve_time, int time));
+
+static void
+coiInit ARGS((const SymbTable_ptr symb_table, FlatHierarchy_ptr hierarchy));
+
+
+static Set_t
+formulaGetConstantsRecur ARGS((const SymbTable_ptr symb_table,
+                               node_ptr formula, node_ptr context));
+
+#if 0
+/* Disabled because no longer used */
+static Set_t
+get_array_cells ARGS((const SymbTable_ptr symb_table, node_ptr arr));
+
+static void resolve_range ARGS((SymbTable_ptr st,
+                          node_ptr range, node_ptr context,
+                          int* low, int* high));
+#endif
+
+static Set_t
+_coi_get_var_coi0 ARGS((SymbTable_ptr st,
+                        FlatHierarchy_ptr hierarchy,
+                        node_ptr var,
+                        boolean * nonassign,
+                        boolean use_cache));
+
+
+static Set_t
+computeCoiVar ARGS((SymbTable_ptr st, FlatHierarchy_ptr fh, node_ptr var));
 
 /**AutomaticEnd***************************************************************/
 
@@ -258,85 +462,231 @@ static void coiInit ARGS((const Encoding_ptr senc));
   set. When a formula depends on a next variable, then the
   corresponding current variable is added to the set. When an atom is
   found a call to <tt>formulaGetDefinitionDependencies</tt> is
-  performed to compute the dependencies.]
+  performed to compute the dependencies. Returned set must be disposed
+  by the caller]
 
   SideEffects        []
 
   SeeAlso            [formulaGetDefinitionDependencies]
 
 ******************************************************************************/
-Set_t Formula_GetDependencies(const Encoding_ptr senc, node_ptr formula, 
-			      node_ptr context)
+Set_t Formula_GetDependencies(const SymbTable_ptr symb_table,
+                              node_ptr formula, node_ptr context)
 {
-  Set_t result;
-  int temp = yylineno;
-  node_ptr hash_key;
-
-  if (formula == Nil) return(Set_MakeEmpty());
-
-  hash_key = mk_hash_key(formula, context);
-  result = lookup_dependencies_hash(hash_key);
-  if (result == (Set_t)NULL) {
-    yylineno = node_get_lineno(formula);
-    result = formulaGetDependenciesRecur(senc, formula, context);
-    yylineno = temp;
-    insert_dependencies_hash(hash_key, result);
-  }
-  return(result);
+  return Formula_GetDependenciesByType(symb_table, formula,
+                                       context, VFT_ALL, false);
 }
 
 /**Function********************************************************************
 
-  Synopsis           [Compute the dependencies of two set of formulae]
+  Synopsis           [Computes the dependencies of an SMV expression by type]
 
-  Description [Given a formula and a list of fairness constraints, the
-  set of variables occurring in them is computed.]
+  Description        [The set of dependencies of a given formula are
+  computed, as in Formula_GetDependencies, but the variable type filters the
+  dependency collection.
+
+  If flag preserve_time is true, then entries in the returned set
+  will preserve the time they occur within the formula. For
+  example, formula 'a & next(b) = 2 & attime(c, 2) < 4' returns
+  {a,b,c} if preserve_time is false, and {a, next(b), attime(c, 2)}
+  if preserve_time is true.
+
+  Returned set must be disposed by the caller]
 
   SideEffects        []
 
-  SeeAlso            []
+  SeeAlso            [formulaGetDependenciesByTypeAux
+  formulaGetDefinitionDependencies]
 
 ******************************************************************************/
-Set_t Formulae_GetDependencies(const Encoding_ptr senc, node_ptr formula, 
-			       node_ptr justice, node_ptr compassion)
+Set_t
+Formula_GetDependenciesByType(const SymbTable_ptr symb_table,
+                              node_ptr formula, node_ptr context,
+                              SymbFilterType filter,
+                              boolean preserve_time)
 {
   Set_t result;
-  Set_t result1, result2, result3;
+  int temp;
 
-  result1 = Formula_GetDependencies(senc, formula, Nil);
-  result2 = Formula_GetDependencies(senc, justice, Nil);
-  result3 = Formula_GetDependencies(senc, compassion, Nil);
+  if (formula == Nil) return Set_MakeEmpty();
 
-  result = Set_Union(Set_Union(result1, result2),result3);
+  temp = yylineno;
+
+  yylineno = node_get_lineno(formula);
+  result = formulaGetDependenciesRecur(symb_table, formula, context, filter,
+                                       preserve_time, _UNTIMED_CURRENT);
+  yylineno = temp;
+
   return result;
 }
 
 
 /**Function********************************************************************
 
-  Synopsis           [Compute the COI of a given set of variables]
+  Synopsis           [Compute the dependencies of two set of formulae]
 
-  Description        [Computes the COI of a given set of variables.]
+  Description [Given a formula and a list of fairness constraints, the
+  set of variables occurring in them is computed. Returned Set must be
+  disposed by the caller]
 
   SideEffects        []
 
   SeeAlso            []
 
 ******************************************************************************/
-Set_t ComputeCOI(const Encoding_ptr senc, Set_t base)
+Set_t Formulae_GetDependencies(const SymbTable_ptr symb_table,
+                               node_ptr formula,
+                               node_ptr justice, node_ptr compassion)
 {
-  Set_t coi = base;
+  Set_t result1, result2, result3;
+
+  result1 = Formula_GetDependencies(symb_table, formula, Nil);
+  result2 = Formula_GetDependencies(symb_table, justice, Nil);
+  result3 = Formula_GetDependencies(symb_table, compassion, Nil);
+
+  result1 = Set_Union(result1, result2);
+  result1 = Set_Union(result1, result3);
+  Set_ReleaseSet(result3);
+  Set_ReleaseSet(result2);
+  return result1;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Calculates the set of constants occurring into
+  the given formula]
+
+  Description [Given a formula the set of constants occurring in
+  them is computed and returned. Returned set must be disposed by the caller]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+Set_t Formula_GetConstants(const SymbTable_ptr symb_table,
+                           node_ptr formula, node_ptr context)
+{
+  return formulaGetConstantsRecur(symb_table, formula, context);
+}
+
+/**Function********************************************************************
+
+  Synopsis           [Computes the COI of a given expression]
+
+  Description        [Computes the COI of a given expression,
+                      up to step "steps" (or fixpoint if steps = -1).
+                      If not NULL, if the fixpoint has been reached
+                      (ie: there are no more dependencies), reached_fixpoint
+                      is set to true.]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+Set_t ComputeCOIFixpoint(const SymbTable_ptr symb_table,
+                         const FlatHierarchy_ptr hierarchy,
+                         const Expr_ptr expression,
+                         const int steps,
+                         boolean* reached_fixpoint)
+{
+  Set_t deps;
+  Set_t symbols_left;
+  int i = 0;
+
+  deps = Formula_GetDependencies(symb_table, expression, Nil);
+
+  if (steps == -1) {
+    return ComputeCOI(symb_table, deps);
+  }
+
+  symbols_left = Set_Copy(deps);
+
+  while ((i < steps) && (!Set_IsEmpty(symbols_left))) {
+    Set_Iterator_t iter;
+    Set_t tmp = Set_MakeEmpty();
+
+    SET_FOREACH(symbols_left, iter) {
+      Set_t base;
+      node_ptr var = Set_GetMember(symbols_left, iter);
+      boolean nonassign = false;
+
+      /* Here we do no enable memoizing for cone at depth 0. The
+         reason being that we are not guaranteed the hierarchy is the
+         mainFlatHierarchy. If it is not, than possible momoized
+         values may be wrong for this hierarchy */
+      base = _coi_get_var_coi0(symb_table, hierarchy, var, &nonassign, false);
+
+      tmp = Set_Union(tmp, base);
+      Set_ReleaseSet(base);
+    }
+
+    /* Remove from the freshly found variables the variables we
+       already know  */
+    Set_ReleaseSet(symbols_left);
+    symbols_left = Set_Copy(tmp);
+    symbols_left = Set_Difference(symbols_left, deps);
+    deps = Set_Union(deps, tmp);
+    Set_ReleaseSet(tmp);
+
+    ++i;
+  }
+
+  if ((boolean*)NULL != reached_fixpoint) {
+    if (Set_IsEmpty(symbols_left)) *reached_fixpoint = true;
+    else *reached_fixpoint = false;
+  }
+
+  Set_ReleaseSet(symbols_left);
+
+  return deps;
+}
+
+/**Function********************************************************************
+
+  Synopsis           [Computes the COI of a given set of variables, defined
+  within the given symb_table]
+
+  Description        [Computes the COI of a given set of variables, defined
+  within the given symb_table. Returned Set must be disposed by the caller]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+Set_t ComputeCOI(const SymbTable_ptr symb_table, Set_t base)
+{
+  Set_t coi = Set_Copy(base);
+  Set_Iterator_t iter;
 
   if (! cmp_struct_get_coi(cmps)) {
-    coiInit(senc);
+    if (opt_verbose_level_gt(OptsHandler_get_instance(), 1)) {
+      fprintf(nusmv_stderr, "Initializing Cone Of Influence...\n");
+    }
+
+
+    /*   [MR2??]: by making it explicit on which hierarchy it operates.*/
+
+    coiInit(symb_table, mainFlatHierarchy);
     cmp_struct_set_coi(cmps);
+
+    if (opt_verbose_level_gt(OptsHandler_get_instance(), 1)) {
+      fprintf(nusmv_stderr, "COI initialized.\n");
+    }
   }
 
-  while(Set_IsEmpty(base) == false) {
-    node_ptr name = Set_GetFirst(base);
-    coi = Set_Union(coi, lookup_coi_hash(name));
-    base = Set_GetRest(base);
+  SET_FOREACH(base, iter) {
+    node_ptr var = Set_GetMember(base, iter);
+
+
+    /*   [MR2??]: by making it explicit on which hierarchy it operates. */
+    Set_t varcoi = computeCoiVar(symb_table, mainFlatHierarchy, var);
+    coi = Set_Union(coi, varcoi);
   }
+
   return coi;
 }
 
@@ -348,17 +698,21 @@ Set_t ComputeCOI(const Encoding_ptr senc, Set_t base)
 /* Definition of static functions                                            */
 /*---------------------------------------------------------------------------*/
 
+
 /**Function********************************************************************
 
   Synopsis           [Compute the dependencies of an atom]
 
-  Description        [This function computes the dependencies of an
-  atom. If the atom corresponds to a variable then the singleton with
-  the variable is returned. If the atom corresponds to a "running"
+  Description [This function computes the dependencies of an atom. If
+  the atom corresponds to a variable then the singleton with the
+  variable is returned. If the atom corresponds to a "running"
   condition the singleton with variable PROCESS_SELECTOR_VAR_NAME is
   returned. Otherwise if the atom corresponds to a defined symbol the
   dependency set corresponding to the body of the definition is
-  computed and returned.]
+  computed and returned. filter specifies what variables we are
+  interested to, as in Formula_GetDependenciesByType, and
+  is_inside_next is supposed to be true if the atom is inside a Next,
+  false otherwise. Returned set must be disposed by the caller]
 
   SideEffects        [The <tt>define_dep_hash</tt> is modified in
   order to memoize previously computed dependencies of defined symbols.]
@@ -366,44 +720,125 @@ Set_t ComputeCOI(const Encoding_ptr senc, Set_t base)
   SeeAlso            [Formula_GetDependencies]
 
 ******************************************************************************/
-static Set_t 
-formulaGetDefinitionDependencies(const Encoding_ptr senc, node_ptr formula)
-{
-  Set_t result = Set_MakeEmpty();
 
-  if (Encoding_is_symbol_var(senc, formula)) {
-    result = Set_MakeSingleton((Set_Element_t)formula);
-  }
-  else if (Encoding_is_symbol_define(senc, formula)) {
-    /* It is a define and the type must be CONTEXT */
-    Set_t res = lookup_define_dep_hash(formula);
-    if (res == BUILDING_DEP_SET) { error_circular(formula); }
-    if (res != (Set_t) NULL) {
-      /* dependencies of the defined symbol have been previously
-	 computed */
-      result = res;
+static Set_t
+formulaGetDefinitionDependencies(const SymbTable_ptr symb_table,
+                                 node_ptr formula, SymbFilterType filter,
+                                 boolean preserve_time, int time)
+{
+  Set_t result;
+  if (SymbTable_is_symbol_var(symb_table, formula)) {
+    if (((filter & VFT_INPUT) && SymbTable_is_symbol_input_var(symb_table,
+                                                               formula)) ||
+         ((filter & VFT_CURRENT) && SymbTable_is_symbol_state_var(symb_table,
+                                                                  formula)) ||
+         ((filter & VFT_FROZEN) && SymbTable_is_symbol_frozen_var(symb_table,
+                                                                  formula))) {
+      if (preserve_time) {
+        if ( _UNTIMED_NEXT == time &&
+             !SymbTable_is_symbol_input_var(symb_table, formula) ) {
+          formula = Expr_next(formula, symb_table);
+        }
+        else if (time >= 0) {
+          formula = Expr_attime(formula, time, symb_table);
+        }
+      }
+
+
+      return Set_MakeSingleton((Set_Element_t) formula);
+    }
+    /* a variable filtered out */
+    return Set_MakeEmpty();
+  } /* end of outer if branch */
+
+  if (SymbTable_is_symbol_define(symb_table, formula)) {
+    node_ptr key = mk_hash_key(formula, Nil, filter, preserve_time, time);
+    result = lookup_define_dep_hash(key);
+    if (result == BUILDING_DEP_SET) { error_circular(formula); }
+
+    if (result == EMPTY_DEP_SET) {
+      if (filter & VFT_DEFINE) {
+        result = Set_MakeSingleton(formula);
+        /* We mark the formula as closed, storing the computed
+           dependencies for further use. */
+        insert_define_dep_hash(key, result);
+        return result;
+      }
+      else {
+        return Set_MakeEmpty();
+      }
+    }
+
+    if (result == (Set_t) NULL) {
+      /* We mark the formula as open and we start looking for the body
+         dependencies. */
+      node_ptr nformula;
+      insert_define_dep_hash(key, BUILDING_DEP_SET);
+      io_atom_push(formula);
+      nformula = SymbTable_get_define_body(symb_table, formula);
+      result = formulaGetDependenciesRecur(symb_table, nformula,
+                            SymbTable_get_define_context(symb_table, formula),
+                            filter, preserve_time, time);
+      io_atom_pop();
+
+      /* We add define to the result set if defines are include in filter */
+      if (filter & VFT_DEFINE) {
+        result = Set_AddMember(result, formula);
+      }
+
+      /* We mark the formula as closed, storing the computed
+         dependencies for further use. */
+      if (Set_IsEmpty(result)) insert_define_dep_hash(key, EMPTY_DEP_SET);
+      else insert_define_dep_hash(key, result);
     }
     else {
-      /* We mark the formula as open and we start looking for the body
-	 dependencies. */
-      node_ptr def = Encoding_lookup_symbol(senc, formula);
-      insert_define_dep_hash(formula, BUILDING_DEP_SET);
-      io_atom_push(formula);
-      result = Formula_GetDependencies(senc, def, Nil);
-      io_atom_pop();
-      
-      /* We mark the formula as closed, storing the computed
-	 dependencies for further use. */
-      insert_define_dep_hash(formula, result);
+      result = Set_Copy(result);
     }
   }
-  
+  else if (SymbTable_is_symbol_array_define(symb_table, formula)) {
+    /* Recursively compute the dependencies for this define array */
+    node_ptr nformula = SymbTable_get_array_define_body(symb_table, formula);
+    result = formulaGetDependenciesRecur(symb_table, nformula,
+                    SymbTable_get_array_define_context(symb_table, formula),
+                    filter, preserve_time, time);
+
+    /* We add the define array to the result set if defines are include in
+       filter */
+    if (filter & VFT_DEFINE) {
+      result = Set_AddMember(result, formula);
+    }
+  }
+  else if (SymbTable_is_symbol_variable_array(symb_table, formula)) {
+    /* Array dependencies are all it's elements */
+
+    SymbType_ptr type;
+    int low, high;
+    int i;
+
+    type = SymbTable_get_variable_array_type(symb_table, formula);
+    low = SymbType_get_array_lower_bound(type);
+    high = SymbType_get_array_upper_bound(type);
+
+    result = Set_MakeEmpty();
+
+    for (i = low; i <= high; ++i) {
+      node_ptr index = find_node(NUMBER, NODE_FROM_INT(i), Nil);
+      node_ptr arr_var = find_node(ARRAY, formula, index);
+      Set_t ret;
+
+      ret = formulaGetDefinitionDependencies(symb_table, arr_var, filter,
+                                             preserve_time, time);
+
+      result = Set_Union(result, ret);
+    }
+
+  }
   else {
     fprintf(nusmv_stderr, "Undefined symbol \"");
     print_node(nusmv_stderr, formula);
     fprintf(nusmv_stderr, "\"\n");
     nusmv_exit(1);
-  }    
+  }
 
   return result;
 }
@@ -411,408 +846,1257 @@ formulaGetDefinitionDependencies(const Encoding_ptr senc, node_ptr formula)
 
 /**Function********************************************************************
 
-  Synopsis           [Recursive call to Formula_GetDependencies.]
+  Synopsis           [Recursive call to Formula_GetDependenciesByType]
 
-  Description        [Recursive call to Formula_GetDependencies.]
+  Description        [Recursive call to Formula_GetDependenciesByType.
+  Returned set must be released by the caller.]
 
   SideEffects        []
 
-  SeeAlso            [Formula_GetDependencies formulaGetDefinitionDependencies]
+  SeeAlso            [formulaGetDefinitionDependencies
+Formula_GetDependenciesByType]
 
 ******************************************************************************/
-static Set_t formulaGetDependenciesRecur(const Encoding_ptr senc, 
-					 node_ptr formula, node_ptr context)
+static Set_t
+formulaGetDependenciesRecur(const SymbTable_ptr symb_table,
+                            node_ptr formula, node_ptr context,
+                            SymbFilterType filter,
+                            boolean preserve_time, int time)
 {
-  if (formula == Nil) return Set_MakeEmpty();
+  Set_t result;
+  node_ptr hash_key;
+
+  /* 0 for filter means no variables are looked for. Do not create
+     a special constant in SymbFilterType, otherwise it will be
+     visible outside (which may be not good). */
+  if (formula == Nil || filter == 0) return Set_MakeEmpty();
+
+  hash_key = mk_hash_key(formula, context, filter, preserve_time, time);
+  result = lookup_dependencies_hash(hash_key);
+
+  if (result == EMPTY_DEP_SET) return Set_MakeEmpty();
+  if (result != (Set_t) NULL) return Set_Copy(result);
 
   switch (node_get_type(formula)) {
   case CONTEXT:
-    return Formula_GetDependencies(senc, cdr(formula), car(formula));
+    result = formulaGetDependenciesRecur(symb_table, cdr(formula),
+                                         car(formula), filter,
+                                         preserve_time, time);
+    break;
 
-  case TRUEEXP:
-  case FALSEEXP:
-    return Set_MakeEmpty();
-
-  case NUMBER:
-    return Set_MakeEmpty();
+  case BIT:
+    /* ignore bits, consider only scalar vars */
+    result = formulaGetDependenciesRecur(symb_table, car(formula), context,
+                                         filter, preserve_time, time);
+    break;
 
   case ATOM:
     {
-      node_ptr name = find_node(DOT, context, find_atom(formula));
-      node_ptr param = lookup_param_hash(name);
-      boolean is_symb = Encoding_is_symbol_declared(senc, name);
-      node_ptr constant = lookup_flatten_constant_hash(find_atom(formula));
+      ResolveSymbol_ptr rs;
+      node_ptr name;
 
-      if (constant == (node_ptr) NULL) {
-	/* try with a flatten version of atom: */
-	constant = lookup_flatten_constant_hash(name);
+      rs = SymbTable_resolve_symbol(symb_table, formula, context);
+
+      name = ResolveSymbol_get_resolved_name(rs);
+
+      if (ResolveSymbol_is_error(rs)) {
+        ResolveSymbol_throw_error(rs);
       }
 
-      if (((param  != (node_ptr)NULL) && is_symb) ||
-          (is_symb && (constant != (node_ptr)NULL))  ||
-          ((param  != (node_ptr) NULL) && (constant != (node_ptr) NULL))) {
-	error_ambiguous(formula);
+      if (ResolveSymbol_is_parameter(rs)) {
+        /* a formal parameter */
+        node_ptr param;
+        param = SymbTable_get_flatten_actual_parameter(symb_table, name);
+        result = formulaGetDependenciesRecur(symb_table, param, context,
+                                             filter, preserve_time, time);
       }
-      if (param != (node_ptr)NULL) {
-        return Formula_GetDependencies(senc, param, context);
+      else if (ResolveSymbol_is_constant(rs)) result = Set_MakeEmpty();
+      else { /* it should be a defined symbol, running, or a variable */
+        result = formulaGetDefinitionDependencies(symb_table,
+                                                  name, filter,
+                                                  preserve_time, time);
       }
-      if (constant != (node_ptr)NULL) {
-        return Set_MakeEmpty();
-      }
-      /* it should be a defined symbol, running, or a variable */
-      return formulaGetDefinitionDependencies(senc, 
-			   CompileFlatten_resolve_name(formula, context));
+
+      break;
     }
 
-  case DOT:
-  case ARRAY:
+    /* a variable of word type */
+  case SIGNED_WORD:
+  case UNSIGNED_WORD:
+    /* ignore width (a constant), consider only bits */
+    result = formulaGetDependenciesRecur(symb_table, car(formula),
+                                         context, filter, preserve_time, time);
+    break;
+
+    /* no dependencies */
+  case FAILURE:
+  case TRUEEXP:
+  case FALSEEXP:
+  case NUMBER:
+  case NUMBER_FRAC:
+  case NUMBER_REAL:
+  case NUMBER_EXP:
+  case NUMBER_UNSIGNED_WORD:
+  case NUMBER_SIGNED_WORD:
+  case UWCONST:
+  case SWCONST:
+  case TWODOTS: /* Sets */
+  case WSIZEOF: /* It is not important the expression inside, it is
+                   like a constant */
+  case CAST_TOINT: /* It is not important the expression inside, it is like
+                  a constant */
+    result = Set_MakeEmpty();
+    break;
+
+    /* unary operation */
+  case NEXT:   /* next(alpha), with alpha possibly complex, thus ... */
+    /* nested next are checked by type checker */
+    if(filter & VFT_NEXT) {
+      /* the next variables become the current variables from this frame on */
+      filter = (filter & (~VFT_NEXT)) | VFT_CURRENT;
+    }
+    else if (filter & VFT_CURRENT) {
+      filter = filter & (~VFT_CURRENT);
+    }
+
+    /* input and frozen variables are searched for independently of
+       next-operator */
+    result = formulaGetDependenciesRecur(symb_table, car(formula), context,
+                                         filter, preserve_time, _UNTIMED_NEXT);
+    break;
+
+  case ATTIME: /* the variable without time information are returned */
     {
-      node_ptr name = CompileFlatten_resolve_name(formula, context);
-      add_ptr temp = (add_ptr) lookup_flatten_constant_hash(name);
-
-      if (temp != (add_ptr)NULL) {
-        return Set_MakeEmpty();
-      }
-      else {
-        return formulaGetDefinitionDependencies(senc, name);
-      }
+      int time2 = Expr_attime_get_time(formula);
+      result = formulaGetDependenciesRecur(symb_table, car(formula),
+                                           context, filter,
+                                           preserve_time, time2);
+      break;
     }
 
-  case CONS:
-    {
-      Set_t left = Formula_GetDependencies(senc, car(formula), context);
-      Set_t right = Formula_GetDependencies(senc, cdr(formula), context);
-      return Set_Union(left, right);
-    }
-
-    /* Sets */
-  case TWODOTS:
-    return Set_MakeEmpty();
-
-  case UNION:
-  case SETIN:
-    {
-      Set_t left = Formula_GetDependencies(senc, car(formula), context);
-      Set_t right = Formula_GetDependencies(senc, cdr(formula), context);
-
-      return Set_Union(left, right);
-    }
-
-    /* Numerical Operations */
-  case PLUS:
-  case MINUS:
-  case TIMES:
-  case DIVIDE:
-  case MOD:
-    {
-      Set_t left = Formula_GetDependencies(senc, car(formula), context);
-      Set_t right = Formula_GetDependencies(senc, cdr(formula), context);
-
-      return Set_Union(left, right);
-    }
-
-    /* Comparison Operations */
-  case EQUAL:
-  case NOTEQUAL:
-  case LT:
-  case GT:
-  case LE:
-  case GE:
-    {
-      Set_t left = Formula_GetDependencies(senc, car(formula), context);
-      Set_t right = Formula_GetDependencies(senc, cdr(formula), context);
-
-      return Set_Union(left, right);
-    }
-
-  case NEXT:
-    {
-      /* next(alpha), with alpha possibly complex, thus ... */
-      return Formula_GetDependencies(senc, car(formula), context);
-    }
-
-    /* Unary boolean connectives */
-  case NOT:
-    return Formula_GetDependencies(senc, car(formula), context);
-
-    /* Binary boolean connectives */
-  case AND:
-  case OR:
-  case XOR:
-  case XNOR:
-  case IMPLIES:
-  case IFF:
-    {
-      Set_t left = Formula_GetDependencies(senc, car(formula), context);
-      Set_t right = Formula_GetDependencies(senc, cdr(formula), context);
-
-      return Set_Union(left, right);
-    }
-
-  case CASE:
-    {
-      Set_t partial;
-      Set_t condition =  Formula_GetDependencies(senc, car(car(formula)), context);
-      Set_t then_arg  =  Formula_GetDependencies(senc, cdr(car(formula)), context);
-      Set_t else_arg  =  Formula_GetDependencies(senc, cdr(formula), context);
-
-      partial = Set_Union(condition, then_arg);
-      return Set_Union(partial, else_arg);
-    }
-
-    /* CTL unary Temporal Operators */
-  case EX:
+  case NOT:    /* Unary boolean connectives */
+  case UMINUS:
+  case EX:    /* CTL unary Temporal Operators */
+  case SMALLINIT:  /* used for init(expr) */
   case AX:
   case EF:
   case AF:
   case EG:
   case AG:
-    return(Formula_GetDependencies(senc, car(formula), context));
-
-    /* CTL binary  Temporal Operators */
-  case EU:
-  case AU:
-    {
-      Set_t left = Formula_GetDependencies(senc, car(formula), context);
-      Set_t right = Formula_GetDependencies(senc, cdr(formula), context);
-
-      return Set_Union(left, right);
-    }
-
-    /* CTL unary bounded Temporal Operators */
-  case EBF:
+  case EBF:    /* CTL unary bounded Temporal Operators */
   case ABF:
   case EBG:
   case ABG:
-    return Formula_GetDependencies(senc, car(formula), context);
-
-    /* CTL binary bounded Temporal Operators */
-  case EBU:
+  case EBU:    /* CTL binary bounded Temporal Operators */
   case ABU:
-    return Formula_GetDependencies(senc, car(formula), context);
-
-    /* LTL unary Temporal Operators */
-  case OP_NEXT:
+  case OP_NEXT:    /* LTL unary Temporal Operators */
   case OP_PREC:
   case OP_NOTPRECNOT:
   case OP_FUTURE:
   case OP_ONCE:
   case OP_GLOBAL:
   case OP_HISTORICAL:
-    return Formula_GetDependencies(senc, car(formula), context);
+  case CAST_BOOL: /* Casts */
+  case CAST_WORD1:
+  case CAST_SIGNED:
+  case CAST_UNSIGNED:
+    result = formulaGetDependenciesRecur(symb_table, car(formula), context,
+                                         filter, preserve_time, time);
+    break;
 
-    /* LTL binary Temporal Operators */
-  case UNTIL:
+  case WRESIZE: /* For this it is important only the expression on the lhs */
+    result = formulaGetDependenciesRecur(symb_table, car(formula), context,
+                                         filter, preserve_time, time);
+    break;
+
+    /* binary operation */
+  case EXTEND:
+  case EQDEF: /* assignment */
+  case CONS:
+  case UNION:
+  case SETIN:
+  case COLON:
+  case PLUS:    /* Numerical Operations */
+  case MINUS:
+  case TIMES:
+  case DIVIDE:
+  case MOD:
+  case LSHIFT:  /* Binary shifts and rotates */
+  case RSHIFT:
+  case LROTATE:
+  case RROTATE:
+  case CONCATENATION: /* concatenation */
+  case EQUAL:   /* Comparison Operations */
+  case NOTEQUAL:
+  case LT:
+  case GT:
+  case LE:
+  case GE:
+  case AND:    /* Binary boolean connectives */
+  case OR:
+  case XOR:
+  case XNOR:
+  case IMPLIES:
+  case IFF:
+  case EU:     /* CTL binary  Temporal Operators */
+  case AU:
+  case UNTIL:    /* LTL binary Temporal Operators */
   case RELEASES:
   case SINCE:
   case TRIGGERED:
-    {
-      Set_t left = Formula_GetDependencies(senc, car(formula), context);
-      Set_t right = Formula_GetDependencies(senc, cdr(formula), context);
-
-      return Set_Union(left, right);
-    }
-
-    /* MIN MAX operators */
-  case MAXU:
+  case MAXU:    /* MIN MAX operators */
   case MINU:
     {
-      Set_t left = Formula_GetDependencies(senc, car(formula), context);
-      Set_t right = Formula_GetDependencies(senc, cdr(formula), context);
+      Set_t right = formulaGetDependenciesRecur(symb_table,
+                                                cdr(formula), context,
+                                                filter, preserve_time, time);
 
-      return Set_Union(left, right);
+      result = formulaGetDependenciesRecur(symb_table,
+                                           car(formula), context,
+                                           filter, preserve_time, time);
+      result = Set_Union(result, right);
+      Set_ReleaseSet(right);
+      break;
+    }
+
+    /* 3-arity operations */
+  case CASE:
+  case IFTHENELSE:
+    {
+      Set_t then_arg  = formulaGetDependenciesRecur(symb_table,
+                                                    cdr(car(formula)), context,
+                                                    filter, preserve_time, time);
+      Set_t else_arg  = formulaGetDependenciesRecur(symb_table,
+                                                    cdr(formula), context,
+                                                    filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                           car(car(formula)),context,
+                                           filter, preserve_time, time);
+
+      result = Set_Union(Set_Union(result, then_arg), else_arg);
+      Set_ReleaseSet(else_arg);
+      Set_ReleaseSet(then_arg);
+      break;
+    }
+
+  case NFUNCTION:
+    result = formulaGetDependenciesRecur(symb_table,
+                                         cdr(formula), context,
+                                         filter, preserve_time, time);
+  break;
+
+  case BIT_SELECTION:
+    {
+      Set_t high_bit = formulaGetDependenciesRecur(symb_table,
+                                                   car(cdr(formula)), context,
+                                                   filter, preserve_time, time);
+      Set_t low_bit = formulaGetDependenciesRecur(symb_table,
+                                                  cdr(cdr(formula)), context,
+                                                  filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                           car(formula), context,
+                                           filter, preserve_time, time);
+
+      result = Set_Union(Set_Union(result, high_bit), low_bit);
+      Set_ReleaseSet(low_bit);
+      Set_ReleaseSet(high_bit);
+      break;
+    }
+
+  case COUNT:
+    {
+      node_ptr list = car(formula);
+
+      result = Set_MakeEmpty();
+
+      while (Nil != list) {
+        Set_t tmp = formulaGetDependenciesRecur(symb_table, car(list), context,
+                                                filter, preserve_time, time);
+        result = Set_Union(result, tmp);
+        Set_ReleaseSet(tmp);
+
+        list = cdr(list);
+      }
+
+      break;
+    }
+    /* Operations on WORDARRAYs */
+  case WAWRITE:
+    {
+      Set_t location = formulaGetDependenciesRecur(symb_table,
+                                                   car(cdr(formula)), context,
+                                                   filter, preserve_time, time);
+      Set_t address = formulaGetDependenciesRecur(symb_table,
+                                                  cdr(cdr(formula)), context,
+                                                  filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                           car(formula), context,
+                                           filter, preserve_time, time);
+      result = Set_Union(Set_Union(result, location), address);
+      Set_ReleaseSet(address);
+      Set_ReleaseSet(location);
+      break;
+    }
+
+  case WAREAD:
+    {
+      Set_t location = formulaGetDependenciesRecur(symb_table,
+                                                   cdr(formula), context,
+                                                   filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                           car(formula), context,
+                                           filter, preserve_time, time);
+      result = Set_Union(result, location);
+      Set_ReleaseSet(location);
+      break;
+    }
+
+
+    /* name cases */
+  case DOT:
+    {
+      ResolveSymbol_ptr rs;
+      node_ptr name;
+
+      rs = SymbTable_resolve_symbol(symb_table, formula, context);
+      name = ResolveSymbol_get_resolved_name(rs);
+
+      if (ResolveSymbol_is_constant(rs)) {
+        result = Set_MakeEmpty();
+      }
+      else {
+        result = formulaGetDefinitionDependencies(symb_table, name, filter,
+                                                  preserve_time, time);
+      }
+      break;
+    }
+
+  case ARRAY:
+    {
+      ResolveSymbol_ptr rs;
+      node_ptr name;
+
+      rs = SymbTable_resolve_symbol(symb_table, formula, context);
+      name = ResolveSymbol_get_resolved_name(rs);
+
+      if (ResolveSymbol_is_defined(rs)) {
+        /* this array is identifier-with-brackets */
+        result = formulaGetDefinitionDependencies(symb_table, name, filter,
+                                                  preserve_time, time);
+      }
+      else {
+        /* this array is an expression => process the children */
+        result = formulaGetDependenciesRecur(symb_table,
+                                             car(formula), context,
+                                             filter, preserve_time, time);
+        Set_t tmp = formulaGetDependenciesRecur(symb_table,
+                                                cdr(formula), context,
+                                                filter, preserve_time, time);
+        result = Set_Union(result, tmp);
+        Set_ReleaseSet(tmp);
+      }
+      break;
+    }
+
+
+  case ARRAY_DEF:
+    {
+      node_ptr iter;
+
+      result = Set_MakeEmpty();
+
+      for (iter = car(formula); iter != Nil; iter = cdr(iter)) {
+        nusmv_assert(CONS == node_get_type(iter));
+        Set_t tmp = formulaGetDependenciesRecur(symb_table,
+                                                car(iter), context,
+                                                filter, preserve_time, time);
+        result = Set_Union(result, tmp);
+        Set_ReleaseSet(tmp);
+      }
+      break;
+    }
+
+
+
+  case PSL_INF:
+  case PSL_RANGE:
+    result = Set_MakeEmpty();
+    break;
+
+  case PSL_WSELECT:
+    {
+      PslNode_ptr right = psl_node_get_right(formula);
+
+      Set_t object   = formulaGetDependenciesRecur(symb_table,
+                                                   psl_node_get_left(formula),
+                                                   context, filter,
+                                                   preserve_time, time);
+      Set_t high_bit = formulaGetDependenciesRecur(symb_table,
+                                                   psl_node_get_left(right),
+                                                   context, filter,
+                                                   preserve_time, time);
+      Set_t low_bit  = formulaGetDependenciesRecur(symb_table,
+                                                   psl_node_get_right(right),
+                                                   context, filter,
+                                                   preserve_time, time);
+
+      result = Set_Union(Set_Union(object, high_bit), low_bit);
+      Set_ReleaseSet(low_bit);
+      Set_ReleaseSet(high_bit);
+      break;
+    }
+
+  case PSL_SERE:
+  case PSL_SERECOMPOUND:
+    result = formulaGetDependenciesRecur(symb_table,
+                                         psl_node_get_left(formula), context,
+                                         filter, preserve_time, time);
+    break;
+
+  case PSL_CONCATENATION:
+    {
+
+      Set_t right = formulaGetDependenciesRecur(symb_table,
+                                                psl_node_get_right(formula),
+                                                context,
+                                                filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                           psl_node_get_left(formula),
+                                           context,
+                                           filter, preserve_time, time);
+      result = Set_Union(result, right);
+      Set_ReleaseSet(right);
+      break;
+    }
+
+  case PSL_SERECONCAT:
+  case PSL_SEREFUSION:
+    {
+      Set_t right = formulaGetDependenciesRecur(symb_table,
+                                                psl_node_get_right(formula),
+                                                context,
+                                                filter, preserve_time, time);
+      result = formulaGetDependenciesRecur(symb_table,
+                                           psl_node_get_left(formula),
+                                           context,
+                                           filter, preserve_time, time);
+      result = Set_Union(result, right);
+      Set_ReleaseSet(right);
+      break;
+    }
+
+  case PSL_SEREREPEATED:
+    result = formulaGetDependenciesRecur(symb_table,
+                           psl_node_sere_repeated_get_expr(formula),
+                           context, filter, preserve_time, time);
+    break;
+
+  case PSL_REPLPROP:
+
+    result = formulaGetDependenciesRecur(symb_table,
+                           psl_node_repl_prop_get_property(formula),
+                           context, filter, preserve_time, time);
+    break;
+
+  case PSL_PIPEMINUSGT:
+  case PSL_PIPEEQGT:
+  case PSL_DIAMONDMINUSGT:
+    {
+      Set_t con = formulaGetDependenciesRecur(symb_table,
+                         psl_node_suffix_implication_get_consequence(formula),
+                                              context,
+                                              filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                           psl_node_suffix_implication_get_premise(formula),
+                                           context,
+                                           filter, preserve_time, time);
+      result = Set_Union(result, con);
+      Set_ReleaseSet(con);
+      break;
+    }
+
+  case PSL_ALWAYS:
+  case PSL_NEVER:
+  case PSL_EVENTUALLYBANG:
+    result = formulaGetDependenciesRecur(symb_table,
+                                         psl_node_get_left(formula),
+                                         context,
+                                         filter, preserve_time, time);
+    break;
+
+  case PSL_WITHINBANG:
+  case PSL_WITHIN:
+  case PSL_WITHINBANG_:
+  case PSL_WITHIN_:
+    {
+      Set_t n2 = formulaGetDependenciesRecur(symb_table,
+                               psl_node_get_right(psl_node_get_left(formula)),
+                                             context,
+                                             filter, preserve_time, time);
+      Set_t n3 = formulaGetDependenciesRecur(symb_table,
+                                             psl_node_get_right(formula),
+                                             context,
+                                             filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                psl_node_get_left(psl_node_get_left(formula)),
+                                           context,
+                                           filter, preserve_time, time);
+
+      result = Set_Union(Set_Union(result, n2), n3);
+      Set_ReleaseSet(n3);
+      Set_ReleaseSet(n2);
+      break;
+    }
+
+  case PSL_NEXT_EVENT_ABANG:
+  case PSL_NEXT_EVENT_A:
+  case PSL_NEXT_EVENT_EBANG:
+  case PSL_NEXT_EVENT_E:
+  case PSL_NEXT_EVENTBANG:
+  case PSL_NEXT_EVENT:
+  case PSL_NEXT_ABANG:
+  case PSL_NEXT_EBANG:
+  case PSL_NEXT_A:
+  case PSL_NEXT_E:
+  case PSL_NEXTBANG:
+  case PSL_NEXT:
+  case PSL_X:
+  case PSL_XBANG:
+    {
+      Set_t n2 = formulaGetDependenciesRecur(symb_table,
+                                      psl_node_extended_next_get_when(formula),
+                                             context,
+                                             filter, preserve_time, time);
+      Set_t n3 = formulaGetDependenciesRecur(symb_table,
+                                 psl_node_extended_next_get_condition(formula),
+                                             context,
+                                             filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                      psl_node_extended_next_get_expr(formula),
+                                             context,
+                                             filter, preserve_time, time);
+
+      result = Set_Union(Set_Union(result, n2), n3);
+      Set_ReleaseSet(n3);
+      Set_ReleaseSet(n2);
+      break;
+    }
+
+  case PSL_BEFOREBANG:
+  case PSL_BEFORE:
+  case PSL_BEFOREBANG_:
+  case PSL_BEFORE_:
+  case PSL_UNTILBANG:
+  case PSL_UNTIL:
+  case PSL_UNTILBANG_:
+  case PSL_UNTIL_:
+  case PSL_ABORT:
+  case PSL_W:
+  case PSL_OR:
+  case PSL_CARET:
+  case PSL_TILDE:
+  case PSL_EQEQ:
+  case PSL_PIPEPIPE:
+  case PSL_AMPERSANDAMPERSAND:
+  case PSL_WHILENOTBANG:
+  case PSL_WHILENOT:
+  case PSL_WHILENOTBANG_:
+  case PSL_WHILENOT_:
+    {
+      Set_t right = formulaGetDependenciesRecur(symb_table,
+                                                psl_node_get_right(formula),
+                                                context,
+                                                filter, preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                           psl_node_get_left(formula),
+                                           context,
+                                           filter, preserve_time, time);
+      result = Set_Union(result, right);
+      Set_ReleaseSet(right);
+      break;
+    }
+
+  case PSL_ITE:
+    {
+      Set_t then_arg  = formulaGetDependenciesRecur(symb_table,
+                                             psl_node_get_ite_then(formula),
+                                                    context, filter,
+                                                    preserve_time, time);
+      Set_t else_arg  = formulaGetDependenciesRecur(symb_table,
+                                             psl_node_get_ite_else(formula),
+                                                    context, filter,
+                                                    preserve_time, time);
+
+      result = formulaGetDependenciesRecur(symb_table,
+                                           psl_node_get_ite_cond(formula),
+                                           context, filter,
+                                           preserve_time, time);
+      result = Set_Union(Set_Union(result, then_arg), else_arg);
+      Set_ReleaseSet(else_arg);
+      Set_ReleaseSet(then_arg);
+      break;
     }
 
   default:
-    {
       fprintf(nusmv_stderr,
-        "Formula_GetDependencies: Reached undefined connective (%d)\n",
-        node_get_type(formula));
+              "\nFormula_GetDependencies: Reached undefined connective (%d)\n",
+              node_get_type(formula));
       nusmv_exit(1);
-      break;
-    }
   }
-  return Set_MakeEmpty();
+
+  if (Set_IsEmpty(result)) insert_dependencies_hash(hash_key, EMPTY_DEP_SET);
+  else insert_dependencies_hash(hash_key, result);
+
+  return result;
 }
+
 
 /**Function********************************************************************
 
   Synopsis           [Pre-compute the COI of the variables]
 
-  Description        [Computes the COI of all the variables in the current model]
+  Description        [Computes the COI of all the variables occurring within
+  the symbol table]
 
   SideEffects        []
 
   SeeAlso            [ComputeCOI]
 
 ******************************************************************************/
-static void coiInit(const Encoding_ptr senc)
+static void coiInit(const SymbTable_ptr symb_table, FlatHierarchy_ptr hierarchy)
 {
-  Set_t nonassign_vars = Set_MakeEmpty();
-  NodeList_ptr vars;
-  ListIter_ptr iter;
+  SymbTableIter iter;
 
-  init_coi_hash();
+  init_coi_hash(); /* no action is taken here if already initialized */
 
-  if (COI_VERBOSE) {
-    fprintf(nusmv_stdout,"*** INIT COI ***\n");
+  if (COI_VERBOSE) { fprintf(nusmv_stdout,"*** INIT COI ***\n"); }
+
+  SYMB_TABLE_FOREACH(symb_table, iter, STT_VAR) {
+    node_ptr var = SymbTable_iter_get_symbol(symb_table, &iter);
+    boolean nonassign = false;
+    Set_t base;
+
+    /* We guarantee the set is initialized with something different
+       from NULL */
+    insert_coi0_hash(var, NO_DEP_SET);
+
+    base = _coi_get_var_coi0(symb_table, hierarchy, var, &nonassign, true);
+
+    /* We associate to the var no set */
+    insert_coi_hash(var, NO_DEP_SET);
+
+    if (COI_VERBOSE) {
+      fprintf(nusmv_stdout,"Variable  ");
+      print_node(nusmv_stdout, var);
+      fprintf(nusmv_stdout,"\n");
+
+      if (nonassign) {
+        fprintf(nusmv_stdout,"  Has non-assign constraints\n");
+      }
+
+      fprintf(nusmv_stdout,"  Initial coi: ");
+      Set_PrintSet(nusmv_stdout, base, NULL, NULL);
+      fprintf(nusmv_stdout,"\n");
+    }
+
+    Set_ReleaseSet(base);
+  } /* vars iteration */
+}
+
+
+
+/* Returns the set of constants occurring into the given formula */
+static Set_t
+formulaGetConstantsRecur(const SymbTable_ptr symb_table,
+                         node_ptr formula, node_ptr context)
+{
+  node_ptr key = find_node(CONTEXT, context, formula);
+  Set_t result;
+  if (formula == Nil) return Set_MakeEmpty();
+
+  result = lookup_consts_hash(key);
+  if (result == EMPTY_DEP_SET) return Set_MakeEmpty();
+  if (result != (Set_t) NULL) return Set_Copy(result);
+
+  switch (node_get_type(formula)) {
+  case CONTEXT:
+    result = formulaGetConstantsRecur(symb_table, cdr(formula), car(formula));
+    break;
+
+  case BIT:
+    /* ignore bits, consider only scalar vars */
+    return Set_MakeEmpty();
+
+    /* name cases */
+  case DOT:
+  case ARRAY:
+  case ATOM:
+    {
+      ResolveSymbol_ptr rs;
+      node_ptr name;
+
+      rs = SymbTable_resolve_symbol(symb_table, formula, context);
+
+      name = ResolveSymbol_get_resolved_name(rs);
+
+      if (ResolveSymbol_is_error(rs)) ResolveSymbol_throw_error(rs);
+
+      if (ResolveSymbol_is_constant(rs)) {
+        result = Set_MakeSingleton((Set_Element_t) formula);
+      }
+      else if (ResolveSymbol_is_parameter(rs)) {
+        node_ptr param;
+        param = SymbTable_get_flatten_actual_parameter(symb_table, name);
+        result = formulaGetConstantsRecur(symb_table, param, context);
+      }
+      /* it should be a defined symbol, running, or a variable */
+      else if (ResolveSymbol_is_var(rs)) {
+        result = Set_MakeEmpty();
+      }
+      else if (ResolveSymbol_is_define(rs)) {
+        result = formulaGetConstantsRecur(symb_table,
+                     SymbTable_get_define_body(symb_table, formula),
+                     SymbTable_get_define_context(symb_table, formula));
+      }
+      else {
+
+        /* only vars are remaining and they can be ignored */
+        nusmv_assert(SymbTable_is_symbol_var(symb_table, name) ||
+                     SymbTable_is_symbol_variable_array(symb_table, name));
+
+        result = Set_MakeEmpty();
+      }
+    }
+
+    /* a word var */
+  case SIGNED_WORD:
+  case UNSIGNED_WORD:
+  case FAILURE:
+  case TWODOTS: /* Sets */
+    return Set_MakeEmpty();
+
+  case TRUEEXP:
+  case FALSEEXP:
+  case NUMBER:
+  case NUMBER_FRAC:
+  case NUMBER_REAL:
+  case NUMBER_EXP:
+  case NUMBER_UNSIGNED_WORD:
+  case NUMBER_SIGNED_WORD:
+  case UWCONST:
+  case SWCONST:
+    result = Set_MakeSingleton((Set_Element_t) formula);
+    break;
+
+
+  case ATTIME:   /* unary operation */
+  case NEXT:   /* unary operation */
+  case NOT:    /* Unary boolean connectives */
+  case UMINUS:
+  case EX:    /* CTL unary Temporal Operators */
+  case SMALLINIT:  /* used for init(expr) */
+  case AX:
+  case EF:
+  case AF:
+  case EG:
+  case AG:
+  case EBF:    /* CTL unary bounded Temporal Operators */
+  case ABF:
+  case EBG:
+  case ABG:
+  case EBU:    /* CTL binary bounded Temporal Operators */
+  case ABU:
+  case OP_NEXT:    /* LTL unary Temporal Operators */
+  case OP_PREC:
+  case OP_NOTPRECNOT:
+  case OP_FUTURE:
+  case OP_ONCE:
+  case OP_GLOBAL:
+  case OP_HISTORICAL:
+  case CAST_BOOL: /* Casts */
+  case CAST_WORD1:
+  case CAST_SIGNED:
+  case CAST_UNSIGNED:
+  case WSIZEOF: /* We extract possible constant in the body */
+  case CAST_TOINT:  /* We extract possible constant in the body */
+    result = formulaGetConstantsRecur(symb_table, car(formula), context);
+    break;
+
+    /* binary operation */
+  case EXTEND:
+  case WRESIZE:
+  case EQDEF: /* assignment */
+  case CONS:
+  case UNION:
+  case SETIN:
+  case COLON:
+  case PLUS:    /* Numerical Operations */
+  case MINUS:
+  case TIMES:
+  case DIVIDE:
+  case MOD:
+  case LSHIFT:  /* Binary shifts and rotates */
+  case RSHIFT:
+  case LROTATE:
+  case RROTATE:
+  case CONCATENATION: /* concatenation */
+  case EQUAL:   /* Comparison Operations */
+  case NOTEQUAL:
+  case LT:
+  case GT:
+  case LE:
+  case GE:
+  case AND:    /* Binary boolean connectives */
+  case OR:
+  case XOR:
+  case XNOR:
+  case IMPLIES:
+  case IFF:
+  case EU:     /* CTL binary  Temporal Operators */
+  case AU:
+  case UNTIL:    /* LTL binary Temporal Operators */
+  case RELEASES:
+  case SINCE:
+  case TRIGGERED:
+  case MAXU:    /* MIN MAX operators */
+  case MINU:
+    {
+      Set_t right = formulaGetConstantsRecur(symb_table, cdr(formula), context);
+      result = formulaGetConstantsRecur(symb_table, car(formula), context);
+      result = Set_Union(result, right);
+      Set_ReleaseSet(right);
+      break;
+    }
+
+  case NFUNCTION:
+    result = formulaGetConstantsRecur(symb_table, cdr(formula), context);
+    break;
+
+    /* 3-arity operations */
+  case CASE:
+  case IFTHENELSE:
+    {
+      Set_t condition = formulaGetConstantsRecur(symb_table,
+                                                 car(car(formula)), context);
+      Set_t then_arg  = formulaGetConstantsRecur(symb_table,
+                                                 cdr(car(formula)), context);
+      Set_t else_arg  = formulaGetConstantsRecur(symb_table,
+                                                 cdr(formula), context);
+
+      result = Set_Union(Set_Union(condition, then_arg), else_arg);
+      Set_ReleaseSet(else_arg);
+      Set_ReleaseSet(then_arg);
+      break;
+    }
+
+  case BIT_SELECTION:
+    {
+      Set_t object   = formulaGetConstantsRecur(symb_table,
+                                                car(formula), context);
+      Set_t high_bit = formulaGetConstantsRecur(symb_table,
+                                                car(cdr(formula)), context);
+      Set_t low_bit  = formulaGetConstantsRecur(symb_table,
+                                                cdr(cdr(formula)), context);
+      result = Set_Union(Set_Union(object, high_bit), low_bit);
+      Set_ReleaseSet(low_bit);
+      Set_ReleaseSet(high_bit);
+      break;
+    }
+
+  case COUNT:
+    {
+      node_ptr list = car(formula);
+
+      result = Set_MakeEmpty();
+
+      while (Nil != list) {
+        Set_t tmp = formulaGetConstantsRecur(symb_table, car(list), context);
+
+        result = Set_Union(result, tmp);
+        Set_ReleaseSet(tmp);
+
+        list = cdr(list);
+      }
+
+      break;
+    }
+
+    /* Operations on WORDARRAYs */
+  case WAWRITE:
+    {
+      Set_t memory   = formulaGetConstantsRecur(symb_table,
+                                                car(formula), context);
+      Set_t location = formulaGetConstantsRecur(symb_table,
+                                                car(cdr(formula)), context);
+      Set_t address  = formulaGetConstantsRecur(symb_table,
+                                                cdr(cdr(formula)), context);
+      result = Set_Union(Set_Union(memory, location), address);
+      Set_ReleaseSet(address);
+      Set_ReleaseSet(location);
+      break;
+    }
+
+  case WAREAD:
+    {
+      Set_t memory = formulaGetConstantsRecur(symb_table,
+                                              car(formula), context);
+      Set_t location = formulaGetConstantsRecur(symb_table,
+                                                cdr(formula), context);
+      result = Set_Union(memory, location);
+      Set_ReleaseSet(location);
+      break;
+    }
+
+
+
+  case PSL_INF:
+  case PSL_RANGE:
+    result = Set_MakeEmpty();
+    break;
+
+  case PSL_WSELECT:
+    {
+      PslNode_ptr right = psl_node_get_right(formula);
+
+      Set_t object   = formulaGetConstantsRecur(symb_table,
+                                                psl_node_get_left(formula),
+                                                context);
+      Set_t high_bit = formulaGetConstantsRecur(symb_table,
+                                                psl_node_get_left(right),
+                                                context);
+      Set_t low_bit  = formulaGetConstantsRecur(symb_table,
+                                                psl_node_get_right(right),
+                                                context);
+
+      result = Set_Union(Set_Union(object, high_bit), low_bit);
+      Set_ReleaseSet(low_bit);
+      Set_ReleaseSet(high_bit);
+      break;
+    }
+
+  case PSL_SERE:
+  case PSL_SERECOMPOUND:
+    result = formulaGetConstantsRecur(symb_table, psl_node_get_left(formula),
+                                      context);
+    break;
+
+  case PSL_SERECONCAT:
+  case PSL_SEREFUSION:
+  case PSL_CONCATENATION:
+    {
+      Set_t left = formulaGetConstantsRecur(symb_table,
+                                            psl_node_get_left(formula), context);
+      Set_t right = formulaGetConstantsRecur(symb_table,
+                                             psl_node_get_right(formula), context);
+      result = Set_Union(left, right);
+      Set_ReleaseSet(right);
+      break;
+    }
+
+  case PSL_SEREREPEATED:
+    result = formulaGetConstantsRecur(symb_table,
+                                      psl_node_sere_repeated_get_expr(formula),
+                                      context);
+    break;
+
+  case PSL_REPLPROP:
+    result = formulaGetConstantsRecur(symb_table,
+                                      psl_node_repl_prop_get_property(formula),
+                                      context);
+    break;
+
+  case PSL_PIPEMINUSGT:
+  case PSL_PIPEEQGT:
+  case PSL_DIAMONDMINUSGT:
+    {
+      Set_t pre = formulaGetConstantsRecur(symb_table,
+                    psl_node_suffix_implication_get_premise(formula),
+                                           context);
+      Set_t con = formulaGetConstantsRecur(symb_table,
+                    psl_node_suffix_implication_get_consequence(formula),
+                                           context);
+      result = Set_Union(pre, con);
+      Set_ReleaseSet(con);
+      break;
+    }
+
+  case PSL_ALWAYS:
+  case PSL_NEVER:
+  case PSL_EVENTUALLYBANG:
+    result = formulaGetConstantsRecur(symb_table,
+                                      psl_node_get_left(formula), context);
+    break;
+
+  case PSL_WITHINBANG:
+  case PSL_WITHIN:
+  case PSL_WITHINBANG_:
+  case PSL_WITHIN_:
+    {
+      Set_t n1 = formulaGetConstantsRecur(symb_table,
+                     psl_node_get_left(psl_node_get_left(formula)), context);
+      Set_t n2 = formulaGetConstantsRecur(symb_table,
+                     psl_node_get_right(psl_node_get_left(formula)), context);
+      Set_t n3 = formulaGetConstantsRecur(symb_table,
+                     psl_node_get_right(formula), context);
+
+      result = Set_Union(Set_Union(n1, n2), n3);
+      Set_ReleaseSet(n3);
+      Set_ReleaseSet(n2);
+      break;
+    }
+
+  case PSL_NEXT_EVENT_ABANG:
+  case PSL_NEXT_EVENT_A:
+  case PSL_NEXT_EVENT_EBANG:
+  case PSL_NEXT_EVENT_E:
+  case PSL_NEXT_EVENTBANG:
+  case PSL_NEXT_EVENT:
+  case PSL_NEXT_ABANG:
+  case PSL_NEXT_EBANG:
+  case PSL_NEXT_A:
+  case PSL_NEXT_E:
+  case PSL_NEXTBANG:
+  case PSL_NEXT:
+  case PSL_X:
+  case PSL_XBANG:
+    {
+      Set_t n1 = formulaGetConstantsRecur(symb_table,
+                     psl_node_extended_next_get_expr(formula), context);
+      Set_t n2 = formulaGetConstantsRecur(symb_table,
+                     psl_node_extended_next_get_when(formula), context);
+      Set_t n3 = formulaGetConstantsRecur(symb_table,
+                     psl_node_extended_next_get_condition(formula), context);
+
+      result = Set_Union(Set_Union(n1, n2), n3);
+      Set_ReleaseSet(n3);
+      Set_ReleaseSet(n2);
+      break;
+    }
+
+  case PSL_BEFOREBANG:
+  case PSL_BEFORE:
+  case PSL_BEFOREBANG_:
+  case PSL_BEFORE_:
+  case PSL_UNTILBANG:
+  case PSL_UNTIL:
+  case PSL_UNTILBANG_:
+  case PSL_UNTIL_:
+  case PSL_ABORT:
+  case PSL_W:
+  case PSL_OR:
+  case PSL_CARET:
+  case PSL_TILDE:
+  case PSL_EQEQ:
+  case PSL_PIPEPIPE:
+  case PSL_AMPERSANDAMPERSAND:
+  case PSL_WHILENOTBANG:
+  case PSL_WHILENOT:
+  case PSL_WHILENOTBANG_:
+  case PSL_WHILENOT_:
+    {
+      Set_t left = formulaGetConstantsRecur(symb_table,
+                                            psl_node_get_left(formula),
+                                            context);
+      Set_t right = formulaGetConstantsRecur(symb_table,
+                                             psl_node_get_right(formula),
+                                             context);
+      result = Set_Union(left, right);
+      Set_ReleaseSet(right);
+      break;
+    }
+
+  case PSL_ITE:
+    {
+      Set_t condition = formulaGetConstantsRecur(symb_table,
+                                                 psl_node_get_ite_cond(formula),
+                                                 context);
+      Set_t then_arg  = formulaGetConstantsRecur(symb_table,
+                                                 psl_node_get_ite_then(formula),
+                                                 context);
+      Set_t else_arg  = formulaGetConstantsRecur(symb_table,
+                                                 psl_node_get_ite_else(formula),
+                                                 context);
+
+      result = Set_Union(Set_Union(condition, then_arg), else_arg);
+      Set_ReleaseSet(else_arg);
+      Set_ReleaseSet(then_arg);
+      break;
+    }
+
+
+  default:
+    {
+      fprintf(nusmv_stderr,
+              "\nformulaGetConstantsRecur: Reached undefined connective (%d)\n",
+              node_get_type(formula));
+      nusmv_exit(1);
+    }
   }
 
-  vars = Encoding_get_all_model_vars_list(senc); 
-  for (iter = NodeList_get_first_iter(vars); 
-       ! ListIter_is_end(iter); iter = ListIter_get_next(iter)) {
-    node_ptr var = NodeList_get_elem_at(vars, iter);
+  if (!Set_IsEmpty(result)) {
+    insert_consts_hash(key, result);
+  }
 
+  return result;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Computes the complete cone for a given variable.]
+
+  Description        [optional]
+
+  SideEffects        [required]
+
+  SeeAlso            [optional]
+
+******************************************************************************/
+static Set_t
+computeCoiVar(SymbTable_ptr st, FlatHierarchy_ptr fh, node_ptr var)
+{
+  Set_t result;
+
+  result = lookup_coi_hash(var);
+
+  if (NO_DEP_SET != result) return result;
+
+  result = Set_MakeSingleton(var);
+
+  {
+    Set_t vars_left = Set_Copy(result);
+    Set_Iterator_t iter;
+    Set_t new_vars, vdeps;
+    boolean nonassign = false;
+    node_ptr v;
+
+    while (!Set_IsEmpty(vars_left)) {
+
+      new_vars = Set_MakeEmpty();
+
+      SET_FOREACH(vars_left, iter) {
+        v = NODE_PTR(Set_GetMember(vars_left, iter));
+        vdeps = _coi_get_var_coi0(st, fh, v, &nonassign, true);
+        new_vars = Set_Union(new_vars, vdeps);
+        Set_ReleaseSet(vdeps);
+      }
+      /* Put in vars_left the new fresh variables */
+      Set_ReleaseSet(vars_left);
+      vars_left = Set_Copy(new_vars);
+      vars_left = Set_Difference(vars_left, result);
+      result = Set_Union(result, new_vars);
+      Set_ReleaseSet(new_vars);
+    }
+
+    Set_ReleaseSet(vars_left);
+  }
+
+  insert_coi_hash(var, result);
+
+  return result;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Given a variable it returns the cone at depth 0.]
+
+  Description        [Given a variable it returns the cone at depth
+  0. If use_cache is true, then the result is memoized on the
+  cache. When use_cache is true, it is assumed the hierarchy to be the
+  mainFlatHierarchy. An assertion enforces this condition.]
+
+  SideEffects        [required]
+
+  SeeAlso            [optional]
+
+******************************************************************************/
+
+static Set_t _coi_get_var_coi0(SymbTable_ptr st,
+                               FlatHierarchy_ptr hierarchy,
+                               node_ptr var,
+                               boolean * nonassign,
+                               boolean use_cache)
+{
+  Set_t result = NO_DEP_SET;
+
+  if (use_cache) {
+    nusmv_assert((hierarchy == mainFlatHierarchy));
+    result = lookup_coi0_hash(var);
+  }
+
+  if (NO_DEP_SET != result) return Set_Copy(result);
+
+  {
     node_ptr invar_var = var;
     node_ptr init_var = find_node(SMALLINIT, var, Nil);
     node_ptr next_var = find_node(NEXT, var, Nil);
 
-    node_ptr invar_e = lookup_assign_db_hash(invar_var);
-    node_ptr init_e  = lookup_assign_db_hash(init_var);
-    node_ptr next_e  = lookup_assign_db_hash(next_var);
+    node_ptr invar_a= FlatHierarchy_lookup_assign(hierarchy, invar_var);
+    node_ptr invar_c= FlatHierarchy_lookup_constrains(hierarchy, invar_var);
+    node_ptr init_a = FlatHierarchy_lookup_assign(hierarchy, init_var);
+    node_ptr init_c = FlatHierarchy_lookup_constrains(hierarchy, init_var);
+    node_ptr next_a = FlatHierarchy_lookup_assign(hierarchy, next_var);
+    node_ptr next_c = FlatHierarchy_lookup_constrains(hierarchy, next_var);
 
-    node_ptr true_node = find_node(TRUEEXP, Nil, Nil);
+    result = Set_MakeEmpty();
 
-    Set_t base = Set_MakeSingleton(var);
-    int nonassign = 0;
+    /* Process normal assignments and INIT constraints */
+    if (Nil != invar_a) {
+      Set_t deps = Formula_GetDependencies(st, invar_a, Nil);
 
-    if (invar_e != (node_ptr)NULL) {
-      base = Set_Union(Formula_GetDependencies(senc, car(invar_e), Nil), base);
-      if (cdr(invar_e) != true_node) {
-	nonassign = 1;
-	base = Set_Union(Formula_GetDependencies(senc, cdr(invar_e), Nil), 
-			 base);
-      }
+      result = Set_Union(result, deps);
+      Set_ReleaseSet(deps);
+    }
+    if (Nil != invar_c) {
+      Set_t deps = Formula_GetDependencies(st, invar_c, Nil);
+
+      *nonassign = true;
+      result = Set_Union(result, deps);
+      Set_ReleaseSet(deps);
     }
 
-    if (init_e != (node_ptr)NULL) {
-      base = Set_Union(Formula_GetDependencies(senc, car(init_e), Nil), base);
-      if (cdr(init_e) != true_node) {
-	nonassign = 1;
-	base = Set_Union(Formula_GetDependencies(senc, cdr(init_e), Nil), base);
-      }
+    /* Process init assignments and INIT constraints */
+    if (Nil != init_a) {
+      Set_t deps = Formula_GetDependencies(st, init_a, Nil);
+      result = Set_Union(result, deps);
+      Set_ReleaseSet(deps);
+    }
+    if (Nil != init_c) {
+      Set_t deps = Formula_GetDependencies(st, init_c, Nil);
+
+      *nonassign = true;
+      result = Set_Union(result, deps);
+      Set_ReleaseSet(deps);
     }
 
-    if (next_e != (node_ptr)NULL) {
-      base = Set_Union(Formula_GetDependencies(senc, car(next_e), Nil), base);
-      if (cdr(next_e) != true_node) {
-	nonassign = 1;
-	base = Set_Union(Formula_GetDependencies(senc, cdr(next_e), Nil), base);
-      }
+    /* Process next assignments and TRANS constraints */
+    if (Nil != next_a) {
+      Set_t deps = Formula_GetDependencies(st, next_a, Nil);
+      result = Set_Union(result, deps);
+      Set_ReleaseSet(deps);
     }
+    if (Nil != next_c) {
+      Set_t deps = Formula_GetDependencies(st, next_c, Nil);
 
-    insert_coi_hash(var, base);
-
-    if(nonassign) {
-      nonassign_vars = Set_Union(nonassign_vars, Set_MakeSingleton(var));
-    }
-
-    if (COI_VERBOSE) {
-      fprintf(nusmv_stdout,"Variable  ");
-      print_node(nusmv_stdout,var);
-      fprintf(nusmv_stdout,"\n");
-
-      if(nonassign) {
-	fprintf(nusmv_stdout,"  Has non-assign constraints\n");
-      }
-
-      fprintf(nusmv_stdout,"  Initial coi: ");
-      print_node(nusmv_stdout,base);
-      fprintf(nusmv_stdout,"\n");
-    }
-  } /* vars iteration */
-
-  {
-    boolean changed = true;
-
-    while (changed) {
-      
-      if (COI_VERBOSE) {
-	fprintf(nusmv_stdout,"*** ITERATE COI ***\n");
-      }
-
-      changed = false;
-
-      for (iter = NodeList_get_first_iter(vars); 
-	   ! ListIter_is_end(iter); iter = ListIter_get_next(iter)) {
-
-	node_ptr var = NodeList_get_elem_at(vars, iter);
-
-	Set_t coi = lookup_coi_hash(var);
-	Set_t old_coi = coi;
-
-	Set_t tmp;
-
-	int nonassign = (Set_IsMember(nonassign_vars, var) == true);
-
-	if (COI_VERBOSE) {
-	  fprintf(nusmv_stdout,"Variable ");
-	  print_node(nusmv_stdout, var);
-	  fprintf(nusmv_stdout,"\n");
-
-	  if(nonassign) {
-	    fprintf(nusmv_stdout,"  Has non-assign constraints\n");
-	  }
-
-	  fprintf(nusmv_stdout,"  Old coi: ");
-	  print_node(nusmv_stdout, old_coi);
-	  fprintf(nusmv_stdout,"\n");
-	}
-
-	for(tmp = old_coi; Set_IsEmpty(tmp) == false;
-	    tmp = Set_GetRest(tmp)) {
-	  node_ptr name = (node_ptr)Set_GetFirst(tmp);
-	  coi = Set_Union(coi, lookup_coi_hash(name));;
-	}
-
-	if (coi != old_coi) {
-	  changed = true;
-	  insert_coi_hash(var, coi);
-	  
-	  if (COI_VERBOSE) {
-	    fprintf(nusmv_stdout,"  New coi: ");
-	    print_node(nusmv_stdout, coi);
-	    fprintf(nusmv_stdout,"\n");
-	  }
-	}
-	else {
-	  if (COI_VERBOSE) {
-	    fprintf(nusmv_stdout,"  No changes\n");
-	  }
-	}
-
-	if (nonassign) {
-	  for(tmp = coi; Set_IsEmpty(tmp) == false;
-	      tmp = Set_GetRest(tmp)) {
-	    node_ptr name = (node_ptr)Set_GetFirst(tmp);
-
-	    if (Set_IsMember(nonassign_vars, name) == false) {
-	      if (COI_VERBOSE) {
-		fprintf(nusmv_stdout,
-			"  Found non-assignment constraints for ");
-		print_node(nusmv_stdout,name);
-		fprintf(nusmv_stdout,"\n");
-	      }
-	      nonassign_vars = Set_Union(nonassign_vars,
-					 Set_MakeSingleton(name));
-	      {
-		Set_t other_coi = lookup_coi_hash(name);
-
-		if (Set_IsMember(other_coi, var) == false) {
-		  changed = true;
-		  other_coi = Set_Union(other_coi, Set_MakeSingleton(var));
-		  insert_coi_hash(name, other_coi);
-		}
-	      }
-	    }
-	  }
-	}
-      }
-    }
-
-    if (COI_VERBOSE) {
-      fprintf(nusmv_stdout,"*** END COI ***\n");
+      *nonassign = true;
+      result = Set_Union(result, deps);
+      Set_ReleaseSet(deps);
     }
   }
-}
 
+  if (use_cache) {
+    insert_coi0_hash(var, result);
+  }
+
+  return result;
+}

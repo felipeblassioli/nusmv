@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``trans.generic'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,11 +30,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
   Revision    [$Id: ]
 
@@ -79,12 +79,12 @@ typedef struct GenericTrans_TAG
 
 
 void generic_trans_init ARGS((GenericTrans_ptr self, 
-			      const TransType trans_type));
+                              const TransType trans_type));
 
 void generic_trans_deinit ARGS((GenericTrans_ptr self));
 
 void generic_trans_copy_aux ARGS((const GenericTrans_ptr self, 
-				  GenericTrans_ptr copy));
+                                  GenericTrans_ptr copy));
 
 
 #endif /* __TRANS_GENERIC_GENERIC_TRANS_PRIVATE_H__ */

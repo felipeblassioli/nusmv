@@ -8,13 +8,13 @@ s1: {noncritical, trying, critical};
 
 turn: boolean;
 
-pr0: process prc(s0, s1, turn, 0);
+pr0: process prc(s0, s1, turn, FALSE);
 
-pr1: process prc(s1, s0, turn, 1);
+pr1: process prc(s1, s0, turn, TRUE);
 
 ASSIGN
 
-init(turn) := 0;
+init(turn) := FALSE;
 
 FAIRNESS
 !(s0 = critical)
@@ -54,13 +54,13 @@ case
    (state0 = trying) & (state1 = noncritical): critical;
    (state0 = trying) & (state1 = trying) & (turn = turn0):  critical;
    (state0 = critical) : {critical,noncritical};
-   1: state0;
+   TRUE : state0;
 esac;
 
 next(turn) :=
 case
    turn = turn0 & state0 = critical: !turn;
-   1: turn;
+   TRUE : turn;
 esac;
 
 FAIRNESS

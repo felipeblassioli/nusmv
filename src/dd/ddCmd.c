@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``dd'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,17 +31,17 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "ddInt.h" 
 
-static char rcsid[] UTIL_UNUSED = "$Id: ddCmd.c,v 1.6 2001/11/05 10:57:02 none Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: ddCmd.c,v 1.6.16.2 2006-05-15 09:06:16 nusmv Exp $";
 
 int CommandDynamicVarOrdering ARGS((int argc, char **argv));
 int CommandSetBddParameters ARGS((int argc, char ** argv));
@@ -58,9 +58,9 @@ static int UsageDynamicVarOrdering ARGS((void));
 
 void dd_AddCmd(void)
 {
-  Cmd_CommandAdd("dynamic_var_ordering", CommandDynamicVarOrdering, 0);
-  Cmd_CommandAdd("set_bdd_parameters" , CommandSetBddParameters, 0);
-  Cmd_CommandAdd("print_bdd_stats" , CommandPrintBddStats, 0);
+  Cmd_CommandAdd("dynamic_var_ordering", CommandDynamicVarOrdering, 0, true);
+  Cmd_CommandAdd("set_bdd_parameters" , CommandSetBddParameters, 0, true);
+  Cmd_CommandAdd("print_bdd_stats" , CommandPrintBddStats, 0, true);
 
 }
 
@@ -236,7 +236,7 @@ int CommandDynamicVarOrdering(int argc, char **argv)
     else {
       fprintf(nusmv_stdout, "Dynamic variable ordering is disabled.\n");
       dd_autodyn_disable(dd_manager);
-      unset_dynamic_reorder(options);
+      unset_dynamic_reorder(OptsHandler_get_instance());
     }
   }
 
@@ -245,8 +245,8 @@ int CommandDynamicVarOrdering(int argc, char **argv)
   */
   if (enableFlag) {
     dd_autodyn_enable(dd_manager, dynOrderingMethod);
-    set_reorder_method(options, dynOrderingMethod);
-    set_dynamic_reorder(options);
+    set_reorder_method(OptsHandler_get_instance(), dynOrderingMethod);
+    set_dynamic_reorder(OptsHandler_get_instance());
     fprintf(nusmv_stdout, "Dynamic variable ordering is enabled ");
     fprintf(nusmv_stdout, "with method \"%s\".\n",
                    DynOrderTypeConvertToString(dynOrderingMethod));
@@ -345,7 +345,7 @@ int CommandSetBddParameters(int  argc, char ** argv)
   }
   
   /* Create the table of variable->value */
-  dd_set_parameters(dd_manager, cmdFlagTable, nusmv_stdout);
+  dd_set_parameters(dd_manager, OptsHandler_get_instance(), nusmv_stdout);
   if (showAfter) {
     dd_print_stats(dd_manager, nusmv_stdout);
   }

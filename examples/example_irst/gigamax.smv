@@ -21,12 +21,12 @@ ASSIGN
           CMD = write-resp-invalid : invalid;
           CMD = write-shared       : shared;
           CMD = write-resp-shared  : shared;
-          1 : state;
+          TRUE : state;
         esac;
       !master & state = shared & (CMD = read-owned | CMD = invalidate) :
          invalid;
       state = shared : {shared,invalid};
-      1 : state;
+      TRUE : state;
     esac;
 
 DEFINE
@@ -44,7 +44,7 @@ ASSIGN
       !master & state = owned & CMD = read-shared : owned;
       master & CMD = write-resp-invalid : invalid;
       master & CMD = write-resp-shared  : invalid;
-      1 : snoop;
+      TRUE : snoop;
     esac;
 
 MODULE bus-device
@@ -57,16 +57,16 @@ VAR
   reply-stall : boolean;
 
 ASSIGN
-  init(waiting) := 0;
+  init(waiting) := FALSE;
   next(waiting) :=
     case
       abort : waiting;
-      master  & CMD = read-shared        : 1;
-      master  & CMD = read-owned         : 1;
-      !master & CMD = response           : 0;
-      !master & CMD = write-resp-invalid : 0;
-      !master & CMD = write-resp-shared  : 0;
-      1 : waiting;
+      master  & CMD = read-shared        : TRUE;
+      master  & CMD = read-owned         : TRUE;
+      !master & CMD = response           : FALSE;
+      !master & CMD = write-resp-invalid : FALSE;
+      !master & CMD = write-resp-shared  : FALSE;
+      TRUE : waiting;
     esac;
 
 DEFINE
@@ -86,7 +86,7 @@ ASSIGN
       master & state = owned & snoop = owned : write-resp-invalid;
       master & state = owned & snoop = shared : write-resp-shared;
       master & state = owned & snoop = invalid : write-invalid;
-      1 : idle;
+      TRUE : idle;
     esac;
 
 MODULE memory(CMD,REPLY-OWNED,REPLY-WAITING,REPLY-STALL)
@@ -99,32 +99,32 @@ VAR
 
 
 DEFINE
-  reply-owned := 0;
-  reply-waiting := 0;
+  reply-owned := FALSE;
+  reply-waiting := FALSE;
   abort := REPLY-STALL
           | (CMD = read-shared | CMD = read-owned) & REPLY-WAITING
 	  | (CMD = read-shared | CMD = read-owned) & REPLY-OWNED;
 
 ASSIGN
-  init(busy) := 0;
+  init(busy) := FALSE;
   next(busy) :=
     case
       abort : busy;
-      master & CMD = response : 0;
-      !master & (CMD = read-owned | CMD = read-shared) : 1;
-      1 : busy;
+      master & CMD = response : FALSE;
+      !master & (CMD = read-owned | CMD = read-shared) : TRUE;
+      TRUE : busy;
     esac;
   cmd :=
     case
       master & busy : {response,idle};
-      1 : idle;
+      TRUE : idle;
     esac;
   reply-stall :=
     case
       busy & (CMD = read-shared | CMD = read-owned
 	      | CMD = write-invalid | CMD = write-shared
-	      | CMD = write-resp-invalid | CMD = write-resp-shared) : 1;
-      1 : {0,1};
+	      | CMD = write-resp-invalid | CMD = write-resp-shared) : TRUE;
+      TRUE : {FALSE,TRUE};
     esac;
 
 MODULE main
@@ -149,26 +149,26 @@ ASSIGN
       p0.cmd = idle & p2.cmd = idle & m.cmd = idle : p1.cmd;
       p0.cmd = idle & p1.cmd = idle & m.cmd = idle : p0.cmd;
       p0.cmd = idle & p1.cmd = idle & p2.cmd = idle : m.cmd;
-      1 : {idle,read-shared,read-owned,write-invalid,write-shared,
+      TRUE : {idle,read-shared,read-owned,write-invalid,write-shared,
 	   write-resp-invalid,write-resp-shared,invalidate,response};
     esac;
 
 ASSIGN
-  p0.master := {0,1};
+  p0.master := {FALSE,TRUE};
   p1.master :=
     case
-      p0.master : 0;
-      1 : {0,1};
+      p0.master : FALSE;
+      TRUE : {FALSE,TRUE};
     esac;
   p2.master :=
     case
-      p0.master | p1.master : 0;
-      1 : {0,1};
+      p0.master | p1.master : FALSE;
+      TRUE : {FALSE,TRUE};
     esac;
   m.master :=
     case
-      p0.master | p1.master | p2.master : 0;
-      1 : {0,1};
+      p0.master | p1.master | p2.master : FALSE;
+      TRUE : {FALSE,TRUE};
     esac;
 
 SPEC

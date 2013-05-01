@@ -13,28 +13,28 @@
   Author      [Ashutosh Trivedi]
 
   Copyright   [
-  This file is part of the ``trace.plugins'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst.
+  This file is part of the ``trace.plugins'' package of NuSMV version 2.
+  Copyright (C) 2003 by FBK-irst.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 #ifndef __TRACE_EXPLAINER_PRIVATE__H
@@ -45,21 +45,18 @@
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
-/*---------------------------------------------------------------------------*///
+/*---------------------------------------------------------------------------*/
 
 /*---------------------------------------------------------------------------*/
 /* Type declarations                                                         */
 /*---------------------------------------------------------------------------*/
+
 /**Struct**********************************************************************
 
   Synopsis    [TraceExplainer Class]
 
   Description [ This class contains information to explain a trace:<br>
-  	<dl> 
-            <dt><code>state_vars_list </code>
-               	<dd> list of state variables. 
-            <dt><code>input_vars_list</code>
-                <dd>  list of input variables. 
+        <dl>
             <dt><code>changes_only</code>
                 <dd> If this field is true, then explainer will print only
                 those variables whose value changes.
@@ -68,16 +65,14 @@
   This Class inherits from TracePlugin class.
   ]
 
-  SeeAlso     []   
-  
+  SeeAlso     []
+
 ******************************************************************************/
-typedef struct TraceExplainer_TAG 
-{ 
+typedef struct TraceExplainer_TAG
+{
   INHERITS_FROM(TracePlugin);
 
-  node_ptr state_vars_list; 
-  node_ptr input_vars_list;
-  boolean changes_only; 
+  boolean changes_only;
 } TraceExplainer;
 
 /*---------------------------------------------------------------------------*/
@@ -88,18 +83,17 @@ typedef struct TraceExplainer_TAG
 /* Macro declarations                                                        */
 /*---------------------------------------------------------------------------*/
 
-/**AutomaticStart*************************************************************/ 
+/**AutomaticStart*************************************************************/
+
 /*---------------------------------------------------------------------------*/
 /* Function prototypes                                                       */
 /*---------------------------------------------------------------------------*/
-void 
-trace_explainer_init ARGS((TraceExplainer_ptr self, boolean changes_only)); 
+void trace_explainer_init ARGS((TraceExplainer_ptr self,
+                                boolean changes_only));
 
 void trace_explainer_deinit ARGS((TraceExplainer_ptr self));
 
-int 
-trace_explainer_action ARGS((const TracePlugin_ptr plugin, Trace_ptr trace,
-                             void* start_iter));
+int trace_explainer_action ARGS((const TracePlugin_ptr plugin));
 
 /**AutomaticEnd***************************************************************/
 

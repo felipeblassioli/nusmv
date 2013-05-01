@@ -1,10 +1,11 @@
+% -*-latex-*-
 \begin{nusmvCommand} {check\_ltlspec\_bmc\_inc} {Checks the given LTL
 specification, or all LTL specifications if no formula is given, 
 using an incremental algorithm.
 Checking parameters are the maximum length and the loopback value}
 
-\cmdLine{check\_ltlspec\_bmc\_inc [-h | -n idx | -p "formula [IN context]"]
-[-k max\_length] [-l loopback]}
+\cmdLine{check\_ltlspec\_bmc\_inc [-h ] | [-n idx | -p "formula [IN
+      context]" | -P "name" ] [-k max\_length] [-l loopback]}
 
 For each problem this command incrementally generates many
 satisfiability subproblems and calls the SAT solver on each one of them. The
@@ -17,6 +18,9 @@ considerably quicker. A SAT solver with an incremental interface
 is required by this command, therefore if no such SAT solver is
 provided then this command will be unavailable.
 
+See variable \varName{use\_coi\_size\_sorting} for changing properties
+verification order.
+
 \begin{cmdOpt}
 
 \opt{-n \parameter{\natnum{\it index}}}{\natnum{\it index} is the numeric index 
@@ -26,6 +30,9 @@ of a valid LTL specification formula actually located in the properties database
 the command-line. \code{context} is the module instance name which
 the variables in \anyexpr must be evaluated in.}
             
+\opt{-P \parameter{\natnum{name}}}{Checks the LTL property named \natnum{name} in
+the property database.} 
+
 \opt{-k \parameter{\natnum{\it max\_length}}}{\natnum{\it max\_length} is the maximum problem
 bound must be reached. Only natural numbers are valid values for this
 option. If no value is given the environment variable \envvar{\it

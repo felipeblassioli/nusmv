@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,11 +30,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -42,7 +42,7 @@
 #include "bmcUtils.h"
 
 
-static char rcsid[] UTIL_UNUSED = "$Id: bmcModel.c,v 1.30.2.1.2.1 2004/07/27 12:12:12 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: bmcModel.c,v 1.30.2.1.2.1.2.3.4.2 2010-01-29 15:22:32 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -76,15 +76,15 @@ static char rcsid[] UTIL_UNUSED = "$Id: bmcModel.c,v 1.30.2.1.2.1 2004/07/27 12:
 
 
 static be_ptr
-bmc_model_getSingleFairness ARGS((const BmcVarsMgr_ptr vars_mgr,
-				  const be_ptr one_fairness,
-				  const int k, const int l));
+bmc_model_getSingleFairness ARGS((const BeEnc_ptr be_enc,
+                                  const be_ptr one_fairness,
+                                  const int k, const int l));
 
 
 static be_ptr
-bmc_model_getFairness_aux ARGS((const BmcVarsMgr_ptr vars_mgr,
-				const node_ptr list,
-				const int k, const int l));
+bmc_model_getFairness_aux ARGS((const BeEnc_ptr be_enc,
+                                const node_ptr list,
+                                const int k, const int l));
 
 
 /**AutomaticEnd***************************************************************/
@@ -109,17 +109,40 @@ bmc_model_getFairness_aux ARGS((const BmcVarsMgr_ptr vars_mgr,
   SeeAlso            [Bmc_Model_GetInvarAtTime]
 
 ******************************************************************************/
-be_ptr Bmc_Model_GetInit0(const Bmc_Fsm_ptr be_fsm)
+be_ptr Bmc_Model_GetInit0(const BeFsm_ptr be_fsm)
 {
-  BmcVarsMgr_ptr vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
-  be_ptr init0 = BmcVarsMgr_ShiftCurrNext2Time(vars_mgr,
-			       Be_And(be_mgr, Bmc_Fsm_GetInit(be_fsm),
-				      Bmc_Fsm_GetInvar(be_fsm)),
-			       0);
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  be_ptr init0 = BeEnc_untimed_expr_to_timed(be_enc,
+                       Be_And(BeEnc_get_be_manager(be_enc), 
+                              BeFsm_get_init(be_fsm),
+                              BeFsm_get_invar(be_fsm)),
+                                             0);
   return init0;
 }
 
+/**Function********************************************************************
+
+  Synopsis           [Retrieves the init states from the given fsm, and
+  compiles them into a BE at time i]
+
+  Description        [Use this function instead of explicitly get the init
+  from the fsm and shift them at time i using the vars manager layer.]
+
+  SideEffects        []
+
+  SeeAlso            [Bmc_Model_GetInvarAtTime]
+
+******************************************************************************/
+be_ptr Bmc_Model_GetInitI(const BeFsm_ptr be_fsm, const int i)
+{
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  be_ptr init = BeEnc_untimed_expr_to_timed(be_enc,
+                      Be_And(BeEnc_get_be_manager(be_enc), 
+                             BeFsm_get_init(be_fsm),
+                             BeFsm_get_invar(be_fsm)),
+                                            i);
+  return init;
+}
 
 /**Function********************************************************************
 
@@ -135,13 +158,30 @@ be_ptr Bmc_Model_GetInit0(const Bmc_Fsm_ptr be_fsm)
   SeeAlso            [Bmc_Model_GetInit0]
 
 ******************************************************************************/
-be_ptr Bmc_Model_GetInvarAtTime(const Bmc_Fsm_ptr be_fsm, const int time)
+be_ptr Bmc_Model_GetInvarAtTime(const BeFsm_ptr be_fsm, const int time)
 {
-  return  BmcVarsMgr_ShiftCurrNext2Time(Bmc_Fsm_GetVarsManager(be_fsm),
-					 Bmc_Fsm_GetInvar(be_fsm),
-					 time);
+  return BeEnc_untimed_expr_to_timed(BeFsm_get_be_encoding(be_fsm),
+                                     BeFsm_get_invar(be_fsm), time);
 }
 
+
+/**Function********************************************************************
+
+  Synopsis           [Retrieves the trans from the given fsm, and compiles
+                      it into a MSatEnc at the given time]
+
+  Description        [Use this function instead of explicitly get the trans
+                      from the fsm and shift it at the requested
+                      time using the vars manager layer]
+
+  SideEffects        [None]
+
+******************************************************************************/
+be_ptr Bmc_Model_GetTransAtTime(const BeFsm_ptr be_fsm, const int time)
+{
+  return BeEnc_untimed_expr_to_timed(BeFsm_get_be_encoding(be_fsm),
+                                     BeFsm_get_trans(be_fsm), time);
+}
 
 
 /**Function********************************************************************
@@ -158,17 +198,57 @@ be_ptr Bmc_Model_GetInvarAtTime(const Bmc_Fsm_ptr be_fsm, const int time)
 
 ******************************************************************************/
 be_ptr
-Bmc_Model_GetUnrolling(const Bmc_Fsm_ptr be_fsm, const int j, const int k)
+Bmc_Model_GetUnrolling(const BeFsm_ptr be_fsm, const int j, const int k)
 {
-  BmcVarsMgr_ptr vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
-  be_ptr invar = Bmc_Fsm_GetInvar(be_fsm);
-  
-  be_ptr trans_invar_j = Be_And(be_mgr, Bmc_Fsm_GetTrans(be_fsm), invar);
-  be_ptr invar_next = BmcVarsMgr_ShiftCurrState2Next(vars_mgr, invar);						  
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
+
+  be_ptr invar = BeFsm_get_invar(be_fsm);  
+  be_ptr trans_invar_j = Be_And(be_mgr, BeFsm_get_trans(be_fsm), invar);
+  be_ptr invar_next = BeEnc_shift_curr_to_next(be_enc, invar);
   be_ptr trans_invar = Be_And(be_mgr, trans_invar_j, invar_next);
 
-  return BmcVarsMgr_MkAndCurrNextInterval(vars_mgr, trans_invar, j, k - 1);
+  return BeEnc_untimed_to_timed_and_interval(be_enc, trans_invar, j, k - 1);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Unrolls the transition relation from j to k, taking
+                      into account of invars]
+
+  Description        [Using of invars over previous variables instead of the
+                      next variables is a specific implementation aspect]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+be_ptr
+Bmc_Model_Invar_Dual_forward_unrolling(const BeFsm_ptr be_fsm,
+                                       const be_ptr invarspec, int i)
+{
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
+
+  be_ptr res = (be_ptr)(NULL);
+  nusmv_assert(0 <= i);
+
+  /* Invar[0] */
+  if (0 == i) {
+    res = Bmc_Model_GetInvarAtTime(be_fsm, 0);
+  }
+
+  else {
+    /* Trans[i-1] & Invar[i] & Property[i-1] */
+    res = Be_And(be_mgr,
+                 Be_And(be_mgr, Bmc_Model_GetTransAtTime(be_fsm, i-1),
+                        Bmc_Model_GetInvarAtTime(be_fsm, i)),
+                 BeEnc_untimed_expr_to_timed(be_enc, invarspec, i-1));
+  }
+
+  return res;
 }
 
 
@@ -184,7 +264,7 @@ Bmc_Model_GetUnrolling(const Bmc_Fsm_ptr be_fsm, const int j, const int k)
   SeeAlso            [Bmc_Model_GetPathWithInit]
 
 ******************************************************************************/
-be_ptr Bmc_Model_GetPathNoInit(const Bmc_Fsm_ptr be_fsm, const int k)
+be_ptr Bmc_Model_GetPathNoInit(const BeFsm_ptr be_fsm, const int k)
 {
   return Bmc_Model_GetUnrolling(be_fsm, 0, k);
 }
@@ -202,11 +282,11 @@ be_ptr Bmc_Model_GetPathNoInit(const Bmc_Fsm_ptr be_fsm, const int k)
   SeeAlso            [Bmc_Model_GetPathNoInit]
 
 ******************************************************************************/
-be_ptr Bmc_Model_GetPathWithInit(const Bmc_Fsm_ptr be_fsm, const int k)
+be_ptr Bmc_Model_GetPathWithInit(const BeFsm_ptr be_fsm, const int k)
 {
-  return Be_And(BmcVarsMgr_GetBeMgr(Bmc_Fsm_GetVarsManager(be_fsm)),
-		Bmc_Model_GetPathNoInit(be_fsm, k),
-		Bmc_Model_GetInit0(be_fsm));
+  return Be_And(BeEnc_get_be_manager(BeFsm_get_be_encoding(be_fsm)),
+                Bmc_Model_GetPathNoInit(be_fsm, k),
+                Bmc_Model_GetInit0(be_fsm));
 }
 
 
@@ -229,11 +309,11 @@ be_ptr Bmc_Model_GetPathWithInit(const Bmc_Fsm_ptr be_fsm, const int k)
   SeeAlso            [bmc_model_getFairness_aux, bmc_model_getSingleFairness]
 
 ******************************************************************************/
-be_ptr Bmc_Model_GetFairness(const Bmc_Fsm_ptr be_fsm, 
-			     const int k, const int l)
+be_ptr Bmc_Model_GetFairness(const BeFsm_ptr be_fsm, 
+                             const int k, const int l)
 {
-  node_ptr list = Bmc_Fsm_GetListOfFairness(be_fsm);
-  return bmc_model_getFairness_aux(Bmc_Fsm_GetVarsManager(be_fsm), list, k, l);
+  node_ptr list = BeFsm_get_fairness_list(be_fsm);
+  return bmc_model_getFairness_aux(BeFsm_get_be_encoding(be_fsm), list, k, l);
 }
 
 
@@ -245,21 +325,21 @@ be_ptr Bmc_Model_GetFairness(const Bmc_Fsm_ptr be_fsm,
 /* Definition of static functions                                            */
 /*---------------------------------------------------------------------------*/
 
-static be_ptr bmc_model_getFairness_aux(const BmcVarsMgr_ptr vars_mgr,
-					const node_ptr list,
-					const int k, const int l)
+static be_ptr bmc_model_getFairness_aux(const BeEnc_ptr be_enc,
+                                        const node_ptr list,
+                                        const int k, const int l)
 {
   be_ptr res = NULL;
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
 
   if (list == LS_NIL)  res = Be_Truth(be_mgr);
   else if (Bmc_Utils_IsNoLoopback(l))  res = Be_Falsity(be_mgr);
   else {
     be_ptr singleFairness =
-      bmc_model_getSingleFairness(vars_mgr, (be_ptr)car(list), k, l);
+      bmc_model_getSingleFairness(be_enc, (be_ptr) car(list), k, l);
 
     res = Be_And( be_mgr, singleFairness,
-		  bmc_model_getFairness_aux(vars_mgr, cdr(list), k, l) );
+                  bmc_model_getFairness_aux(be_enc, cdr(list), k, l) );
   }
 
   return res;
@@ -267,14 +347,14 @@ static be_ptr bmc_model_getFairness_aux(const BmcVarsMgr_ptr vars_mgr,
 
 
 static be_ptr
-bmc_model_getSingleFairness(const BmcVarsMgr_ptr vars_mgr,
-			    const be_ptr one_fairness, 
-			    const int k, const int l)
+bmc_model_getSingleFairness(const BeEnc_ptr be_enc,
+                            const be_ptr one_fairness, 
+                            const int k, const int l)
 {
   nusmv_assert(l < k);
   nusmv_assert(Bmc_Utils_IsSingleLoopback(l));
 
-  return BmcVarsMgr_MkOrCurrNextInterval(vars_mgr, one_fairness, l, k-1);
+  return BeEnc_untimed_to_timed_or_interval(be_enc, one_fairness, l, k-1);
 }
 
 

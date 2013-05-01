@@ -30,11 +30,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
   Revision    [v. 1.0]
 
@@ -44,17 +44,19 @@
 #define _DAGINT
 
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
 #include "dag.h"
+
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
 /*---------------------------------------------------------------------------*/
 
-#define DAGMAX_WORDS   (int) 10
-#define DAGWORD_SIZE   (int) 16
+#define DAGMAX_WORDS  ((int) 10)
+#define DAGWORD_SIZE  ((int) (NUSMV_SIZEOF_VOID_P * 4))
+
 
 /*---------------------------------------------------------------------------*/
 /* Type declarations                                                         */

@@ -26,17 +26,20 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.3 2004/07/07 15:43:32]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
+
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
 if HAVE_ZCHAFF
 ZCHAFF_SRC = SatZchaff.h SatZchaff_private.h  SatZchaff.c 
 ZCHAFF_BUILT_SOURCES = satZChaffIfc.h 
@@ -62,11 +65,11 @@ EXTRA_DIST=$(ZCHAFF_EXTRA_DIST) $(MINISAT_EXTRA_DIST)
 
 BUILT_SOURCES = $(ZCHAFF_BUILT_SOURCES) $(MINISAT_BUILT_SOURCES)
 
-PKG_SOURCES = SatSim.h       SatSim_private.h       SatSim.c \
-	 $(ZCHAFF_SRC) $(MINISAT_SRC)
+PKG_SOURCES = $(ZCHAFF_SRC) $(MINISAT_SRC)
 
 satsolversdir = $(includedir)/nusmv/sat/solvers
-satsolvers_HEADERS = SatSim.h SatZchaff.h SatMinisat.h
+satsolvers_HEADERS = SatZchaff.h SatMinisat.h
+
 
 # -------------------------------------------------------
 
@@ -75,9 +78,14 @@ libsatsolvers_la_SOURCES = $(PKG_SOURCES)
 nodist_libsatsolvers_la_SOURCES = $(BUILT_SOURCES)
 
 # Generation of C interface from distributed SAT.h (zchaff) - if needed
-satZChaffIfc.h : $(zchaffincdir)/SAT.h $(top_srcdir)/config.h
-	sed 's/gid = 0/gid/' $(zchaffincdir)/SAT.h >  $@
+satZChaffIfc.h : $(zchaffincdir)/$(zchaff_ifcname) $(top_builddir)/nusmv-config.h
+	cp $(zchaffincdir)/$(zchaff_ifcname)  $@	
+
+# this is for older versions of zchaff, that have no C interface
+$(zchaffincdir)/$(zchaff_ifcname): $(zchaffincdir)/SAT.h 
+	sed 's/gid = 0/gid/' $(zchaffincdir)/SAT.h > $@
+
 
 # Generation of C interface from Solver_C.h (minisat) - if needed
-satMiniSatIfc.h : $(minisatincdir)/Solver_C.h $(top_srcdir)/config.h
-	cp $(minisatincdir)/Solver_C.h  $@
+satMiniSatIfc.h : $(minisatincdir)/$(minisat_ifcname) $(top_builddir)/nusmv-config.h
+	cp $(minisatincdir)/$(minisat_ifcname)  $@

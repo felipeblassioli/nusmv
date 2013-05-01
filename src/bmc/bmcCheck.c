@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -31,11 +31,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -46,7 +46,7 @@
 #include "utils/error.h"
 
 
-static char rcsid[] UTIL_UNUSED = "$Id: bmcCheck.c,v 1.13.4.4.2.2 2004/07/28 15:33:03 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: bmcCheck.c,v 1.13.4.4.2.2.2.3.4.2 2009-06-01 15:44:04 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -115,7 +115,7 @@ static void bmc_add_valid_wff_to_list ARGS((node_ptr wff, int index,
 ******************************************************************************/
 node_ptr Bmc_CheckFairnessListForPropositionalFormulae(node_ptr wffList)
 {
-  int aiOffendingWffIdxs[MAX_MATCHES];
+  unsigned int aiOffendingWffIdxs[MAX_MATCHES];
   char szNumber[6];
   char szBuffer[MAX_MATCHES * (sizeof(szNumber)+2)];
 
@@ -138,7 +138,9 @@ node_ptr Bmc_CheckFairnessListForPropositionalFormulae(node_ptr wffList)
           );
   /* prepare output string: */
   for (i=0; i<iMatches; ++i) {
-    sprintf(szNumber, "%d", aiOffendingWffIdxs[i]);
+    int chars = snprintf(szNumber, 6, "%d", aiOffendingWffIdxs[i]);
+    SNPRINTF_CHECK(chars, 6);
+
     strcat(szBuffer, szNumber);
     if ( i<(iMatches-1) ) {
       /* not the last index: */
@@ -160,7 +162,7 @@ node_ptr Bmc_CheckFairnessListForPropositionalFormulae(node_ptr wffList)
   /* reverse list to restore correct order: */
   list_valid_wff = reverse(list_valid_wff);
 
-  if (opt_verbose_level_gt(options, 0)) {
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
     if (iMatches > 0 ) {
       /* szBuffer must contain invalid formula's index: */
       nusmv_assert(strlen(szBuffer)>0);
@@ -312,6 +314,12 @@ boolean Bmc_IsPropositionalFormula(node_ptr wff)
   case VAR:
   case ATOM:
   case NUMBER:
+  case NUMBER_UNSIGNED_WORD:
+  case NUMBER_SIGNED_WORD:
+  case UWCONST: case SWCONST:
+  case NUMBER_FRAC:
+  case NUMBER_REAL:
+  case NUMBER_EXP: 
   case TRUEEXP:
   case FALSEEXP:
   case BOOLEAN:
@@ -377,7 +385,6 @@ boolean Bmc_IsPropositionalFormula(node_ptr wff)
     break;
 
   case EQDEF:
-  case SIGMA:
   case MINU:
   case MAXU:
     internal_error("Unaspected case value (%d)\n", node_get_type(wff));

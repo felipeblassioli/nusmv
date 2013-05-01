@@ -93,7 +93,7 @@
 --  |     |                   | ab != b               |                         |
 --  |     |                   v                       v                         |
 --  |     |              +----------+ ab := !ab +---------+                     |
---  |     `--------------+ send_ack |<----------+ deliver |                     |
+--  |     |--------------+ send_ack |<----------+ deliver |                     |
 --  |                    +----------+           +---------+                     |
 --  |                                                                           |
 --  |    (* means any data)                                                     |
@@ -122,7 +122,7 @@
 --  |            |             | ack(*)/err                                     |
 --  |            |             |                                                |
 --  |            `-------------'                                                |
---  `---------------------------------------------------------------------------'*/
+--  `--------------------------------------------------------------------------'*/
 MODULE Sender(s2r_in, r2s_out)
 
 VAR
@@ -134,7 +134,7 @@ VAR
 ASSIGN
   
   init(state) := get;
-  init(abp) := 0;
+  init(abp) := FALSE;
 
   next(state) :=
     case
@@ -171,7 +171,7 @@ ASSIGN
 	 abp & r2s_out.tag = ack1
       )					: !abp;
 
-      1					: abp;
+      TRUE					: abp;
     esac;
 
   next(data) :=
@@ -183,7 +183,7 @@ ASSIGN
       )					:
 0..255;--DATA
 
-      1					: data;
+      TRUE					: data;
     esac;
 
   next(s2r_in.tag) :=
@@ -195,20 +195,20 @@ ASSIGN
 	  !abp				: data0;
 	esac;
 
-      1		     			: s2r_in.tag;
+      TRUE		     			: s2r_in.tag;
     esac;
 
   next(s2r_in.data) :=
     case
       state = send &
       s2r_in.tag = mt			: data;
-      1		     			: s2r_in.data;
+     	TRUE 	     			: s2r_in.data;
     esac;
 
   next(r2s_out.tag) :=
     case
       state = wait_for_ack		: mt;
-      1					: r2s_out.tag;
+     	 TRUE			: r2s_out.tag;
     esac;
 
 FAIRNESS running
@@ -227,7 +227,7 @@ VAR
 ASSIGN
 
   init(state) := receive;
-  init(abp) := 0;
+  init(abp) := FALSE;
 
   next(state) :=
     case
@@ -260,7 +260,7 @@ ASSIGN
     case
       state = deliver 			: !abp;
       
-      1					: abp;
+      TRUE					: abp;
     esac;
 
   next(data) :=
@@ -271,13 +271,13 @@ ASSIGN
 	 abp & s2r_out.tag = data1
       )					: s2r_out.data;
 
-      1					: data;
+      TRUE					: data;
     esac;
 
   next(s2r_out.tag) :=
     case
       state = receive			: mt;
-      1					: s2r_out.tag;
+      TRUE					: s2r_out.tag;
     esac;
 
   next(s2r_out.data) := s2r_out.data;
@@ -291,7 +291,7 @@ ASSIGN
 	 !abp				: ack1;
        esac;
 
-      1					: r2s_in.tag;
+      TRUE					: r2s_in.tag;
     esac;
 
 FAIRNESS running
@@ -329,13 +329,13 @@ ASSIGN
   next(o.tag) :=
     case
       o.tag = mt & !(i.tag = mt)	: i.tag union error;
-      1					: o.tag;
+      TRUE					: o.tag;
     esac;
 
   next(i.tag) :=
     case
       o.tag = mt & !(i.tag = mt)	: mt;
-      1					: i.tag;
+      TRUE					: i.tag;
     esac;
 
 FAIRNESS running
@@ -349,19 +349,19 @@ ASSIGN
   next(o.tag) :=
     case
       o.tag = mt & !(i.tag = mt)	: i.tag union error;
-      1					: o.tag;
+      TRUE					: o.tag;
     esac;
 
   next(i.tag) :=
     case
       o.tag = mt & !(i.tag = mt)	: mt;
-      1					: i.tag;
+      TRUE					: i.tag;
     esac;
 
   next(o.data) :=
     case
       o.tag = mt & !(i.tag = mt)	: i.data;
-      1					: o.data;
+      TRUE					: o.data;
     esac;
 
   next(i.data) := i.data;

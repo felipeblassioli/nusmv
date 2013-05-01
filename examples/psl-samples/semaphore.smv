@@ -1,22 +1,24 @@
 MODULE main
 VAR
   semaphore : boolean;
-  proc[1] : process user(semaphore);
-  proc[2] : process user(semaphore);
+  proc_1 : process user(semaphore);
+  proc_2 : process user(semaphore);
 
 ASSIGN
-  init(semaphore) := 0;
+  init(semaphore) := FALSE;
 SPEC
-  AG (proc[1].state = entering -> AF proc[1].state = critical)
+  AG (proc_1.state = entering -> AF proc_1.state = critical)
 
 SPEC
-  AG (proc[2].state = entering -> AF proc[2].state = critical)
+  AG (proc_2.state = entering -> AF proc_2.state = critical)
 
 PSLSPEC
- forall i in {1:2}: (AG ((proc[i].state = entering) -> AF (proc[i].state = critical))) ;
+-- forall i in {1:2}: (AG ((proc[i].state = entering) -> AF (proc[i].state = critical))) ;
+ (AG ((proc_1.state = entering) -> AF (proc_1.state = critical))) & (AG ((proc_2.state = entering) -> AF (proc_2.state = critical)));
 
 PSLSPEC
- forall i in {1:2}: (always ((proc[i].state = entering) -> eventually! (proc[i].state = critical))) ;
+-- forall i in {1:2}: (always ((proc[i].state = entering) -> eventually! (proc[i].state = critical))) ;
+  (always ((proc_1.state = entering) -> eventually! (proc_1.state = critical))) & (always ((proc_2.state = entering) -> eventually! (proc_2.state = critical)));
 
 
 MODULE user(semaphore)
@@ -30,13 +32,13 @@ ASSIGN
       state = entering & !semaphore : critical;
       state = critical : {critical,exiting};
       state = exiting : idle;
-      1 : state;
+      TRUE : state;
     esac;
   next(semaphore) := 
     case
-      state = entering : 1;
-      state = exiting : 0;
-      1 : semaphore;
+      state = entering : TRUE;
+      state = exiting : FALSE;
+      TRUE : semaphore;
     esac;
 FAIRNESS
   running

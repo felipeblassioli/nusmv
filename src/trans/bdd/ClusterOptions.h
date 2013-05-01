@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``trans.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,13 +30,13 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: ]
+  Revision    [$Id: ClusterOptions.h,v 1.1.2.2.4.1.6.3 2007-05-03 15:48:21 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -45,8 +45,7 @@
 
 
 #include "utils/utils.h" /* for EXTERN and ARGS */
-
-struct options_TAG; /* to avoid explicit inclusion of opt */
+#include "opt/OptsHandler.h"
 
 
 typedef struct ClusterOptions_TAG* ClusterOptions_ptr;
@@ -59,17 +58,20 @@ typedef struct ClusterOptions_TAG* ClusterOptions_ptr;
 
 
 EXTERN ClusterOptions_ptr 
-ClusterOptions_create ARGS((struct options_TAG* options));
+ClusterOptions_create ARGS((OptsHandler_ptr options));
 
 EXTERN void ClusterOptions_destroy ARGS((ClusterOptions_ptr self));
 
 EXTERN int ClusterOptions_get_threshold ARGS((const ClusterOptions_ptr self));
-			  
+
 EXTERN boolean ClusterOptions_is_affinity ARGS((const ClusterOptions_ptr self));
 
 EXTERN boolean 
+ClusterOptions_clusters_appended ARGS((const ClusterOptions_ptr self));
+
+EXTERN boolean 
 ClusterOptions_is_iwls95_preorder ARGS((const ClusterOptions_ptr self));
-			  
+
 EXTERN int 
 ClusterOptions_get_cluster_size ARGS((const ClusterOptions_ptr self));
 

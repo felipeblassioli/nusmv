@@ -16,8 +16,8 @@ VAR
   read_L_MANY     : process read_L_MANY(s);
   read_L_ONE      : process read_L_ONE(s);
   write_conf      : process write_conf(s);
-  stimer1_QUIT    : process stimer1_QUIT(s);
-  stimer1_RETRY   : process stimer1_RETRY(s);
+  stimerTRUE_QUIT    : process stimerTRUE_QUIT(s);
+  stimerTRUE_RETRY   : process stimerTRUE_RETRY(s);
   stimer2         : process stimer2(s);
   read_K          : process read_K(s);
   write_ind       : process write_ind(s);
@@ -49,8 +49,8 @@ VAR
   stoggle : boolean;
   file : {NONE,ONE,MANY};
   rn : boolean;
-  stimer1_on : boolean;
-  stimer1_enabled : boolean;
+  stimerTRUE_on : boolean;
+  stimerTRUE_enabled : boolean;
   stimer2_on : boolean;
   stimer2_enabled : boolean;
   ind_indication : {FIRST, INCOMPLETE, LAST};
@@ -70,42 +70,42 @@ VAR
   data_is_safe : boolean;
   SAFE : boolean;
 INIT
-    K.first = 0
-  & K.last = 0
-  & K.toggle = 0
-  & K_full = 0
-  & L = 0
+    K.first = FALSE
+  & K.last = FALSE
+  & K.toggle = FALSE
+  & K_full = FALSE
+  & L = FALSE
   & req in {ONE,MANY}
-  & req_full = 0
+  & req_full = FALSE
   & conf = OK
-  & conf_full = 0
+  & conf_full = FALSE
   & spc = WR
-  & sfirst = 1
-  & stoggle = 0
+  & sfirst = TRUE
+  & stoggle = FALSE
   & file = NONE
-  & rn = 0
-  & stimer1_on = 0
-  & stimer1_enabled = 0
-  & stimer2_on = 0
-  & stimer2_enabled = 0
+  & rn = FALSE
+  & stimerTRUE_on = FALSE
+  & stimerTRUE_enabled = FALSE
+  & stimer2_on = FALSE
+  & stimer2_enabled = FALSE
   & ind_indication = FIRST
-  & ind_full = 0
-  & ind_error = 0
+  & ind_full = FALSE
+  & ind_error = FALSE
   & rpc = WF
-  & rfirst = 1
-  & rtoggle = 0
-  & ctoggle = 0
-  & msg.first = 0
-  & msg.last = 0
-  & msg.toggle = 0
-  & rtimer_on = 1
-  & rtimer_enabled = 0
-  & data_is_safe = 1
-  & abusy = 0
-  & afile = 0
-  & afirst = 1
-  & aerror = 0
-  & SAFE = 1
+  & rfirst = TRUE
+  & rtoggle = FALSE
+  & ctoggle = FALSE
+  & msg.first = FALSE
+  & msg.last = FALSE
+  & msg.toggle = FALSE
+  & rtimer_on = TRUE
+  & rtimer_enabled = FALSE
+  & data_is_safe = TRUE
+  & abusy = FALSE
+  & afile = FALSE
+  & afirst = TRUE
+  & aerror = FALSE
+  & SAFE = TRUE
 
 
 MODULE write_req(s)
@@ -113,7 +113,7 @@ TRANS
   running -> 
   !s.req_full
 ASSIGN
-  next(s.req_full) := 1;
+  next(s.req_full) := TRUE;
   next(s.req) := {ONE,MANY};
 
 
@@ -122,7 +122,7 @@ TRANS
   running -> 
   s.conf_full
 ASSIGN
-  next(s.conf_full) := 0;
+  next(s.conf_full) := FALSE;
 
 
 MODULE read_ind(s)
@@ -130,7 +130,7 @@ TRANS
   running -> 
   s.ind_full
 ASSIGN
-  next(s.ind_full) := 0;
+  next(s.ind_full) := FALSE;
 
 
 MODULE read_ind_error(s)
@@ -138,7 +138,7 @@ TRANS
   running -> 
   s.ind_error
 ASSIGN
-  next(s.ind_error) := 0;
+  next(s.ind_error) := FALSE;
 
 
 MODULE lose_msg(s)
@@ -146,8 +146,8 @@ TRANS
   running -> 
   s.K_full 
 ASSIGN
-  next(s.K_full) := 0;
-  next(s.stimer1_enabled) := 1;
+  next(s.K_full) := FALSE;
+  next(s.stimerTRUE_enabled) := TRUE;
 
 
 MODULE lose_ack(s)
@@ -155,8 +155,8 @@ TRANS
   running -> 
   s.L 
 ASSIGN
-  next(s.L) := 0;
-  next(s.stimer1_enabled) := 1;
+  next(s.L) := FALSE;
+  next(s.stimerTRUE_enabled) := TRUE;
 
 
 MODULE read_req(s) 
@@ -165,13 +165,13 @@ TRANS
   s.spc = WR & 
   s.req_full
 ASSIGN
-  next(s.req_full) := 0;
+  next(s.req_full) := FALSE;
   next(s.file) := s.req;
   next(s.spc) := SF;
   -- automaton
   next(s.SAFE) := !s.abusy;
-  next(s.abusy) := 1;
-  next(s.afile) := 1;
+  next(s.abusy) := TRUE;
+  next(s.afile) := TRUE;
 
 
 MODULE write_K(s)
@@ -180,13 +180,13 @@ TRANS
   s.spc = SF &
   !s.K_full
 ASSIGN
-  next(s.K_full) := 1;
+  next(s.K_full) := TRUE;
   next(s.K.first) := s.sfirst;
   next(s.K.last) := (s.file=ONE);
   next(s.K.toggle) := s.stoggle;
   next(s.spc) := WA;
-  next(s.rn) := 1;
-  next(s.stimer1_on) := 1;
+  next(s.rn) := TRUE;
+  next(s.stimerTRUE_on) := TRUE;
 
 
 MODULE read_L_MANY(s)
@@ -195,17 +195,17 @@ TRANS
   s.spc = WA &
   s.L
 ASSIGN
-  next(s.L) := 0;
+  next(s.L) := FALSE;
   next(s.spc) :=
     case 
       s.file=ONE : SC;
-      1          : SF;
+      TRUE          : SF;
     esac;
   next(s.sfirst) := (s.file=ONE);
   next(s.rn) := 
     case 
-      !(s.file=ONE) : 0;
-      1             : s.rn;
+      !(s.file=ONE) : FALSE;
+      TRUE             : s.rn;
     esac;
   next(s.file) := 
     case 
@@ -214,8 +214,8 @@ ASSIGN
       s.file=MANY : MANY;
     esac;
   next(s.stoggle) := !s.stoggle;
-  next(s.stimer1_on) := 0;
-  next(s.stimer1_enabled) := 0;
+  next(s.stimerTRUE_on) := FALSE;
+  next(s.stimerTRUE_enabled) := FALSE;
 
 
 MODULE read_L_ONE(s)
@@ -224,17 +224,17 @@ TRANS
   s.spc = WA &
   s.L
 ASSIGN
-  next(s.L) := 0;
+  next(s.L) := FALSE;
   next(s.spc) :=
     case
       s.file=ONE : SC;
-      1          : SF;
+      TRUE          : SF;
     esac;
   next(s.sfirst) := (s.file=ONE);
   next (s.rn) :=
     case
-      !(s.file=ONE) : 0;
-      1             : s.rn;
+      !(s.file=ONE) : FALSE;
+      TRUE             : s.rn;
     esac;
   next(s.file) := 
     case
@@ -243,8 +243,8 @@ ASSIGN
       s.file=MANY : ONE;
     esac;
   next(s.stoggle) := !s.stoggle;
-  next(s.stimer1_on) := 0;
-  next(s.stimer1_enabled) := 0;
+  next(s.stimerTRUE_on) := FALSE;
+  next(s.stimerTRUE_enabled) := FALSE;
 
 
 MODULE write_conf(s)
@@ -253,51 +253,51 @@ TRANS
   s.spc = SC &
   !s.conf_full
 ASSIGN
-  next(s.conf_full) := 1;
+  next(s.conf_full) := TRUE;
   next(s.conf) :=
     case
       s.file=NONE       : OK;
       s.file=ONE & s.rn : DONT_KNOW;
-      1                 : NOT_OK;
+      TRUE                 : NOT_OK;
     esac;
 DEFINE
   empty := (s.file=NONE);
 ASSIGN
-  next(s.spc) :=            case  empty : WR; 1 : WT2; esac;
-  next(s.sfirst) :=         case !empty : 1; 1 : s.sfirst; esac;
-  next(s.stoggle) :=        case !empty : !s.stoggle; 1 : s.stoggle; esac;
-  next(s.stimer2_on) :=     case !empty : 1; 1 : s.stimer2_on; esac;
-  next(s.rtimer_enabled) := case !empty : 1; 1 : s.rtimer_enabled; esac;
+  next(s.spc) :=            case  empty : WR; TRUE : WT2; esac;
+  next(s.sfirst) :=         case !empty : TRUE; TRUE : s.sfirst; esac;
+  next(s.stoggle) :=        case !empty : !s.stoggle; TRUE : s.stoggle; esac;
+  next(s.stimer2_on) :=     case !empty : TRUE; TRUE : s.stimer2_on; esac;
+  next(s.rtimer_enabled) := case !empty : TRUE; TRUE : s.rtimer_enabled; esac;
   next(s.file) := NONE;
-  next(s.rn) := 0;
+  next(s.rn) := FALSE;
   -- automaton
   next(s.SAFE) :=  
     s.abusy & !s.aerror &
     (next(s.conf)=OK -> !s.afile) &
     (next(s.conf)=NOT_OK -> s.afile);
-  next(s.abusy) := 0;
+  next(s.abusy) := FALSE;
   next(s.aerror) := !s.afirst;
-  next(s.afile) := 0; 
+  next(s.afile) := FALSE; 
 
 
-MODULE stimer1_QUIT(s)
+MODULE stimerTRUE_QUIT(s)
 TRANS
   running ->
-  s.stimer1_on & s.stimer1_enabled 
+  s.stimerTRUE_on & s.stimerTRUE_enabled 
 ASSIGN
   next(s.spc) := SC;
-  next(s.stimer1_on) := 0;
-  next(s.stimer1_enabled) := 0;
+  next(s.stimerTRUE_on) := FALSE;
+  next(s.stimerTRUE_enabled) := FALSE;
 
 
-MODULE stimer1_RETRY(s)
+MODULE stimerTRUE_RETRY(s)
 TRANS
   running ->
-  s.stimer1_on & s.stimer1_enabled 
+  s.stimerTRUE_on & s.stimerTRUE_enabled 
 ASSIGN
   next(s.spc) := SF;
-  next(s.stimer1_on) := 0;
-  next(s.stimer1_enabled) := 0;
+  next(s.stimerTRUE_on) := FALSE;
+  next(s.stimerTRUE_enabled) := FALSE;
 
 
 MODULE stimer2(s)
@@ -306,8 +306,8 @@ TRANS
   s.stimer2_on & s.stimer2_enabled 
 ASSIGN
   next(s.spc) := WR;
-  next(s.stimer2_on) := 0;
-  next(s.stimer2_enabled) := 0;
+  next(s.stimer2_on) := FALSE;
+  next(s.stimer2_enabled) := FALSE;
 
 
 MODULE read_K(s)
@@ -316,20 +316,16 @@ TRANS
   s.rpc = WF &
   s.K_full
 ASSIGN
-  next(s.K_full) := 0;
+  next(s.K_full) := FALSE;
   next(s.msg.first) := s.K.first;
   next(s.msg.last) := s.K.last;
   next(s.msg.toggle) := s.K.toggle;
---DEFINE
---  new := (!s.ctoggle | (next(s.msg.toggle) = s.rtoggle))
---;
---ASSIGN
-TRANS
-  (next(s.rpc)            in case (!s.ctoggle | (next(s.msg.toggle) = s.rtoggle)) : SI; 1 : RTS; esac)
-&
-  (next(s.rtimer_on)      in case (!s.ctoggle | (next(s.msg.toggle) = s.rtoggle)) : 0; 1 : s.rtimer_on; esac)
-&
-  (next(s.rtimer_enabled) in case (!s.ctoggle | (next(s.msg.toggle) = s.rtoggle)) : 0; 1 : s.rtimer_enabled; esac)
+DEFINE
+  new := !s.ctoggle | (next(s.msg.toggle) = s.rtoggle);
+ASSIGN
+  next(s.rpc)            := case new : SI; TRUE : RTS; esac;
+  next(s.rtimer_on)      := case new : FALSE; TRUE : s.rtimer_on; esac;
+  next(s.rtimer_enabled) := case new : FALSE; TRUE : s.rtimer_enabled; esac; 
 
 
 MODULE write_ind(s)
@@ -338,16 +334,16 @@ TRANS
   s.rpc = SI &
   !s.ind_full
 ASSIGN
-  next(s.ind_full) := 1;
+  next(s.ind_full) := TRUE;
   next(s.ind_indication) :=
     case
       s.msg.last  : LAST;
       s.msg.first : FIRST;
-      1           : INCOMPLETE;
+      TRUE           : INCOMPLETE;
     esac;
   next(s.rpc) := SA;
   next(s.rfirst) := s.msg.last;
-  next(s.ctoggle) := 1;
+  next(s.ctoggle) := TRUE;
   next(s.rtoggle) := !s.msg.toggle;
   -- automaton
   next(s.SAFE) :=  
@@ -366,8 +362,8 @@ TRANS
   (s.rpc = SA | s.rpc = RTS) &
   !s.L
 ASSIGN
-  next(s.L) := 1;
-  next(s.rtimer_on) := case s.rpc = SA : 1; 1 : s.rtimer_on; esac;
+  next(s.L) := TRUE;
+  next(s.rtimer_on) := case s.rpc = SA : TRUE; TRUE : s.rtimer_on; esac;
   next(s.rpc) := WF;
 
 
@@ -377,15 +373,15 @@ TRANS
   s.rpc = NOK &
   !s.ind_error
 ASSIGN
-  next(s.ind_error) := 1;
+  next(s.ind_error) := TRUE;
   next(s.rpc) := WF;
-  next(s.rfirst) := 1;
-  next(s.rtimer_on) := 1;
-  next(s.stimer2_enabled) := 1;
+  next(s.rfirst) := TRUE;
+  next(s.rtimer_on) := TRUE;
+  next(s.stimer2_enabled) := TRUE;
   -- automaton
   next(s.SAFE) := s.aerror;
-  next(s.afirst) := 1;
-  next(s.aerror) := 0;
+  next(s.afirst) := TRUE;
+  next(s.aerror) := FALSE;
 
 
 MODULE rtimer(s)
@@ -393,11 +389,11 @@ TRANS
   running ->
   s.rtimer_on & s.rtimer_enabled
 ASSIGN
-  next(s.ctoggle) := 0;
+  next(s.ctoggle) := FALSE;
   next(s.rpc) := 
-    case !s.rfirst : NOK; 1 : s.rpc; esac;
+    case !s.rfirst : NOK; TRUE : s.rpc; esac;
   next(s.rtimer_on) := 
-    case !s.rfirst : 0; 1 : s.rtimer_on; esac;
+    case !s.rfirst : FALSE; TRUE : s.rtimer_on; esac;
   next(s.stimer2_enabled) := 
-    case s.rfirst : 1; 1 : s.stimer2_enabled; esac;
-  next(s.rtimer_enabled) := 0;
+    case s.rfirst : TRUE; TRUE : s.stimer2_enabled; esac;
+  next(s.rtimer_enabled) := FALSE;

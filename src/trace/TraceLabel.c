@@ -7,43 +7,46 @@
   Synopsis    [Routines related to functionality related to a node of a trace.]
 
   Description [This file contains the definition of the \"TraceLabel\" class.]
-		
+
   SeeAlso     []
 
   Author      [Ashutosh Trivedi]
 
   Copyright   [
-  This file is part of the ``trace'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst.
+  This file is part of the ``trace'' package of NuSMV version 2.
+  Copyright (C) 2003 by FBK-irst.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "TraceLabel.h"
 #include "node/node.h"
-#include "parser/symbols.h" 
-#include "parser/parser.h" 
+#include "parser/symbols.h"
+#include "parser/parser.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: TraceLabel.c,v 1.1.2.4 2004/05/31 13:58:13 nusmv Exp $";
+#include "utils/portability.h" /* for errno */
+#include <limits.h> /* for INT_MAX */
+
+static char rcsid[] UTIL_UNUSED = "$Id: TraceLabel.c,v 1.1.2.4.4.2.4.2 2010-02-02 10:09:35 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Type declarations                                                         */
@@ -75,8 +78,8 @@ TraceLabel TraceLabel_create(int trace_id, int state_id)
 {
   TraceLabel self;
 
-  self = find_node(DOT, find_node(NUMBER, (node_ptr) trace_id, Nil), 
-                   find_node(NUMBER, (node_ptr)state_id, Nil));
+  self = find_node(DOT, find_node(NUMBER, NODE_FROM_INT(trace_id), Nil),
+                   find_node(NUMBER, NODE_FROM_INT(state_id), Nil));
   return self;
 }
 
@@ -85,30 +88,77 @@ TraceLabel TraceLabel_create(int trace_id, int state_id)
   Synopsis    [TraceLabel Constructor]
 
   Description [creates the label from the specified string. In case of any
-  error, it returns TRACE_LABEL_INVALID as result.]
+  error, it returns TRACE_LABEL_INVALID as result.
+
+  The string 'str' should follow this format: ^\s*(\d+)\s*\.\s*(-?\d+)$ in which
+  the first group matches the trace number and the second matches the state
+  number. ]
 
   SideEffects []
 
   SeeAlso     [TraceLabel_create]
 
 ******************************************************************************/
-TraceLabel TraceLabel_create_from_string(char* str)
+TraceLabel TraceLabel_create_from_string(const char* str)
 {
-  TraceLabel self = TRACE_LABEL_INVALID;
-  char* label_str[] = {"goto_state", str, " "};
-  node_ptr parsed_command = Nil;
+  char* startptr;
+  char* endptr;
+  long traceno, stateno;
 
-  if (Parser_ReadCmdFromString(3, label_str, "GOTO ", 
-			       ";\n", &parsed_command) == 0) {
-    if ((parsed_command != Nil) && (node_get_type(parsed_command) == GOTO)) {
-      node_ptr label = car(parsed_command);
-      int trace_no = (int) car(car(label));
-      int state_no = (int) car(cdr(label));
+  /* Start reading the string */
+  startptr = (char*)str;
 
-      self = TraceLabel_create(trace_no-1, state_no-1);
-    }
+  /* First number must be a positive integer */
+  errno = 0;
+  traceno = strtol(str, &endptr, 10);
+
+  if((startptr == endptr) || (errno == ERANGE) ||
+     (errno == EINVAL) || (traceno < 0) || (traceno > INT_MAX)) {
+    /*
+      No chars read or error in reading or negative number or
+      number too big
+    */
+    return TRACE_LABEL_INVALID;
   }
-  return self;
+  startptr = endptr;
+
+  /* We can have some spaces */
+  while(' ' == *startptr) {
+    startptr++;
+  }
+
+  /* Then we have a '.' char */
+  if ('.' == *startptr) {
+    startptr++;
+  }
+  else {
+    /* We have something which is not a '.' */
+    return TRACE_LABEL_INVALID;
+  }
+
+  /* And then the state number */
+  errno = 0;
+  stateno = strtol(startptr, &endptr, 10);
+
+  if((startptr == endptr) || (errno == ERANGE) ||
+     (errno == EINVAL) || (stateno > INT_MAX) || (stateno < INT_MIN)) {
+    /* No chars read or error in reading or invalid int */
+    return TRACE_LABEL_INVALID;
+  }
+  startptr = endptr;
+
+  /* Skip final spaces */
+  while(' ' == *startptr) {
+    startptr++;
+  }
+
+  if ('\0' == *startptr) {
+    return TraceLabel_create((int)(traceno - 1), (int)(stateno - 1));
+  }
+  else {
+    /* Something unexpected at the end of the file */
+    return TRACE_LABEL_INVALID;
+  }
 }
 
 /**Function********************************************************************
@@ -124,7 +174,7 @@ TraceLabel TraceLabel_create_from_string(char* str)
 ******************************************************************************/
 int TraceLabel_get_trace(TraceLabel self)
 {
-  int result = (int)car(car((node_ptr)self));
+  int result = NODE_TO_INT(car(car((node_ptr)self)));
 
   return result;
 }
@@ -142,7 +192,7 @@ int TraceLabel_get_trace(TraceLabel self)
 ******************************************************************************/
 int TraceLabel_get_state(TraceLabel self)
 {
-  int result = (int)car(cdr((node_ptr)self));
+  int result = NODE_TO_INT(car(cdr((node_ptr)self)));
 
   return result;
 }

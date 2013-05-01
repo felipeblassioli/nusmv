@@ -15,7 +15,7 @@
 %
 %  Author      [A. Trivedi strongly revised by M. Roveri]
 %
-%  Copyright   [Copyright (C) 2003 by ITC-irst
+%  Copyright   [Copyright (C) 2010 by FBK-irst
 %
 %  NuSMV version 2 is free software; you can redistribute it and/or 
 %  modify it under the terms of the GNU Lesser General Public 
@@ -31,11 +31,11 @@
 %  License along with this library; if not, write to the Free Software 
 %  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 %
-%  For more information of NuSMV see <http://nusmv.irst.itc.it>
-%  or email to <nusmv-users@irst.itc.it>.
-%  Please report bugs to <nusmv-users@irst.itc.it>.
+%  For more information of NuSMV see <http://nusmv.fbk.eu>
+%  or email to <nusmv-users@fbk.eu>.
+%  Please report bugs to <nusmv-users@fbk.eu>.
 %
-%  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+%  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 %
 %
 %******************************************************************************/
@@ -52,7 +52,8 @@
 \RequirePackage[OT1]{fontenc}
 \RequirePackage{type1cm}
 \RequirePackage{times}
-
+\RequirePackage{url}
+\RequirePackage[nottoc]{tocbibind}
 
 % We are providing Bibliography, not just references. 
 \renewcommand{\bibname}{Bibliography}
@@ -67,7 +68,7 @@
 \def\vindex{\index[var]}
 
 % Change it to reflect new NuSMV version.
-\newcommand{\NuSMV}{NuSMV 2.3\xspace} 
+\newcommand{\NuSMV}{NuSMV 2.5\xspace} 
 \newcommand{\nusmvtxt}{NuSMV} 
 \newcommand{\nusmv}{\textsc{\nusmvtxt}\xspace} 
 \newcommand{\nusmvhead}{\nusmvtxt\xspace}
@@ -129,13 +130,42 @@ non-commercial purposes only.\xspace}
 \newcommand{\tab}{\texttt{<TAB>}\xspace} 
 \newcommand{\spc}{\texttt{<SPACE>}\xspace} 
 \newcommand{\code}[1]{\texttt{#1}\xspace}
+\newcommand{\type}[1]{\textsf{#1}\xspace}
+\newcommand{\reserved}[1]{\small{\textbf{\texttt{#1}}}\xspace}
+\newcommand{\operator}[1]{\small{\textbf{\texttt{#1}}}\xspace}
 \newcommand{\filename}[1]{\texttt{#1}\xspace}
 \newcommand{\command}[1]{\texttt{#1}\xspace}
 \newcommand{\cmdLine}[1]{\texttt{#1}\xspace}
 \newcommand{\varName}[1]{\texttt{#1}\xspace}
 
+% Types
+\newcommand{\Boolean}{\type{boolean}}
+\newcommand{\Integer}{\type{integer}}
+\newcommand{\Array}{\type{array}}
+\newcommand{\AnyWord}[1][$\bullet$]{\type{word[#1]}}
+\newcommand{\UWord}[1][$\bullet$]{\type{unsigned word[#1]}}
+\newcommand{\SWord}[1][$\bullet$]{\type{signed word[#1]}}
+\newcommand{\WordArray}[1][{[$\bullet$][$\bullet$]}]{\type{word-array#1}}
+\newcommand{\IntEnum}{\type{integer enum}}
+\newcommand{\SymbEnum}{\type{symbolic enum}}
+\newcommand{\IntSymbEnum}{\type{integers-and-symbolic enum}}
+\newcommand{\Enum}{\type{enumeration}}
+\newcommand{\BoolSet}{\type{boolean set}}
+\newcommand{\IntSet}{\type{integer set}}
+\newcommand{\SymbSet}{\type{symbolic set}}
+\newcommand{\IntSymbSet}{\type{integers-and-symbolic set}}
+\newcommand{\Set}{\type{set}}
+
+% Expressions
+\newcommand{\ite}[3]{(\ensuremath{#1} \operator{?} \ensuremath{#2} \operator{:} \ensuremath{#3})\xspace}
+\newcommand{\itebullet}{\ite{\bullet}{\bullet}{\bullet}}
+
+
+\newcommand{\grammar}[1]{\texttt{\small{#1}}\xspace}
+
 % Change copyright message.
-\newcommand{\copymsg}{Copyright \copyright 1998-2005 by CMU and ITC-irst.} 
+\newcommand{\copymsg}{Copyright \copyright 1998-2005 by CMU and ITC-irst.\\
+Copyright \copyright 2010 by FBK-irst.}
 
 % shorthand for showing chapter and section refereces in a better way.
 % use \cref{<chapter_label>} for referring to chapters and
@@ -265,12 +295,14 @@ non-commercial purposes only.\xspace}
 % good.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newlength{\nusmvtablewidth}
+\setlength{\nusmvtablewidth}{215pt}
 \newenvironment{nusmvTable}%
-{\nopagebreak[4]%
+{\nopagebreak[5]%
 %\tablecaption{}
 \tablehead{}%
 \tabletail{}%
-\begin{supertabular}{lp{240pt}}%
+\begin{supertabular}{p{0.45\nusmvtablewidth}p{\nusmvtablewidth}}%
 }%
 {%
 \end{supertabular}%
@@ -303,13 +335,15 @@ non-commercial purposes only.\xspace}
 \par\noindent%\ignorespacesafterend%
 }%
 
-\newcommand{\opt}[2]{\parbox[t]{95pt}{\texttt{#1}} & #2 \\}
+\newcommand{\opt}[2]{\parbox[t]{0.55\nusmvtablewidth}{\texttt{#1}} & \noindent\ignorespaces #2 \\[1mm]}
+\newcommand{\optns}[2]{\parbox[t]{0.55\nusmvtablewidth}{\texttt{#1}} & \noindent\ignorespaces #2 \\}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \newcommand{\tabItem}[1]
 {
-{ } & {
-$\bullet~~${\parbox[t]{230pt}{#1}}
+{ } & {\advance \nusmvtablewidth by -6pt % approximately the size of $\bullet~~
+$\bullet~~${\parbox[t]{\nusmvtablewidth}{#1}}
+\advance \nusmvtablewidth by 6pt
 }\\
 }
 

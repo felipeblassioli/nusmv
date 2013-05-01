@@ -12,7 +12,7 @@
 
   Copyright   [
   This file is part of the ``compile'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -28,51 +28,180 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "compileInt.h" 
 
-static char rcsid[] UTIL_UNUSED = "$Id: compileStruct.c,v 1.8.4.1.2.1 2005/06/27 14:46:38 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: compileStruct.c,v 1.8.4.1.4.6.4.2 2007-11-27 08:43:36 nusmv Exp $";
+
+/*---------------------------------------------------------------------------*/
+/* Structure declarations                                                    */
+/*---------------------------------------------------------------------------*/
+
+/**Struct**********************************************************************
+
+  Synopsis    [Data structure used to store the current status of compilation.]
+
+  Description []
+
+******************************************************************************/
+struct cmp_struct {
+  int      read_model;
+  int      hrc_built;
+  int      flatten_hierarchy;
+  int      encode_variables;
+  int      process_selector;
+  int      build_frames;
+  int      build_model;
+  int      build_flat_model;
+  int      build_bool_model;
+  int      bmc_init;
+  int      bmc_setup;
+  int      fairness_constraints;
+  int      coi;
+};
+
+/*---------------------------------------------------------------------------*/
+/* Variable declarations                                                     */
+/*---------------------------------------------------------------------------*/
+
+/**Variable**********************************************************************
+
+  Synopsis    [ This is a global variable responsable for 
+  keeping track of performed phases.]
+
+  Description [It is used in interactive mode,
+  to distinguish which commands can or cannot be executed.]
+
+******************************************************************************/
+cmp_struct_ptr cmps = (cmp_struct_ptr) NULL;
+
+
+/**Variable**********************************************************************
+
+  Synopsis    [ This is a  global variable storing 
+  the constructs of input modules.
+  Such kinds of structures can be created only be Compile_FlattenHierarchy.
+  ]
+
+  Description []
+
+******************************************************************************/
+FlatHierarchy_ptr mainFlatHierarchy = FLAT_HIERARCHY(NULL);
+
+
+/**Variable**********************************************************************
+
+  Synopsis    [ This is a global variable keeping the instance to the 
+  system fsm builder, used to help building FSMs]
+
+  Description []
+
+******************************************************************************/
+FsmBuilder_ptr global_fsm_builder = FSM_BUILDER(NULL);
+
+
+/**Variable********************************************************************
+
+  Synopsis           [The global predicate normaliser]
+
+  Description [An instance of a predicate normaliser is created and
+  destroyed during initialisation and de-initialisation of the class
+  package. During its lifetime a predicate normaliser can deal with
+  only one type checker.  As result, an instance of a predicate
+  normaliser can deal with only symbol table and one input SMV model
+  only.]
+
+******************************************************************************/
+PredicateNormaliser_ptr 
+global_predication_normaliser = PREDICATE_NORMALISER(NULL);
+
+
 
 /*---------------------------------------------------------------------------*/
 /* Definition of exported functions                                          */
 /*---------------------------------------------------------------------------*/
+
+/**Function********************************************************************
+
+  Synopsis           [Returns a global predicate normaliser]
+
+  Description [See PredicateNormaliser.h for more info 
+  on predication normaliser.]
+
+  SideEffects        []
+
+******************************************************************************/
+PredicateNormaliser_ptr Compile_get_global_predicate_normaliser()
+{
+  return global_predication_normaliser;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Returns the global fsm builder]
+
+  Description [See fsm/FsmBuilder.h for more info]
+
+  SideEffects        []
+
+******************************************************************************/
+FsmBuilder_ptr Compile_get_global_fsm_builder()
+{
+  return global_fsm_builder;
+}
+
+
+
+/**Function********************************************************************
+
+  Synopsis           [Initializes the cmp structure]
+
+  Description        []
+
+  SideEffects        []
+
+******************************************************************************/
 cmp_struct_ptr cmp_struct_init()
 {
   cmp_struct_ptr cmp;
-  cmp = ALLOC(cmp_struct_rec, 1);
+  cmp = ALLOC(struct cmp_struct, 1);
   cmp->read_model           = 0;
+  cmp->hrc_built            = 0;
   cmp->flatten_hierarchy    = 0;
   cmp->encode_variables     = 0;
   cmp->process_selector     = 0;
   cmp->build_frames         = 0;
-  cmp->compile_check        = 0;
-  cmp->build_init           = 0;
   cmp->build_model          = 0;
   cmp->build_flat_model     = 0;
   cmp->build_bool_model     = 0;
+  cmp->bmc_init             = 0;
   cmp->bmc_setup            = 0;
   cmp->fairness_constraints = 0;
   cmp->coi                  = 0;
-  cmp->build_model_setup    = 0;
-  cmp->init_expr            = Nil;
-  cmp->invar_expr           = Nil;
-  cmp->trans_expr           = Nil;
-  cmp->procs_expr           = Nil;
-  cmp->justice_expr         = Nil;
-  cmp->compassion_expr      = Nil;
-  cmp->spec_expr            = Nil;
-  cmp->compute_expr         = Nil;
-  cmp->ltlspec_expr         = Nil;
-  cmp->pslspec_expr         = Nil;
-  cmp->invar_spec_expr      = Nil;
   return(cmp);
+}
+
+/**Function********************************************************************
+
+  Synopsis           [Free the cmp structure]
+
+  Description        []
+
+  SideEffects        []
+
+******************************************************************************/
+void cmp_struct_quit(cmp_struct_ptr cmp)
+{
+  nusmv_assert((cmp_struct_ptr) NULL != cmp);
+  FREE(cmp);
 }
 
 int cmp_struct_get_read_model(cmp_struct_ptr cmp)
@@ -85,6 +214,24 @@ void cmp_struct_set_read_model(cmp_struct_ptr cmp)
 {
   nusmv_assert(cmp != NULL);
   cmp->read_model = 1;
+}
+
+void cmp_struct_unset_read_model(cmp_struct_ptr cmp)
+{
+  nusmv_assert(cmp != NULL);
+  cmp->read_model = 0;
+}
+
+int cmp_struct_get_hrc_built(cmp_struct_ptr cmp)
+{
+  nusmv_assert(cmp != NULL);
+  return(cmp->hrc_built);
+}
+
+void cmp_struct_set_hrc_built(cmp_struct_ptr cmp)
+{
+  nusmv_assert(cmp != NULL);
+  cmp->hrc_built = 1;
 }
 
 int cmp_struct_get_flatten_hrc(cmp_struct_ptr cmp)
@@ -135,30 +282,6 @@ void cmp_struct_set_build_frames(cmp_struct_ptr cmp)
   cmp->build_frames = 1;
 }
 
-int cmp_struct_get_compile_check(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->compile_check);
-}
-
-void cmp_struct_set_compile_check(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->compile_check = 1;
-}
-
-int cmp_struct_get_build_init(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->build_init);
-}
-
-void cmp_struct_set_build_init(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->build_init = 1;
-}
-
 int cmp_struct_get_build_model(cmp_struct_ptr cmp)
 {
   nusmv_assert(cmp != NULL);
@@ -195,6 +318,22 @@ void cmp_struct_set_build_bool_model(cmp_struct_ptr cmp)
   cmp->build_bool_model = 1;
 }
 
+int cmp_struct_get_bmc_init(cmp_struct_ptr cmp)
+{
+  nusmv_assert(cmp != NULL);
+  return(cmp->bmc_init);
+}
+void cmp_struct_set_bmc_init(cmp_struct_ptr cmp)
+{
+  nusmv_assert(cmp != NULL);
+  cmp->bmc_init = 1;
+}
+void cmp_struct_unset_bmc_init(cmp_struct_ptr cmp)
+{
+  nusmv_assert(cmp != NULL);
+  cmp->bmc_init = 0;
+}
+
 int cmp_struct_get_bmc_setup(cmp_struct_ptr cmp)
 {
   nusmv_assert(cmp != NULL);
@@ -205,6 +344,12 @@ void cmp_struct_set_bmc_setup(cmp_struct_ptr cmp)
 {
   nusmv_assert(cmp != NULL);
   cmp->bmc_setup = 1;
+}
+
+void cmp_struct_unset_bmc_setup(cmp_struct_ptr cmp)
+{
+  nusmv_assert(cmp != NULL);
+  cmp->bmc_setup = 0;
 }
 
 int cmp_struct_get_fairness(cmp_struct_ptr cmp)
@@ -231,138 +376,5 @@ void cmp_struct_set_coi(cmp_struct_ptr cmp)
   cmp->coi = 1;
 }
 
-int cmp_struct_get_build_model_setup(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->build_model_setup);
-}
 
-void cmp_struct_set_build_model_setup(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->build_model_setup = 1;
-}
-
-node_ptr cmp_struct_get_init(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->init_expr);
-}
-
-void cmp_struct_set_init(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->init_expr = n;
-}
-
-node_ptr cmp_struct_get_invar(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->invar_expr);
-}
-
-void cmp_struct_set_invar(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->invar_expr = n;
-}
-
-node_ptr cmp_struct_get_trans(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->trans_expr);
-}
-void cmp_struct_set_trans(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->trans_expr = n;
-}
-
-node_ptr cmp_struct_get_procs(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->procs_expr);
-}
-void cmp_struct_set_procs(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->procs_expr = n;
-}
-
-node_ptr cmp_struct_get_justice(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->justice_expr);
-}
-void cmp_struct_set_justice(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->justice_expr = n;
-}
-
-node_ptr cmp_struct_get_compassion(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->compassion_expr);
-}
-void cmp_struct_set_compassion(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->compassion_expr = n;
-}
-
-node_ptr cmp_struct_get_spec(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->spec_expr);
-}
-void cmp_struct_set_spec(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->spec_expr = n;
-}
-
-node_ptr cmp_struct_get_compute(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->compute_expr);
-}
-void cmp_struct_set_compute(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->compute_expr = n;
-}
-
-node_ptr cmp_struct_get_ltlspec(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->ltlspec_expr);
-}
-void cmp_struct_set_ltlspec(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->ltlspec_expr = n;
-}
-
-node_ptr cmp_struct_get_pslspec(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->pslspec_expr);
-}
-void cmp_struct_set_pslspec(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->pslspec_expr = n;
-}
-
-node_ptr cmp_struct_get_invar_spec(cmp_struct_ptr cmp)
-{
-  nusmv_assert(cmp != NULL);
-  return(cmp->invar_spec_expr);
-}
-void cmp_struct_set_invar_spec(cmp_struct_ptr cmp, node_ptr n)
-{
-  nusmv_assert(cmp != NULL);
-  cmp->invar_spec_expr = n;
-}
 

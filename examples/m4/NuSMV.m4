@@ -20,7 +20,7 @@ divert(-1) #do not output anything (i.e. end-of-line after definitions)
 #--Boston, MA 02111-1307 USA
 #--*****************************************************************************
 
-#-- This file contains some useful m4 macros for NuSMV <http://nusmv.irst.itc.it>
+#-- This file contains some useful m4 macros for NuSMV <http://nusmv.fbk.eu>
 #-- In order to use these macro inside a NuSMV file your must start it
 #-- by `include(NuSMV.m4)dnl' without the quotes. Furthermore if your 
 #-- NuSMV version has m4 support you must give the -m4 options to NuSMV to 

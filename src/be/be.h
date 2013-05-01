@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``be'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,11 +30,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -116,7 +116,6 @@ typedef be_ptr (*Be_Spec2Be_fun)(Be_Manager_ptr self, void* spec_be);
 typedef void*  (*Be_Be2Spec_fun)(Be_Manager_ptr self, be_ptr be);
 
 
-
 #include <limits.h>
 /* ================================================== */
 /* Put here any specific boolean expression manager
@@ -125,13 +124,30 @@ typedef void*  (*Be_Be2Spec_fun)(Be_Manager_ptr self, be_ptr be);
 /* ================================================== */
 
 #include "utils/utils.h" /* for EXTERN and ARGS */
-#include "utils/list.h"
+#include "utils/Slist.h"
 
+/*---------------------------------------------------------------------------*/
+/* Constant declarations                                                     */
+/*---------------------------------------------------------------------------*/
+
+/**Constant***********************************************************************
+
+  Synopsis [Represents an invalid value possibly used when
+  substituting.]
+
+  Description [If during substitution this value is found, an
+  error is raised. This is used for runtime checking of those
+  expressions that are not expected to contain variables that
+  cannot be substituted.]
+
+  SeeAlso     []
+
+******************************************************************************/
+extern const int BE_INVALID_SUBST_VALUE;
 
 /*---------------------------------------------------------------------------*/
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
-
 
 /*---------------------------------------------------------------------------*/
 /* Macro declarations                                                        */
@@ -156,6 +172,7 @@ EXTERN void Be_Quit ARGS((void));
 EXTERN  be_ptr Be_Manager_Spec2Be ARGS((const Be_Manager_ptr self,
                                         void* spec_expr));
 EXTERN  void* Be_Manager_Be2Spec ARGS((const Be_Manager_ptr self, be_ptr be));
+EXTERN void* Be_Manager_GetSpecManager ARGS((Be_Manager_ptr self));
 /* ================================================== */
 
 
@@ -169,16 +186,24 @@ EXTERN void Be_Cnf_RemoveDuplicateLiterals ARGS((Be_Cnf_ptr self));
 /* ================================================== */
 /* Be_Cnf class access members: (for special case,a constant,see Be_Cnf_ptr)*/
 EXTERN be_ptr Be_Cnf_GetOriginalProblem ARGS((const Be_Cnf_ptr self));
-EXTERN int      Be_Cnf_GetFormulaLiteral  ARGS((const Be_Cnf_ptr self));
-EXTERN lsList   Be_Cnf_GetVarsList        ARGS((const Be_Cnf_ptr self));
-EXTERN lsList   Be_Cnf_GetClausesList     ARGS((const Be_Cnf_ptr self));
-EXTERN int      Be_Cnf_GetMaxVarIndex     ARGS((const Be_Cnf_ptr self));
-EXTERN size_t   Be_Cnf_GetVarsNumber      ARGS((const Be_Cnf_ptr self));
-EXTERN size_t   Be_Cnf_GetClausesNumber   ARGS((const Be_Cnf_ptr self));
-EXTERN void     Be_Cnf_SetFormulaLiteral  ARGS((const Be_Cnf_ptr self,
-						const int formula_literal));
-EXTERN void     Be_Cnf_SetMaxVarIndex     ARGS((const Be_Cnf_ptr self,
-						const int max_idx));
+
+EXTERN int Be_Cnf_GetFormulaLiteral  ARGS((const Be_Cnf_ptr self));
+
+EXTERN Slist_ptr Be_Cnf_GetVarsList        ARGS((const Be_Cnf_ptr self));
+
+EXTERN Slist_ptr Be_Cnf_GetClausesList     ARGS((const Be_Cnf_ptr self));
+
+EXTERN int Be_Cnf_GetMaxVarIndex     ARGS((const Be_Cnf_ptr self));
+
+EXTERN size_t Be_Cnf_GetVarsNumber      ARGS((const Be_Cnf_ptr self));
+
+EXTERN size_t Be_Cnf_GetClausesNumber   ARGS((const Be_Cnf_ptr self));
+
+EXTERN void Be_Cnf_SetFormulaLiteral  ARGS((const Be_Cnf_ptr self,
+                                                const int formula_literal));
+
+EXTERN void Be_Cnf_SetMaxVarIndex     ARGS((const Be_Cnf_ptr self,
+                                                const int max_idx));
 /* ================================================== */
 
 
@@ -210,24 +235,44 @@ Be_Ite     ARGS((Be_Manager_ptr manager, be_ptr arg_if,
                  be_ptr arg_then, be_ptr arg_else));
 
 EXTERN be_ptr
-Be_ShiftVar  ARGS((Be_Manager_ptr manager, be_ptr f, int shift));
+Be_LogicalShiftVar  ARGS((Be_Manager_ptr manager, be_ptr f, 
+                          int shift, 
+                          const int* log2phy, 
+                          const int* phy2log));
 
 EXTERN be_ptr
-Be_VarSubst ARGS((Be_Manager_ptr manager, be_ptr f, int* subst));
+Be_LogicalVarSubst ARGS((Be_Manager_ptr manager, be_ptr f, 
+                         int* subst, 
+                         const int* log2phy, 
+                         const int* phy2log));
+
+
 /* ================================================== */
 
 
 /* ================================================== */
 /* Utilities interface: */
-EXTERN Be_Cnf_ptr Be_ConvertToCnf ARGS((Be_Manager_ptr manager, be_ptr f));
+EXTERN Be_Cnf_ptr 
+Be_ConvertToCnf ARGS((Be_Manager_ptr manager, be_ptr f, int polarity));
 
 EXTERN int Be_CnfLiteral2BeLiteral ARGS((const Be_Manager_ptr self,
-					 int cnfLiteral));
+                                         int cnfLiteral));
 
-EXTERN int Be_BeIndex2CnfIndex ARGS((const Be_Manager_ptr self, int beIndex));
+EXTERN int Be_BeLiteral2CnfLiteral ARGS((const Be_Manager_ptr self,
+                                         int beLiteral));
 
-EXTERN lsList Be_CnfModelToBeModel ARGS((Be_Manager_ptr manager, 
-					 const lsList cnfModel));
+EXTERN int Be_BeLiteral2BeIndex ARGS((const Be_Manager_ptr self,
+                                      int beLiteral));
+
+EXTERN int Be_BeIndex2BeLiteral ARGS((const Be_Manager_ptr self,
+                                      int beIndex));
+
+EXTERN int Be_BeIndex2CnfLiteral ARGS((const Be_Manager_ptr self,
+                                       int beIndex));
+
+
+EXTERN Slist_ptr Be_CnfModelToBeModel ARGS((Be_Manager_ptr manager,
+                                            const Slist_ptr cnfModel));
 
 EXTERN void
 Be_DumpDavinci ARGS((Be_Manager_ptr manager, be_ptr f, FILE* outFile));
@@ -242,6 +287,26 @@ Be_DumpSexpr   ARGS((Be_Manager_ptr manager, be_ptr f, FILE* outFile));
 /* index<->be conversion layer: */
 EXTERN be_ptr Be_Index2Var ARGS((Be_Manager_ptr manager, int varIndex));
 EXTERN int Be_Var2Index    ARGS((Be_Manager_ptr manager, be_ptr var));
+
+/* miscellaneous */
+EXTERN boolean Be_CnfLiteral_IsSignPositive ARGS((const Be_Manager_ptr self,
+                                                  int cnfLiteral));
+
+EXTERN int Be_CnfLiteral_Negate ARGS((const Be_Manager_ptr self,
+                                      int cnfLiteral));
+
+EXTERN boolean Be_BeLiteral_IsSignPositive ARGS((const Be_Manager_ptr self,
+                                                 int beLiteral));
+
+EXTERN int Be_BeLiteral_Negate ARGS((const Be_Manager_ptr self,
+                                     int beLiteral));
+
+EXTERN be_ptr 
+Be_apply_inlining ARGS((Be_Manager_ptr self, be_ptr f, boolean add_conj));
+
+EXTERN void
+Be_Cnf_PrintStat ARGS((const Be_Cnf_ptr self, FILE* outFile, char* prefix));
+
 /* ================================================== */
 
 

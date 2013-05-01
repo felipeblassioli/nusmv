@@ -24,11 +24,11 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information on NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.14 2003/11/10 14:15:42]
 
@@ -41,71 +41,118 @@ SUBDIRS = src doc examples contrib share
 
 TESTS = helpers/runtests.sh
 
+PACKAGE = $(PACKAGE_NAME)
+VERSION = $(PACKAGE_VERSION)
+
 AM_CPPFLAGS = -DDATADIR=\"$(datadir)\" @CPPFLAGS@
+CUDD_MAKEFILE = @cudd_mkf@
 
 READMES = LGPL-2.1 NEWS README README_PLATFORMS README.zChaff README.MiniSat
 
-MINISAT_DIST = $(minisat_nusmv)/MiniSat_v$(minisat_ver)_nusmv.patch  \
-        $(minisat_nusmv)/minisat-default $(minisat_nusmv)/build.sh   \
-	$(minisat_nusmv)/clean.sh $(minisat_nusmv)/README
+MINISAT_ALL_PATCHES = MiniSat_v070721_nusmv.patch 
+MINISAT_PATCHES = $(filter-out $(minisat_nusmv)/${minisat_patch},\
+	$(addprefix $(minisat_nusmv)/,$(MINISAT_ALL_PATCHES))) \
+	$(minisat_nusmv)/${minisat_patch}
+MINISAT_DIST = $(MINISAT_PATCHES) \
+        $(minisat_nusmv)/minisat-default.in $(minisat_nusmv)/build.sh \
+	$(minisat_nusmv)/gen_maker.sh $(minisat_nusmv)/clean.sh \
+	$(minisat_nusmv)/README
 
-ZCHAFF_DIST = $(zchaff_nusmv)/$(zchaff_patch) \
-	$(zchaff_nusmv)/zchaff-default $(zchaff_nusmv)/build.sh \
+ZCHAFF_ALL_PATCHES = zchaff.2003.12.04_nusmv.patch  zchaff.2004.11.15_nusmv.patch  \
+	zchaff.64bit.2007.3.12_nusmv.patch
+ZCHAFF_PATCHES = $(filter-out $(zchaff_nusmv)/${zchaff_patch},\
+	$(addprefix $(zchaff_nusmv)/,$(ZCHAFF_ALL_PATCHES))) \
+	$(zchaff_nusmv)/${zchaff_patch}
+ZCHAFF_DIST = $(ZCHAFF_PATCHES) \
+	$(zchaff_nusmv)/zchaff-default.in $(zchaff_nusmv)/build.sh \
 	$(zchaff_nusmv)/clean.sh $(zchaff_nusmv)/README
 
-HELPERS = helpers/compile  helpers/missing  helpers/config.guess    \
-	helpers/depcomp  helpers/install-sh                         \
-	helpers/config.sub  helpers/ltmain.sh 
+
+HELPERS = helpers/compile helpers/missing helpers/config.guess \
+	helpers/depcomp helpers/install-sh helpers/config.sub helpers/ltmain.sh
+
 
 CUSTOM_CMDS = helpers/extdoc helpers/extindex helpers/extproto \
-	helpers/extract_doc.in  helpers/regression_test
+	helpers/extract_doc.in helpers/regression_test
 
-OTHER_DIST_FILES = nusmv-2.2.pc.in $(MINISAT_DIST) $(ZCHAFF_DIST)
+OTHER_DIST_FILES = nusmv-2.pc.in 
+
+EXTERNAL_DIST_DIRS = $(CUDD_DIR) $(MINISAT_DIST) $(ZCHAFF_DIST) 
 
 # ----------------------------------------------------------------------
-
-if HAVE_PSL_PARSER
-bin_PROGRAMS = NuSMV pslparser
-else 
-bin_PROGRAMS = NuSMV 
+# Programs to be built
+bin_PROGRAMS = NuSMV
+if HAVE_LTL2SMV
+bin_PROGRAMS += src/ltl/ltl2smv/ltl2smv
 endif
+if HAVE_PSL_PARSER
+bin_PROGRAMS += pslparser
+endif
+# ----------------------------------------------------------------------
 
-lib_LTLIBRARIES = libnusmv.la
+lib_LTLIBRARIES = libnusmv.la  libnusmvcore.la
 
 # ----------------------------------------------------------------------
 # The NuSMV executable
-NuSMV_SOURCES = src/sm/smMain.c 
+NuSMV_SOURCES = src/main.c 
 NuSMV_LDADD = libnusmv.la
 NuSMV_DEPENDENCIES = libnusmv.la
 # ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
-
+# The ltl2smv program as stand-alone executable.
+src_ltl_ltl2smv_ltl2smv_SOURCES = src/ltl/ltl2smv/ltl2smvMain.c
+src_ltl_ltl2smv_ltl2smv_LDADD = libnusmv.la 
+src_ltl_ltl2smv_ltl2smv_DEPENDENCIES = libnusmv.la
+# ----------------------------------------------------------------------
 
 # ----------------------------------------------------------------------
 # The PSL parser as stand-alone program, mainly for testing.
 # This target is built only if explicitly required during configuration
 pslparser_SOURCES = src/parser/psl/psl.c
 pslparser_LDADD = libnusmv.la 
-pslparser_DEPENDENCIES = libnusmv.la 
+pslparser_DEPENDENCIES = libnusmv.la
 # ----------------------------------------------------------------------
 
 
-# Convenience lib for external linking:
-libnusmv_la_SOURCES = src/sm/smDummyMac.c  # to make 'ar' work on mac osx. See sm/smDummyMac.c for more details.
-libnusmv_la_LIBADD = $(top_builddir)/src/libnusmvcore.la \
+# lib for external linking:
+libnusmv_la_SOURCES = src/cinit/cinitDummyMac.c  # to make 'ar' work on mac osx. See cinit/cinitDummyMac.c for more details.
+libnusmv_la_LIBADD = \
+	$(top_builddir)/src/libnusmvsrc.la \
+	$(top_builddir)/src/parser/libsmvgrammar.la \
+	$(top_builddir)/src/librbcdag.la \
 	-L$(top_srcdir)/$(CUDD_DIR)/lib \
 	-lcudd -lcudd_util -lmtr -lst   \
-        $(readline_libs) $(zchaff_libs) $(minisat_libs) $(expat_libs)
+        $(readline_libs) $(zchaff_libs) $(minisat_libs) $(expat_libs) $(regex_libs)
 
-libnusmv_la_DEPENDENCIES = $(top_builddir)/src/libnusmvcore.la $(CUDD_DEPENDENCY)
+libnusmv_la_DEPENDENCIES = $(top_builddir)/src/libnusmvsrc.la	\
+	$(top_builddir)/src/librbcdag.la			\
+	$(top_builddir)/src/cinit/libcinit.la			\
+	$(top_builddir)/src/parser/libsmvgrammar.la		\
+	$(CUDD_DEPENDENCY)
+
+# core lib for external linking:
+libnusmvcore_la_SOURCES = src/cinit/cinitDummyMac.c  # to make 'ar' work on mac osx. See cinit/cinitDummyMac.c for more details.
+libnusmvcore_la_LIBADD = \
+	$(top_builddir)/src/libnusmvsrc.la \
+	-L$(top_srcdir)/$(CUDD_DIR)/lib \
+	-lcudd -lcudd_util -lmtr -lst   \
+        $(readline_libs) $(zchaff_libs) $(minisat_libs) $(expat_libs) $(regex_libs)
+
+libnusmvcore_la_DEPENDENCIES = $(top_builddir)/src/libnusmvsrc.la	\
+$(CUDD_DEPENDENCY)
 
 
-EXTRA_DIST = $(HELPERS) $(CUDD_DIR)  examples  contrib  share  \
-	$(TESTS)  $(READMES)  $(CUSTOM_CMDS)  $(OTHER_DIST_FILES)
+externalfiles = $(filter-out $(shell find $(EXTERNAL_DIST_DIRS) -wholename '*/.svn*') %.o %.a %~, \
+	$(shell find $(EXTERNAL_DIST_DIRS)))
 
+EXTRA_DIST = $(HELPERS) $(TESTS) $(READMES) $(CUSTOM_CMDS) $(OTHER_DIST_FILES)
+
+CLEANFILES = _configs.sed
+
+# ----------------------------------------------------------------------
 nusmvincdir = $(includedir)/nusmv
-nusmvinc_HEADERS = config.h
+nusmvinc_HEADERS = nusmv-config.h
 
 readmedir = $(datadir)/nusmv
 readme_DATA = $(READMES)
@@ -113,26 +160,31 @@ readme_DATA = $(READMES)
 cuddincdir = $(includedir)/$(CUDD_NAME)
 cuddinc_HEADERS = $(CUDD_DIR)/include/cudd.h  $(CUDD_DIR)/include/dddmp.h \
 	$(CUDD_DIR)/include/mnemosyne.h  $(CUDD_DIR)/include/mtr.h  \
-	$(CUDD_DIR)/include/node.h  $(CUDD_DIR)/include/st.h  \
-	$(CUDD_DIR)/include/util.h 
+	$(CUDD_DIR)/include/st.h $(CUDD_DIR)/include/util.h 
 
 pkgconfdir = $(libdir)/pkgconfig
-pkgconf_DATA = nusmv-2.2.pc
+pkgconf_DATA = nusmv-2.pc
 
-dist-hook:
+# ----------------------------------------------------------------------
+dist-hook:	
 	(test ! -d __tmp_nusmv__ || rm -rf __tmp_nusmv__)
 	mkdir __tmp_nusmv__ 
 	mv $(distdir)/*  __tmp_nusmv__
-	cd $(distdir)/$(CUDD_DIR) && $(MAKE) distclean
-	mv $(distdir)/$(CUDD_DIR) $(distdir)
-	mv $(distdir)/$(minisat_nusmv) $(distdir)
-	mv $(distdir)/$(zchaff_nusmv) $(distdir)
 	mv __tmp_nusmv__ $(distdir)/nusmv
+	mv $(CUDD_NAME) $(distdir)/
+	$(AMTAR) cz $(externalfiles) | $(AMTAR) xz -C $(distdir) # copies external files
+	cd $(distdir)/$(CUDD_NAME) && $(MAKE) -f $(CUDD_MAKEFILE) distclean
+#mv $(distdir)/$(minisat_nusmv) $(distdir)
+#mv $(distdir)/$(zchaff_nusmv) $(distdir)
 	rm -rf `find $(distdir) -name CVS`
+	rm -rf `find $(distdir) -name ".svn"`
 	rm -rf `find $(distdir) -name '*~'`	
 	cd $(distdir)/nusmv/src/parser && rm -f grammar.h grammar.c input.c
 	cd $(distdir)/nusmv/src/parser/ord && rm -f ord_grammar.h ord_grammar.c ord_input.c
 	cd $(distdir)/nusmv/src/parser/psl && rm -f psl_grammar.h psl_grammar.c psl_input.c
+	cd $(distdir)/nusmv/src/parser/idlist && rm -f idlist_grammar.h idlist_grammar.c idlist_input.c
+	cd $(distdir)/nusmv/src/addons_core/compass/parser/ap && rm -f ap_grammar.h ap_grammar.c ap_input.c
+	cd $(distdir)/nusmv/src/addons_core/compass/parser/prob && rm -f prob_grammar.h prob_grammar.c prob_input.c
 	cd $(distdir)/nusmv/src/ltl/ltl2smv && rm -f lex.c yacc.c yacc.h
 	rm -rf $(distdir)/nusmv/examples/TipSuite
 
@@ -184,15 +236,19 @@ if HAVE_NOT_CUDD
 CUDD_DEPENDENCY = cudd
 endif
 cudd:
-	cd $(top_srcdir)/$(CUDD_DIR) && $(MAKE)
+	cd $(top_srcdir)/$(CUDD_DIR) && $(MAKE) -f $(CUDD_MAKEFILE)
 
 
 
+# ----------------------------------------------------------------------
+# This is for target 'distbin'
 if HAVE_ZCHAFF
 distbindir =  $(PACKAGE)-zchaff-$(VERSION)-$(host_triplet)
 else
 distbindir =  $(PACKAGE)-$(VERSION)-$(host_triplet)
 endif
+
+distbin: distbin_gzip
 
 remove_distbindir = \
   { test ! -d $(distbindir) || { rm -fr $(distbindir); }; }
@@ -202,14 +258,9 @@ do_distbindir:
 	mkdir $(distbindir)
 	chmod a+w $(distbindir)
 
-
-distbin: distbin_gzip
-
-
+# creates the gzip distribution and strips executables
 distbin_gzip: do_distbindir
-	$(MAKE) prefix=$(shell cd $(distbindir) && pwd) install
-	$(AMTAR) chof - $(distbindir) | GZIP=$(GZIP_ENV) gzip -c >$(distbindir).tar.gz
+	$(MAKE) prefix=$(shell cd $(distbindir) && pwd) install-strip
+	tardir=$(distbindir) && $(am__tar) | GZIP=$(GZIP_ENV) gzip -c >$(distbindir).tar.gz
 	$(remove_distbindir)
-
-
-
+# ----------------------------------------------------------------------

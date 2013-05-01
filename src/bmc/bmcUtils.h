@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,13 +30,13 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: bmcUtils.h,v 1.3.4.2.2.2 2005/03/14 13:26:24 nusmv Exp $]
+  Revision    [$Id: bmcUtils.h,v 1.3.4.2.2.1.2.3.6.5 2010-02-12 17:14:49 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -93,7 +93,7 @@
   ((op)==DOT) || ((op) == BIT) || ((op)==NOT)    ? LITERAL                 \
   :                                                                        \
   ((op)==AND)           || ((op)==OR)        ||                            \
-  ((op)==IFF)           || ((op)==IF)            ? PROP_CONNECTIVE         \
+  ((op)==IFF)                                    ? PROP_CONNECTIVE         \
   :                                                                        \
   ((op)==OP_PREC)       || ((op)==OP_NEXT)   ||                            \
   ((op)==OP_NOTPRECNOT) ||                                                 \
@@ -109,13 +109,26 @@
 /*---------------------------------------------------------------------------*/
 /* Function prototypes                                                       */
 /*---------------------------------------------------------------------------*/
-EXTERN Trace_ptr 
-Bmc_Utils_generate_and_print_cntexample ARGS((BmcVarsMgr_ptr vars_mgr, 
-					      SatSolver_ptr solver, 
-					      BddEnc_ptr bdd_enc, 
-					      be_ptr be_prob, 
-					      const int k, 
-					      const char* trace_name));
+EXTERN Trace_ptr
+Bmc_Utils_generate_and_print_cntexample ARGS((BeEnc_ptr be_enc,
+                                              SatSolver_ptr solver,
+                                              be_ptr be_prob,
+                                              const int k,
+                                              const char* trace_name,
+                                              NodeList_ptr symbols));
+
+EXTERN Trace_ptr
+Bmc_Utils_generate_cntexample ARGS((BeEnc_ptr be_enc,
+                                    SatSolver_ptr solver,
+                                    be_ptr be_prob,
+                                    const int k,
+                                    const char* trace_name,
+                                    NodeList_ptr symbols));
+
+EXTERN Trace_ptr
+Bmc_Utils_fill_cntexample ARGS((BeEnc_ptr be_enc,
+                                SatSolver_ptr solver,
+                                const int k, Trace_ptr trace));
 
 EXTERN boolean Bmc_Utils_IsNoLoopback ARGS((const int l));
 EXTERN boolean Bmc_Utils_IsNoLoopbackString ARGS((const char* str));
@@ -129,13 +142,13 @@ EXTERN const char* Bmc_Utils_GetAllLoopbacksString ARGS((void));
 EXTERN int Bmc_Utils_RelLoop2AbsLoop 
 ARGS((const int loop, const int k));
 
-EXTERN outcome Bmc_Utils_Check_k_l ARGS((const int k, const int l));
+EXTERN Outcome Bmc_Utils_Check_k_l ARGS((const int k, const int l));
 
 EXTERN int Bmc_Utils_GetSuccTime 
 ARGS((const int time, const int k, const int l));
 
 EXTERN int Bmc_Utils_ConvertLoopFromString
-ARGS((const char* strValue, outcome* result));
+ARGS((const char* strValue, Outcome* result));
 
 EXTERN void Bmc_Utils_ConvertLoopFromInteger 
 ARGS((const int iLoopback, char* szLoopback, const int _bufsize));
@@ -146,6 +159,25 @@ ARGS((const char* filename_to_be_expanded,
       const SubstString* table_ptr,
       const size_t table_len,
       char* filename_expanded, size_t buf_len));
+
+EXTERN be_ptr 
+Bmc_Utils_apply_inlining ARGS((Be_Manager_ptr be_mgr, be_ptr f));
+EXTERN be_ptr 
+Bmc_Utils_apply_inlining4inc ARGS((Be_Manager_ptr be_mgr, be_ptr f));
+
+
+EXTERN be_ptr 
+Bmc_Utils_simple_costraint_from_string ARGS((BeEnc_ptr be_enc,
+                                             BddEnc_ptr bdd_enc,
+                                             const char* str, 
+                                             Expr_ptr* node_expr));
+
+EXTERN be_ptr 
+Bmc_Utils_next_costraint_from_string ARGS((BeEnc_ptr be_enc,
+                                           BddEnc_ptr bdd_enc,
+                                           const char* str, 
+                                           Expr_ptr* node_expr));
+
 
 /**AutomaticEnd***************************************************************/
 

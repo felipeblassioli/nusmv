@@ -16,7 +16,7 @@
 
   Copyright   [
   This file is part of the ``sat'' package of NuSMV version 2.
-  Copyright (C) 2004 by ITC-irst.
+  Copyright (C) 2004 by FBK-irst.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -32,13 +32,13 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: sat.h,v 1.3.4.1.2.4 2005/11/16 12:09:46 nusmv Exp $]
+  Revision    [$Id: sat.h,v 1.3.4.1.2.3.2.2 2005-05-04 07:54:51 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -48,7 +48,7 @@
 
 /* ====================================================================== */
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
 #include "utils/utils.h"
@@ -83,14 +83,14 @@
   SeeAlso      []
 
 ******************************************************************************/
-#ifdef HAVE_INCREMENTAL_SAT
-#error /* macro HAVE_INCREMENTAL_SAT must not be defined at this point */
+#ifdef NUSMV_HAVE_INCREMENTAL_SAT
+#error /* macro NUSMV_HAVE_INCREMENTAL_SAT must not be defined at this point */
 #endif
 
-#if HAVE_SOLVER_MINISAT || HAVE_SOLVER_ZCHAFF
-#define HAVE_INCREMENTAL_SAT 1
+#if NUSMV_HAVE_SOLVER_MINISAT || NUSMV_HAVE_SOLVER_ZCHAFF
+#define NUSMV_HAVE_INCREMENTAL_SAT 1
 #else
-#define HAVE_INCREMENTAL_SAT 0
+#define NUSMV_HAVE_INCREMENTAL_SAT 0
 #endif
 
 
@@ -99,10 +99,13 @@
 /*---------------------------------------------------------------------------*/
 
 EXTERN SatSolver_ptr Sat_CreateNonIncSolver ARGS((const char* satSolver));
+EXTERN SatSolver_ptr Sat_CreateNonIncProofSolver ARGS((const char* satSolver));
 EXTERN SatIncSolver_ptr Sat_CreateIncSolver ARGS((const char* satSolver));
+EXTERN SatIncSolver_ptr Sat_CreateIncProofSolver ARGS((const char* satSolver));
 
 EXTERN const char* Sat_NormalizeSatSolverName ARGS((const char* solverName));
 EXTERN void Sat_PrintAvailableSolvers ARGS((FILE* file));
+EXTERN char* Sat_GetAvailableSolversString ARGS((void));
 
 
 /* ====================================================================== */

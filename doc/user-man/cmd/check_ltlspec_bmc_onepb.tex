@@ -1,6 +1,8 @@
+% -*-latex-*-
 \begin{nusmvCommand} {check\_ltlspec\_bmc\_onepb} {Checks the given LTL specification, or all LTL specifications if no formula is given. Checking parameters are the single problem bound and the loopback value}
 
-\cmdLine{check\_ltlspec\_bmc\_onepb [-h | -n idx | -p "formula" \linebreak[4][IN context]] [-k length] [-l loopback] [-o filename]}
+\cmdLine{check\_ltlspec\_bmc\_onepb [-h ] | [ -n idx | -p "formula"
+    [IN context] | -P "name"] [-k length] [-l loopback] [-o filename]}
 
 As command \command{check\_ltlspec\_bmc} but it produces only one
 single problem with fixed bound and loopback values, with no iteration
@@ -15,6 +17,9 @@ The validity of {\it index} value is checked out by the system.}
 \opt{-p \parameter{"\anyexpr [IN context]"}}{Checks the \anyexpr
 specified on the command-line. \code{context} is the module instance
 name which the variables in \anyexpr must be evaluated in.}
+
+\opt{-P \parameter{\natnum{name}}}{Checks the LTL property named \natnum{name} in
+the property database.} 
 
 \opt{-k \parameter{\natnum{\it length}}}{{\it length} is the problem bound used when
 generating the single problem. Only natural numbers are valid values

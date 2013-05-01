@@ -26,28 +26,37 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.4 2003/11/13 13:42:48]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = array.h assoc.h avl.h error.h heap.h list.h lsort.h \
-	object.h object_private.h ucmd.h ustring.h utils.h \
-	utils_io.h portability.h array.c assoc.c avl.c error.c heap.c list.c \
-	object.c ucmd.c ustring.c utils.c utils_io.c \
-	NodeList.h NodeList.c range.h range.c portability.c
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
+
+PKG_H = array.h defs.h list.h object.h portability.h Sset.h ustring.h	\
+        WordNumber.h assoc.h error.h lsort.h object_private.h range.h	\
+        TimerBench.h utils.h WordNumber_private.h avl.h heap.h		\
+        NodeList.h Olist.h Slist.h ucmd.h utils_io.h NodeGraph.h	\
+        Stack.h Pair.h Triple.h
+
+PKG_C = array.c avl.c heap.c NodeList.c Olist.c range.c Sset.c ucmd.c	\
+	utils.c WordNumber.c assoc.c error.c list.c object.c		\
+	portability.c Slist.c TimerBench.c ustring.c utils_io.c		\
+	NodeGraph.c Stack.c Pair.c Triple.c
+
+PKG_SOURCES = $(PKG_H) $(PKG_C)
+
 
 utilsdir = $(includedir)/nusmv/utils
-utils_HEADERS = array.h error.h lsort.h ustring.h assoc.h heap.h \
-	NodeList.h range.h utils.h avl.h list.h object.h ucmd.h \
-	utils_io.h portability.h
+nobase_utils_HEADERS = $(PKG_H)
 
 
 # -------------------------------------------------------

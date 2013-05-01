@@ -13,7 +13,7 @@
 
   Copyright   [
   This file is part of the ``parser.ord'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -29,31 +29,31 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
 #include <setjmp.h>
 
-#if HAVE_MALLOC_H
-# if HAVE_SYS_TYPES_H
+#if NUSMV_HAVE_MALLOC_H
+# if NUSMV_HAVE_SYS_TYPES_H
 #  include <sys/types.h>
 # endif  
 # include <malloc.h>
-#elif HAVE_SYS_MALLOC_H
-# if HAVE_SYS_TYPES_H
+#elif NUSMV_HAVE_SYS_MALLOC_H
+# if NUSMV_HAVE_SYS_TYPES_H
 #  include <sys/types.h>
 # endif  
 # include <sys/malloc.h>
-#elif HAVE_STDLIB_H
+#elif NUSMV_HAVE_STDLIB_H
 # include <stdlib.h>
 #endif
 
@@ -66,6 +66,8 @@
 #include "utils/utils.h"
 
 static char rcsid[] UTIL_UNUSED = "$Id: ";
+
+static boolean _is_main_var = true;
 
 extern FILE* nusmv_stderr;
 
@@ -85,17 +87,16 @@ void parser_ord_error(char *s);
 
   Note: The following token are not used inside the grammar, but are
   used by other modules inside the system (i.e. the compiler, mc).
-  STEP RESET ASYNC MODTYPE LAMBDA CONTEXT EU AU EBU ABU MINU MAXU
-  FORMAT CONSTANT SCALAR CONS OVER BDD ATLINE APROPOS IFTHENELSE
-  QUOTE DL_ATOM APATH EPATH BIT
+  CONTEXT EU AU EBU ABU MINU MAXU
+  CONS OVER BIT
 */
 
 %left LB RB
 %left <node> ATOM NUMBER 
-%left DOT
+%left DOT MINUS
 
 /* all nonterminals return a parse tree node */
-%type <node> var_id  var_main_id vars_list_item  vars_list
+%type <node> var_id  vars_list_item  vars_list
 
 
 %start begin
@@ -107,60 +108,59 @@ begin         : vars_list { }
 vars_list     : {}
               | vars_list_item vars_list 
                 {
-		  parser_ord_add_var(parser_ord_get_global_parser(), $1);
-		}
+                  parser_ord_add_var(parser_ord_get_global_parser(), $1);
+                }
               ;
 
-vars_list_item : var_main_id
-                 | var_main_id DOT NUMBER 
-                   { 
-                     $$ = parser_ord_mk_bit(parser_ord_get_global_parser(), 
-					    $1, (int) car($3)); 
-                   }
-               ;
+vars_list_item : { _is_main_var = true; } var_id { $$ = $2; }
+                 ;
 
 
-
-var_main_id : ATOM 
-                   {
-		     $$ = parser_ord_mk_dot(parser_ord_get_global_parser(),
-					    Nil, $1);
-		   }
-
-            | var_main_id LB NUMBER RB 
-                   {
-		     $$ = parser_ord_mk_array(parser_ord_get_global_parser(), 
-					      $1, $3);
-                   }
-            | var_main_id DOT var_id 
-                   {
-		     $$ = parser_ord_mk_dot(parser_ord_get_global_parser(), 
-					    $1, $3);
-		   }		     
-            ;
-
-
-var_id      : ATOM
+var_id      :
+            ATOM {
+              if (_is_main_var) {
+                $$ = parser_ord_mk_dot(parser_ord_get_global_parser(), 
+                                       Nil, $1);
+                _is_main_var = false;
+              }
+              else {
+                $$ = $1;
+              }
+            }
+            | var_id DOT NUMBER
+            {
+              $$ = parser_ord_mk_bit(parser_ord_get_global_parser(),
+                                     $1, NODE_TO_INT(car($3)));
+            }
             | var_id LB NUMBER RB 
                    {
-		     $$ = parser_ord_mk_array(parser_ord_get_global_parser(), 
-					      $1, $3);
+                     $$ = parser_ord_mk_array(parser_ord_get_global_parser(), 
+                                              $1, $3);
+                   }
+            | var_id LB MINUS NUMBER RB 
+                   {
+                     int i = node_get_int($4);
+                     node_ptr num = parser_ord_mk_num(parser_ord_get_global_parser(), 
+                                                      -i);
+                     $$ = parser_ord_mk_array(parser_ord_get_global_parser(), 
+                                              $1, num);
+
                    }
             | var_id DOT var_id
                    {
-		     $$ = parser_ord_mk_dot(parser_ord_get_global_parser(), 
-					    $1, $3);
-		   }
+                     $$ = parser_ord_mk_dot(parser_ord_get_global_parser(), 
+                                            $1, $3);
+                   }
               ;
 
 %%
-
 
 /* Additional source code */
 void parser_ord_error(char *s) 
 {
     extern char parser_ord_text[];
-    
+    OptsHandler_ptr options = OptsHandler_get_instance();
+
     fprintf(nusmv_stderr,"\n");
     if (get_output_order_file(options)) {
       fprintf(nusmv_stderr, "file %s: ", get_output_order_file(options));

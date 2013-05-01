@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``trans.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,13 +30,13 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: Cluster.h,v 1.1.2.3 2004/05/31 10:00:00 nusmv Exp $]
+  Revision    [$Id: Cluster.h,v 1.1.2.3.4.1.6.1 2007-04-30 16:41:18 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -86,27 +86,27 @@ Cluster_get_quantification_state_input ARGS((const Cluster_ptr self));
 
 EXTERN void 
 Cluster_set_quantification_state_input ARGS((Cluster_ptr self, 
-					     DdManager* dd, bdd_ptr new_val));
+                                             DdManager* dd, bdd_ptr new_val));
 
 EXTERN bdd_ptr 
 Cluster_get_quantification_state ARGS((const Cluster_ptr self));
 
 EXTERN void 
 Cluster_set_quantification_state ARGS((Cluster_ptr self, 
-				       DdManager* dd, bdd_ptr new_val));
+                                       DdManager* dd, bdd_ptr new_val));
 
 
 /* ClusterIwls95 inherits from Cluster: */
 EXTERN ClusterIwls95_ptr 
 ClusterIwls95_create ARGS((DdManager* dd, 
-			   const ClusterOptions_ptr trans_options, 
-			   const double v_c, 
-			   const double w_c, 
-			   const double x_c, 
-			   const double y_c, 
-			   const double z_c, 
-			   const double min_c, 
-			   const double max_c)); 
+                           const ClusterOptions_ptr trans_options, 
+                           const double v_c, 
+                           const double w_c, 
+                           const double x_c, 
+                           const double y_c, 
+                           const double z_c, 
+                           const double min_c, 
+                           const double max_c)); 
 
 
 EXTERN double 

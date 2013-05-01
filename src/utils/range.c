@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 2004 by ITC-irst. 
+  Copyright (C) 2004 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,18 +30,20 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "range.h"
-#include "parser/symbols.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: range.c,v 1.1.2.2.2.1 2005/11/16 12:09:47 nusmv Exp $";
+#include "parser/symbols.h"
+#include "utils/error.h"
+
+static char rcsid[] UTIL_UNUSED = "$Id: range.c,v 1.1.2.2.4.7.6.2 2009-05-15 14:39:31 nusmv Exp $";
 
 
 /*---------------------------------------------------------------------------*/
@@ -74,6 +76,17 @@ static char rcsid[] UTIL_UNUSED = "$Id: range.c,v 1.1.2.2.2.1 2005/11/16 12:09:4
 ******************************************************************************/
 static node_ptr the_range = (node_ptr) NULL;
 
+
+/**Variable********************************************************************
+
+  Synopsis    [Used by Utils_range_check]
+
+  Description [Used by Utils_range_check callback]
+
+  SeeAlso     [Utils_range_check, Utils_set_data_for_range_check]
+
+******************************************************************************/
+static boolean  range_err = true;
 
 /**Variable********************************************************************
 
@@ -124,15 +137,31 @@ void Utils_set_data_for_range_check(node_ptr var, node_ptr range)
 
 /**Function********************************************************************
 
+  Synopsis           [Called before using Utils_range_check callback function]
+
+  Description        []
+
+  SideEffects        [Utils_range_check]
+
+******************************************************************************/
+void Utils_set_mode_for_range_check(boolean is_fatal)
+{
+  range_err = is_fatal;
+}
+
+/**Function********************************************************************
+
   Synopsis           [Checks if the values of <code>n</code> is in the
   range allowed for the variable.]
 
   Description        [Checks if the values of <code>n</code> is in the
   range allowed for the variable. The allowed values are stored in the
-  global variable <code>the_range</code>, which is updated each time this
-  function is called with the range allowed for the variable to be
-  checked. If the value is not in the range, then error occurs.]
-
+  global variable <code>the_range</code>, which should be set before
+  invocation of this function. 
+  An error occure if: 
+   1. the value is not in the range (all FAILURE node are, of course, irgnored)
+  ]
+   
   SideEffects        [Utils_set_data_for_range_check]
 
 ******************************************************************************/
@@ -142,11 +171,37 @@ void Utils_range_check(node_ptr n)
 
   if (node_get_type(n) == CONS) {
     while (n != (node_ptr) NULL) {
-      if (!in_list(car(n), the_range)) { range_error(car(n), the_var); }
+      /* ignore FAILURE nodes */
+      if (node_get_type(car(n)) != FAILURE && !in_list(car(n), the_range)) {
+        if (range_err) { range_error(car(n), the_var); }
+        else { range_warning(car(n), the_var); }
+      }
       n = cdr(n);
     }
   }
-  else if (!in_list(n, the_range)) { range_error(n, the_var); }
+  else {
+    /* ignore FAILURE nodes */
+    if (node_get_type(n) != FAILURE && !in_list(n, the_range)) {
+      if (range_err) { range_error(n, the_var); }
+      else { range_warning(n, the_var); }
+    }
+  }
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Checks if the values of <code>n</code> does not 
+  contains FAILURE node. If they do then report and terminate.]
+
+  Description        []
+
+  SideEffects        [Utils_set_data_for_range_check]
+
+******************************************************************************/
+void Utils_failure_node_check(node_ptr n)
+{
+  if (node_get_type(n) == FAILURE) report_failure_node(n);
 }
 
 
@@ -169,15 +224,15 @@ boolean Utils_is_in_range(node_ptr s, node_ptr d)
 
   if (node_get_type(s) == CONS) {
     while (s != Nil) {
-      if (in_list(car(s), d) == 1) return true;
+      nusmv_assert(CONS == node_get_type(s));
+      if (in_list(car(s), d) == 0) return false;
       s = cdr(s);
     }
-  }
-  else {
-    if (in_list(s, d) == 1) return true;
+    return true;
   }
 
-  return false;
+  /* s is a singleton */
+  return (in_list(s, d) == 1);
 }
 
  
@@ -201,7 +256,7 @@ boolean Utils_check_subrange(node_ptr subrange)
   inf = node_get_int(car(subrange));
   sup = node_get_int(cdr(subrange));
 
-  return inf < sup;		     
+  return inf <= sup;		     
 }
 
 
@@ -219,12 +274,10 @@ boolean Utils_check_subrange(node_ptr subrange)
 ******************************************************************************/
 boolean Utils_check_subrange_not_negative(node_ptr subrange)
 {
-  int inf, sup;
+  int inf;
   nusmv_assert(node_get_type(subrange) == TWODOTS);
 
   inf = node_get_int(car(subrange));
-  sup = node_get_int(cdr(subrange));
-
   return (inf >= 0) && Utils_check_subrange(subrange);
 }
 

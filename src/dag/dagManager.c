@@ -8,12 +8,12 @@
 
   Description [External procedures included in this module:
               <ul>
-	      <li> <b>Dag_ManagerAlloc()</b> allocates a DAG Manager;
-	      <li> <b>Dag_ManagerAllocWithParams()</b> user-driven allocation;
-	      <li> <b>Dag_ManagerFree()</b> deallocates a DAG Manager;
-	      <li> <b>Dag_ManagerGC()</b> forces a garbage collection.
-	      </ul>]
-		
+              <li> <b>Dag_ManagerAlloc()</b> allocates a DAG Manager;
+              <li> <b>Dag_ManagerAllocWithParams()</b> user-driven allocation;
+              <li> <b>Dag_ManagerFree()</b> deallocates a DAG Manager;
+              <li> <b>Dag_ManagerGC()</b> forces a garbage collection.
+              </ul>]
+
   SeeAlso     [dagVertex.c dagDfs.c]
 
   Author      [Armando Tacchella]
@@ -36,11 +36,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
   Revision    [v. 1.0]
 
@@ -109,14 +109,15 @@ Dag_ManagerAlloc()
 
   int             i;
   Dag_Manager_t * dagManager = ALLOC(Dag_Manager_t, 1);
+  nusmv_assert(dagManager != (Dag_Manager_t*) NULL);
 
   /* Number of bins is DAG_INIT_VERTICES_NO, number of max entries per bin is
      20, growth factor is 1.5, no reordering occurs. */
   dagManager -> vTable = 
     st_init_table_with_params(DagVertexComp, DagVertexHash,
-			      DAG_DEFAULT_VERTICES_NO, 
-			      DAG_DEFAULT_DENSITY, 
-			      DAG_DEFAULT_GROWTH, 0);
+                              DAG_DEFAULT_VERTICES_NO, 
+                              DAG_DEFAULT_DENSITY, 
+                              DAG_DEFAULT_GROWTH, 0);
 
   /* Calculate universal hash function parameters. */
   utils_random_set_seed();
@@ -147,8 +148,8 @@ Dag_ManagerAlloc()
   Description [Forces a total garbage collection and then deallocates the
                dag manager. `freeData' can be used to deallocate `data'
                fields (user data pointers) in the nodes, while `freeGen' 
-	       is applied to `gRef' fields (user generic pointers). 
-	       `freeData' and `freeGen' are in the form `void f(char * r)'.]
+               is applied to `gRef' fields (user generic pointers). 
+               `freeData' and `freeGen' are in the form `void f(char * r)'.]
 
   SideEffects [none]
 
@@ -194,13 +195,13 @@ Dag_ManagerFree(
   Description [Sweeps out useless vertices, i.e., vertices that are not 
                marked as permanent, that are not descendants
                of permanent vertices, or whose brother (if any) is neither
-	       permanent nor descendant of a permanent vertex.
-	       The search starts from vertices that are in the garbage
+               permanent nor descendant of a permanent vertex.
+               The search starts from vertices that are in the garbage
                bin and whose mark is 0. 
-	       `freeData' can be used to deallocate `data'
-	       fields (user data pointers) in the nodes, while `freeGen' 
-	       is applied to `gRef' fields (user generic pointers). 
-	       `freeData' and `freeGen' are in the form `void f(char * r)'.]
+               `freeData' can be used to deallocate `data'
+               fields (user data pointers) in the nodes, while `freeGen' 
+               is applied to `gRef' fields (user generic pointers). 
+               `freeData' and `freeGen' are in the form `void f(char * r)'.]
 
   SideEffects [none]
 
@@ -247,8 +248,8 @@ Dag_ManagerGC(
 
   Description [Gets a vertex to be freed. If the vertex has permanent or 
                non-orphan brothers it is rescued. Otherwise the brother is
-	       unconnected and the sons marks are updated. GC is then 
-	       propagated to each fatherless son.]
+               unconnected and the sons marks are updated. GC is then 
+               propagated to each fatherless son.]
 
   SideEffects [none]
 
@@ -261,12 +262,12 @@ GC(
   Dag_ProcPtr_t   freeData,
   Dag_ProcPtr_t   freeGen)
 {
-  lsGen          gen;
+  unsigned       gen;
   Dag_Vertex_t * vTemp;
 
   /* While the vertex is still intact remove it from the hash table. */
   st_delete(v -> dag -> vTable, (char**) &v, (char**) &vTemp);
-  
+
   /* If deallocating functions are provided, use them on data and gRef. */
   if (freeData != (void (*)()) NULL) {
     (*freeData)(v -> data);
@@ -274,26 +275,24 @@ GC(
   if (freeGen != (void (*)()) NULL) {
     (*freeData)(v -> gRef);
   }
-  
+
   /* Decrement the mark of the sons and possibly propagate
      the garbage collection. */
-  if (v -> outList != (lsList) NULL) {
-    
-    gen = lsStart(v -> outList);
-    while (lsNext(gen, (lsGeneric*) &vTemp, LS_NH) == LS_OK) {
+  if (v -> outList != (Dag_Vertex_t**) NULL) {
+
+    for (gen=0; gen<v->numSons; gen++) {
+      vTemp = v->outList[gen];
       vTemp = Dag_VertexGetRef(vTemp);
       --(vTemp -> mark);
       if (vTemp -> mark == 0) {
         GC(vTemp, freeData, freeGen);
       }
     }
-    lsFinish(gen);
-    
+
     /* Deallocate out edges. */
-    (void) lsDestroy(v -> outList, (void (*)()) NULL);
-    
+    FREE(v->outList);
   }
-  
+
   /* If the vertex has an handle to the garbage bin, remove the vertex
      from the bin. */
   if (v ->vHandle != (lsHandle) NULL) {
@@ -303,7 +302,7 @@ GC(
   /* Update GC statistics and free the vertex. */
   ++(v -> dag -> stats[DAG_GC_NO]);
   FREE(v);
-  
+
   return;
 
 } /* End of GC. */

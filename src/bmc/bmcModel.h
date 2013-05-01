@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,13 +30,13 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: bmcModel.h,v 1.2.4.1.2.1 2004/07/27 12:12:12 nusmv Exp $]
+  Revision    [$Id: bmcModel.h,v 1.2.4.1.2.1.2.3.4.1 2010-01-29 15:22:32 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -48,8 +48,7 @@
 #include "be/be.h"
 #include "node/node.h"
 
-#include "bmcFsm.h"
-#include "bmcVarsMgr.h"
+#include "fsm/be/BeFsm.h"
 
 
 /*---------------------------------------------------------------------------*/
@@ -77,25 +76,33 @@
 /*---------------------------------------------------------------------------*/
 /* Function prototypes                                                       */
 /*---------------------------------------------------------------------------*/
-EXTERN be_ptr Bmc_Model_GetInit0 ARGS((const Bmc_Fsm_ptr be_fsm));
+EXTERN be_ptr Bmc_Model_GetInit0 ARGS((const BeFsm_ptr be_fsm));
+EXTERN be_ptr Bmc_Model_GetInitI ARGS((const BeFsm_ptr be_fsm, const int i));
 
-EXTERN be_ptr Bmc_Model_GetInvarAtTime ARGS((const Bmc_Fsm_ptr be_fsm,
-					     const int time));
+EXTERN be_ptr Bmc_Model_GetInvarAtTime ARGS((const BeFsm_ptr be_fsm,
+                                             const int time));
+
+EXTERN be_ptr Bmc_Model_GetTransAtTime ARGS((const BeFsm_ptr be_fsm,
+                                             const int time));
 
 EXTERN be_ptr
-Bmc_Model_GetUnrolling ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_Model_GetUnrolling ARGS((const BeFsm_ptr be_fsm,
                              const int j, const int k));
 
 EXTERN be_ptr
-Bmc_Model_GetPathNoInit ARGS((const Bmc_Fsm_ptr be_fsm, const int k));
+Bmc_Model_GetPathNoInit ARGS((const BeFsm_ptr be_fsm, const int k));
 
 EXTERN be_ptr
-Bmc_Model_GetPathWithInit ARGS((const Bmc_Fsm_ptr be_fsm, const int k));
+Bmc_Model_GetPathWithInit ARGS((const BeFsm_ptr be_fsm, const int k));
 
 EXTERN be_ptr
-Bmc_Model_GetFairness ARGS((const Bmc_Fsm_ptr be_fsm,
-			    const int k, const int l));
+Bmc_Model_GetFairness ARGS((const BeFsm_ptr be_fsm,
+                            const int k, const int l));
 
+EXTERN be_ptr 
+Bmc_Model_Invar_Dual_forward_unrolling ARGS((const BeFsm_ptr be_fsm,
+                                             const be_ptr invarspec, 
+                                             int i));
 /**AutomaticEnd***************************************************************/
 
 #endif /* _BMC_MODEL__H */

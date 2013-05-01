@@ -4,7 +4,7 @@
 
   PackageName [bmc]
 
-  Synopsis    [The header file for the <tt>cmd</tt> module, the user 
+  Synopsis    [The header file for the <tt>cmd</tt> module, the user
   commands handling layer.]
 
   Description []
@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -31,13 +31,13 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information on NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: bmcCmd.h,v 1.2.4.1.2.4 2005/11/16 12:09:45 nusmv Exp $]
+  Revision    [$Id: bmcCmd.h,v 1.2.4.1.2.2.2.4.6.6 2010-02-12 17:14:49 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -45,9 +45,10 @@
 #define _BMC_CMD_H
 
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
+#include "prop/Prop.h" /* for Prop_type type */
 #include "utils/utils.h"
 
 /**AutomaticStart*************************************************************/
@@ -56,30 +57,54 @@
 /* Function prototypes                                                       */
 /*---------------------------------------------------------------------------*/
 
-EXTERN int Bmc_CommandBmcSetup ARGS((const int argc, const char** argv)); 
-EXTERN int Bmc_CommandBmcSimulate ARGS((const int argc, const char** argv)); 
+EXTERN int Bmc_CommandBmcSetup ARGS((int argc, char** argv));
 
-EXTERN int Bmc_CommandGenLtlSpecBmc ARGS((const int argc, const char** argv));
-EXTERN int 
-Bmc_CommandGenLtlSpecBmcOnePb ARGS((const int argc, const char** argv)); 
+EXTERN int Bmc_CommandBmcSimulate ARGS((int argc, char** argv));
 
-EXTERN int 
-Bmc_CommandCheckLtlSpecBmc ARGS((const int argc, const char** argv)); 
-EXTERN int 
-Bmc_CommandCheckLtlSpecBmcOnePb ARGS((const int argc, const char** argv)); 
+EXTERN int
+Bmc_CommandBmcIncSimulate ARGS((int argc, char** argv));
 
-EXTERN int Bmc_CommandGenInvarBmc ARGS((const int argc, const char** argv));
+EXTERN int Bmc_CommandBmcPickState ARGS((int argc, char **argv));
+EXTERN int
+Bmc_CommandBmcSimulateCheckFeasibleConstraints ARGS((int argc, char **argv));
 
-EXTERN int Bmc_CommandCheckInvarBmc ARGS((const int argc, const char** argv));
+EXTERN int Bmc_CommandGenLtlSpecBmc ARGS((int argc, char** argv));
+
+EXTERN int
+Bmc_CommandGenLtlSpecBmcOnePb ARGS((int argc, char** argv));
+
+EXTERN int
+Bmc_CommandCheckLtlSpecBmc ARGS((int argc, char** argv));
+
+EXTERN int
+Bmc_CommandCheckLtlSpecBmcOnePb ARGS((int argc, char** argv));
+
+EXTERN int Bmc_CommandGenInvarBmc ARGS((int argc, char** argv));
+
+EXTERN int Bmc_CommandCheckInvarBmc ARGS((int argc, char** argv));
+
+EXTERN int Bmc_check_if_model_was_built ARGS((FILE* err, boolean forced));
+
+EXTERN Outcome
+Bmc_cmd_options_handling ARGS((int argc, char** argv,
+                               Prop_Type prop_type,
+                               Prop_ptr* res_prop,
+                               int* res_k,
+                               int* res_l,
+                               char** res_a,
+                               char** res_s,
+                               char** res_o,
+                               boolean* res_e));
 
 
-#if HAVE_INCREMENTAL_SAT
-EXTERN int 
-Bmc_CommandCheckLtlSpecBmcInc ARGS((const int argc, const char** argv)); 
+#if NUSMV_HAVE_INCREMENTAL_SAT
+EXTERN int
+Bmc_CommandCheckLtlSpecBmcInc ARGS((int argc, char** argv));
 
-EXTERN int 
-Bmc_CommandCheckInvarBmcInc ARGS((const int argc, const char** argv));
+EXTERN int
+Bmc_CommandCheckInvarBmcInc ARGS((int argc, char** argv));
 #endif
+
 
 /**AutomaticEnd***************************************************************/
 

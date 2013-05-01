@@ -1,6 +1,8 @@
+% -*-latex-*-
 \begin{nusmvCommand}{gen\_ltlspec\_bmc\_onepb}{Dumps into one dimacs file the problem generated for the given LTL specification, or for all LTL specifications if no formula is explicitly given. Generation and dumping parameters are the problem bound and the loopback value}
 
- \cmdLine{gen\_ltlspec\_bmc\_onepb [-h | -n idx | -p "formula" \linebreak[4][IN context]] [-k length] [-l loopback] [-o filename]}
+ \cmdLine{gen\_ltlspec\_bmc\_onepb [-h ] | [ -n idx | -p "formula" [IN
+       context] | -P "name"] [-k length] [-l loopback] [-o filename]}
  
 As the \command{gen\_ltlspec\_bmc} command, but it generates and dumps
 only one problem given its bound and loopback. 
@@ -14,6 +16,9 @@ The validity of {\it index} value is checked out by the system.}
 \opt{-p \parameter{"\anyexpr [IN context]"}}{ Checks the \anyexpr specified
 on the command-line. \code{context} is the module instance name which
 the variables in \anyexpr must be evaluated in.}
+
+\opt{-P \parameter{\natnum{name}}}{Checks the LTL property named \natnum{name} in
+the property database.} 
 
 \opt{-k \parameter{\natnum{\it length}}}{ {\it length} is the single problem bound used
 to generate and dump it. Only natural numbers are valid values for this

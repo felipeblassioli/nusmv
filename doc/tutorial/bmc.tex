@@ -1,11 +1,18 @@
+% -*-latex-*-
 In this section we give a short introduction to the use of Bounded Model
 Checking (BMC) in \nusmv. For a more in-depth 
 introduction to the theory underlying BMC please refer to \cite{BCCZ99}.
+%
+To perform SAT based bounded model checking \nusmv needs to be linked
+to an external Sat Solver. If none is provided, all Bounded Model
+Checking routines in \nusmv will not be available. Currently
+\nusmv supports two SAT solvers: MiniSat and Zchaff.
+
 % % % A simple model
 
 Consider the following model, representing a simple, deterministic
-counter modulo $8$ (we assume that the following specification is 
-contained in file \filename{modulo8.smv}):
+counter modulo $8$ (we assume that the following specification is
+contained in file \filename{bmc\_tutorial.smv}):
 \begin{alltt}
 MODULE main
 VAR 
@@ -15,7 +22,7 @@ ASSIGN
 TRANS
   case
      y = 7 :  next(y) = 0; 
-     1     :  next(y) = ((y + 1) mod 16);
+     TRUE  :  next(y) = ((y + 1) mod 16);
   esac
 \end{alltt}
 
@@ -35,13 +42,13 @@ We would like to check with BMC the LTL specification \code{G ( y=4 -> X y=6 )}
 expressing that ``each time the counter value is $4$, the next counter
 value will be $6$''. This specification is obviously false, and our first
 step is to use \nusmv BMC to demonstrate its falsity.
-To this purpose, we add the following specification to file \filename{modulo8.smv}:
+To this purpose, we add the following specification to file \filename{bmc\_tutorial.smv}:
 \begin{alltt}
 LTLSPEC G ( y=4 -> X y=6 )
 \end{alltt}
 and we instruct \nusmv to run in BMC by using command-line option \code{-bmc}:
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -bmc modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -bmc bmc\_tutorial.smv}
 -- no counterexample found with bound 0 for specification 
    G(y = 4 -> X y = 6)
 -- no counterexample found with bound 1 for ... 
@@ -101,7 +108,7 @@ found, then \nusmv exits, and the truth of the formula is not
 decided. We remark that in this case we cannot conclude that the formula is true,
 but only that any counter-example should be longer than the maximum length.
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -bmc -bmc\_length 4 modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -bmc -bmc\_length 4 bmc\_tutorial.smv}
 -- no counterexample found with bound 0 for ...
 -- no counterexample found with bound 1 for ...
 -- no counterexample found with bound 2 for ...
@@ -113,14 +120,14 @@ but only that any counter-example should be longer than the maximum length.
 Let us consider now another property, \code{!G F (y = 2)}, stating that
 $y$ gets the value $2$ only a finite number of times. Again, this is a false
 property due to the cyclic nature of the model. Let us modify the
-specification of file \filename{modulo8.smv} as follows:
+specification of file \filename{bmc\_tutorial.smv} as follows:
 \begin{alltt}
 LTLSPEC !G F (y = 2)
 \end{alltt}
 %\noindent
 and let us run \nusmv in BMC mode:
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -bmc modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -bmc bmc\_tutorial.smv}
 -- no counterexample found with bound 0 for specification ! G  F y = 2
 -- no counterexample found with bound 1 for ...
 -- no counterexample found with bound 2 for ...
@@ -210,7 +217,7 @@ the counter-example can be specified by using command
 counter-example we are looking for, and \commandopt{l}, that defines the
 loopback condition. Consider the following interactive session:
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -int modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -int bmc\_tutorial.smv}
 \nusmvprompt \nusmvtext{go\_bmc}
 \nusmvprompt \nusmvtext{check\_ltlspec\_bmc\_onepb -k 9 -l 0}
 -- no counterexample found with bound 9 and loop at 0 for specification 
@@ -314,7 +321,7 @@ searched. This is the default value for option \commandopt{l}.
 In the following example we look for a counter-example of length $12$ with
 a loop of length $8$:
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -int modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -int bmc\_tutorial.smv}
 \nusmvprompt \nusmvtext{go\_bmc}
 \nusmvprompt \nusmvtext{check\_ltlspec\_bmc\_onepb -k 12 -l -8}
 -- specification ! G  F y = 2   is false
@@ -366,7 +373,7 @@ y value: 0   1   2   3   4   5   6   7   0   1   2   3   4
 If no loopback is specified, \nusmv is not able to
 find a counterexample for the given liveness property:
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -int modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -int bmc\_tutorial.smv}
 \nusmvprompt \nusmvtext{go\_bmc}
 \nusmvprompt \nusmvtext{check\_ltlspec\_bmc\_onepb -k 12 -l X}
 -- no counterexample found with bound 12 and no loop for ...
@@ -404,7 +411,7 @@ truth of invariants via a process of inductive reasoning, by checking
 if (i) the property holds in every initial state, and (ii) if it holds
 in any state reachable from any state where it holds.
 
-Let us modify file \filename{modulo8.smv} by replacing the LTL specification
+Let us modify file \filename{bmc\_tutorial.smv} by replacing the LTL specification
 with the following invariant specification:
 \begin{alltt}
 INVARSPEC y in (0..12)
@@ -412,7 +419,7 @@ INVARSPEC y in (0..12)
 %\noindent 
 and let us run \nusmv in BMC mode:
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -bmc modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -bmc bmc\_tutorial.smv}
 -- cannot prove the invariant y in (0 .. 12) : the induction fails
 -- as demonstrated by the following execution sequence
 Trace Description: BMC Counterexample
@@ -434,7 +441,7 @@ previously.
 
 If we try to prove the stronger invariant \code{y in (0..7)} we obtain:
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -bmc modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -bmc bmc\_tutorial.smv}
 -- invariant y in (0 .. 7)   is true
 \shellprompt
 \end{alltt}
@@ -479,7 +486,7 @@ of the invariant \\
 checked by the complete invariant checking algorithm.
 
 \begin{alltt}
-\shellprompt \shelltext{\nusmvtxt -int modulo8.smv}
+\shellprompt \shelltext{\nusmvtxt -int bmc\_tutorial.smv}
 \nusmvprompt \nusmvtext{go\_bmc}
 \nusmvprompt \nusmvtext{check\_invar\_bmc -a een-sorensson -p "y in (0..12)"}
 -- no proof or counterexample found with bound 0 ...

@@ -1,12 +1,17 @@
+% -*-latex-*-
 % header
 \documentclass[a4paper,10pt]{report}
 \usepackage{nusmv}
+\iftrue
+\usepackage[bookmarks=true]{hyperref}
+\fi
 
 \makeindex
 \listfiles
 
 %body 
 \begin{document}
+\sloppypar
 \bibliographystyle{alpha}
 
 \input{title}
@@ -22,8 +27,8 @@
 %\label{Tutorial}
 %\input{tut}
 
-\chapter{Syntax}
-\label{Syntax}
+\chapter{Input Language}
+\label{Input Language}
 \input{syntax}
 
 \chapter{Running \nusmvhead interactively}
@@ -47,6 +52,8 @@
 \newpage
 \appendix
 \input{app}
+\input{typerulesapp}
+\input{app_grammar}
 
 \cleardoublepage
 

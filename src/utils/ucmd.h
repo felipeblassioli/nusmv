@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,13 +31,13 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: ucmd.h,v 1.8.4.1 2003/07/22 15:25:03 nusmv Exp $]
+  Revision    [$Id: ucmd.h,v 1.8.4.1.4.1 2005-03-03 12:32:24 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -171,8 +171,9 @@ apply_string_macro_expansion ARGS((const SubstString* const subst,
 
 
 EXTERN int util_str2int ARGS((const char* str, int* value));
+EXTERN int util_str2int_inc ARGS((const char* str, char** endptr, int* out));
 EXTERN int util_is_string_null ARGS((const char* string));
-
+EXTERN int util_str2int_incr ARGS((const char* str, char **endptr, int* out));
 /**AutomaticEnd***************************************************************/
 
 #endif /* _U_CMD_H */

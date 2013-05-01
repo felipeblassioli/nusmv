@@ -1,8 +1,9 @@
+% -*-latex-*-
 \begin{nusmvCommand}{check\_invar\_bmc\_inc}{Generates and solves the given 
 invariant, or all invariants if no formula is given, using incremental algorithms}
  
-\cmdLine{check\_invar\_bmc\_inc [-h | -n idx | -p "formula" [IN context]]
-[-a algorithm]}
+\cmdLine{check\_invar\_bmc\_inc [-h ] | [ -n idx | -p "formula" [IN
+      context] | -P "name" ]] [-a algorithm]}
 
 This command does the same thing as \code{check\_invar\_bmc} (see the
 description on page \pageref{checkInvarBmcCommand}) but uses an
@@ -21,6 +22,12 @@ being proved.  At the moment, the ``Dual'' algorithm cannot be used if
 there are input variables in a given model. For additional information
 about algorithms, consider \cite{een04temporal}.
 
+Also, notice that during checking of invariants all the fairness
+conditions associated with the model are ignored.
+
+See variable \varName{use\_coi\_size\_sorting} for changing properties
+verification order.
+
 \begin{cmdOpt}
 
 \opt{-n \parameter{\natnum{\it index}}} { {\it index} is the numeric index of a valid
@@ -31,6 +38,9 @@ system.}
 \opt{-p \parameter{"\anyexpr [IN context]"}}{ Checks the \anyexpr specified
 on the command-line. \code{context} is the module instance name which
 the variables in \anyexpr must be evaluated in.}
+
+\opt{-P \parameter{"name"}}{ Checks the INVARSPEC property named
+  \filename{name}}
             
 \opt{-k \parameter{\natnum{\it max\_length}}}{\natnum{\it max\_length}
 is the maximum problem bound that can be reached. Only natural numbers

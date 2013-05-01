@@ -10,7 +10,7 @@ VAR
 ASSIGN
   init(Token) := init-token;
   next(Token) := token-in;
-  init(Persistent) := 0;
+  init(Persistent) := FALSE;
   next(Persistent) := Request & (Persistent | Token);
 
 DEFINE
@@ -28,88 +28,130 @@ PSLSPEC
 MODULE main
 
 VAR
-  e[5] : arbiter-element(self,e[4],0);
-  e[4] : arbiter-element(e[5],e[3],0);
-  e[3] : arbiter-element(e[4],e[2],0);
-  e[2] : arbiter-element(e[3],e[1],0);
-  e[1] : arbiter-element(e[2],self,1);
+  e_5 : arbiter-element(self,e_4,FALSE);
+  e_4 : arbiter-element(e_5,e_3,FALSE);
+  e_3 : arbiter-element(e_4,e_2,FALSE);
+  e_2 : arbiter-element(e_3,e_1,FALSE);
+  e_1 : arbiter-element(e_2,self,TRUE);
 
 DEFINE
-  grant-in := 1;
-  e[1].token-in := token-in;
-  override-out := 0;
-  grant-out := grant-in & !e[1].override-out;
+  grant-in := TRUE;
+  e_1.token-in := token-in;
+  override-out := FALSE;
+  grant-out := grant-in & !e_1.override-out;
 
 --SPEC
---  AG (e[5].Request -> ABF 0..4 (!e[5].Request | e[5].ack-out))
+--  AG (e_5.Request -> ABF 0..4 (!e_5.Request | e_5.ack-out))
 
 --SPEC
---  AG (!e[1].Request & !e[2].Request & !e[3].Request & !e[4].Request & e[5].Request -> e[5].ack-out)
+--  AG (!e_1.Request & !e_2.Request & !e_3.Request & !e_4.Request & e_5.Request -> e_5.ack-out)
 
 SPEC
   AG (
-      !(e[1].ack-out & e[2].ack-out)
+      !(e_1.ack-out & e_2.ack-out)
 
-      & !(e[1].ack-out & e[3].ack-out)
-      & !(e[2].ack-out & e[3].ack-out)
+      & !(e_1.ack-out & e_3.ack-out)
+      & !(e_2.ack-out & e_3.ack-out)
 
-      & !(e[1].ack-out & e[4].ack-out)
-      & !(e[2].ack-out & e[4].ack-out)
-      & !(e[3].ack-out & e[4].ack-out)
+      & !(e_1.ack-out & e_4.ack-out)
+      & !(e_2.ack-out & e_4.ack-out)
+      & !(e_3.ack-out & e_4.ack-out)
 
-      & !(e[1].ack-out & e[5].ack-out)
-      & !(e[2].ack-out & e[5].ack-out)
-      & !(e[3].ack-out & e[5].ack-out)
-      & !(e[4].ack-out & e[5].ack-out)
+      & !(e_1.ack-out & e_5.ack-out)
+      & !(e_2.ack-out & e_5.ack-out)
+      & !(e_3.ack-out & e_5.ack-out)
+      & !(e_4.ack-out & e_5.ack-out)
      )
 
 
 PSLSPEC
   AG (
-      !(e[1].ack-out & e[2].ack-out)
+      !(e_1.ack-out & e_2.ack-out)
 
-      & !(e[1].ack-out & e[3].ack-out)
-      & !(e[2].ack-out & e[3].ack-out)
+      & !(e_1.ack-out & e_3.ack-out)
+      & !(e_2.ack-out & e_3.ack-out)
 
-      & !(e[1].ack-out & e[4].ack-out)
-      & !(e[2].ack-out & e[4].ack-out)
-      & !(e[3].ack-out & e[4].ack-out)
+      & !(e_1.ack-out & e_4.ack-out)
+      & !(e_2.ack-out & e_4.ack-out)
+      & !(e_3.ack-out & e_4.ack-out)
 
-      & !(e[1].ack-out & e[5].ack-out)
-      & !(e[2].ack-out & e[5].ack-out)
-      & !(e[3].ack-out & e[5].ack-out)
-      & !(e[4].ack-out & e[5].ack-out)
+      & !(e_1.ack-out & e_5.ack-out)
+      & !(e_2.ack-out & e_5.ack-out)
+      & !(e_3.ack-out & e_5.ack-out)
+      & !(e_4.ack-out & e_5.ack-out)
      );
 
 
 PSLSPEC
       AG (
-                           ! (e[1].ack-out & e[2].ack-out)
-      & forall i in {1:2}: ! (e[i].ack-out & e[3].ack-out)
-      & forall i in {1:3}: ! (e[i].ack-out & e[4].ack-out)
-      & forall i in {1:4}: ! (e[i].ack-out & e[5].ack-out)
+                           ! (e_1.ack-out & e_2.ack-out)
+--      & (forall i in {1:2}: ! (e[i].ack-out & e_3.ack-out))
+      & (! (e_1.ack-out & e_3.ack-out) &
+         ! (e_2.ack-out & e_3.ack-out))
+--      & (forall i in {1:3}: ! (e[i].ack-out & e_4.ack-out))
+      & (! (e_1.ack-out & e_4.ack-out) & 
+         ! (e_2.ack-out & e_4.ack-out) & 
+         ! (e_3.ack-out & e_4.ack-out))
+--      & (forall i in {1:4}: ! (e[i].ack-out & e_5.ack-out))
+      & (! (e_1.ack-out & e_5.ack-out) & 
+         ! (e_2.ack-out & e_5.ack-out) & 
+         ! (e_3.ack-out & e_5.ack-out) & 
+         ! (e_4.ack-out & e_5.ack-out))
       ) ;
 
 PSLSPEC
       always (
-                           ! (e[1].ack-out & e[2].ack-out)
-      & forall i in {1:2}: ! (e[i].ack-out & e[3].ack-out)
-      & forall i in {1:3}: ! (e[i].ack-out & e[4].ack-out)
-      & forall i in {1:4}: ! (e[i].ack-out & e[5].ack-out)
+                           ! (e_1.ack-out & e_2.ack-out)
+--      & (forall i in {1:2}: ! (e[i].ack-out & e_3.ack-out))
+      & (! (e_1.ack-out & e_3.ack-out) & 
+         ! (e_2.ack-out & e_3.ack-out)
+        )
+--      & (forall i in {1:3}: ! (e[i].ack-out & e_4.ack-out))
+      & (! (e_1.ack-out & e_4.ack-out) &
+         ! (e_2.ack-out & e_4.ack-out) &
+         ! (e_3.ack-out & e_4.ack-out)
+         )
+--      & (forall i in {1:4}: ! (e[i].ack-out & e_5.ack-out))
+      & (! (e_1.ack-out & e_5.ack-out) & 
+         ! (e_2.ack-out & e_5.ack-out) & 
+         ! (e_3.ack-out & e_5.ack-out) &
+         ! (e_4.ack-out & e_5.ack-out)
+        )
       ) ;
 
 
 PSLSPEC
-                           never (e[1].ack-out & e[2].ack-out)
-      & forall i in {1:2}: never (e[i].ack-out & e[3].ack-out)
-      & forall i in {1:3}: never (e[i].ack-out & e[4].ack-out)
-      & forall i in {1:4}: never (e[i].ack-out & e[5].ack-out);
+                           never (e_1.ack-out & e_2.ack-out)
+--      & (forall i in {1:2}: never (e[i].ack-out & e_3.ack-out))
+      & ((never (e_1.ack-out & e_3.ack-out)) & 
+         (never (e_2.ack-out & e_3.ack-out))
+        )
+--      & (forall i in {1:3}: never (e[i].ack-out & e_4.ack-out))
+      & ((never (e_1.ack-out & e_4.ack-out)) & 
+         (never (e_2.ack-out & e_4.ack-out)) & 
+         (never (e_3.ack-out & e_4.ack-out))
+        )
+--      & (forall i in {1:4}: never (e[i].ack-out & e_5.ack-out));
+      & ((never (e_1.ack-out & e_5.ack-out)) & 
+         (never (e_2.ack-out & e_5.ack-out)) & 
+         (never (e_3.ack-out & e_5.ack-out)) & 
+         (never (e_4.ack-out & e_5.ack-out))
+        );
 
 PSLSPEC
-      never forall i in {1:2}: (e[i].ack-out & e[3].ack-out);
+--      never forall i in {1:2}: (e[i].ack-out & e_3.ack-out);
+      never ((e_1.ack-out & e_3.ack-out) & 
+             (e_2.ack-out & e_3.ack-out));
 
 PSLSPEC
-      never forall i in {1:3}: (e[i].ack-out & e[4].ack-out);
+--      never forall i in {1:3}: (e[i].ack-out & e_4.ack-out);
+      never ((e_1.ack-out & e_4.ack-out) & 
+             (e_2.ack-out & e_4.ack-out) & 
+             (e_3.ack-out & e_4.ack-out));
 
 PSLSPEC
-      never forall i in {1:4}: (e[i].ack-out & e[5].ack-out);
+--      never forall i in {1:4}: (e[i].ack-out & e_5.ack-out);
+      never ((e_1.ack-out & e_5.ack-out) & 
+             (e_2.ack-out & e_5.ack-out) & 
+             (e_3.ack-out & e_5.ack-out) &
+             (e_4.ack-out & e_5.ack-out));

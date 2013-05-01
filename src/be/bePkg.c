@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``be'' package of NuSMV version 2. 
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento. 
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,22 +31,22 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "be.h"
 #include "beInt.h"
+#include "rbc/rbc.h"
 
 /*---------------------------------------------------------------------------*/
 /* Variable definitions                                                      */
 /*---------------------------------------------------------------------------*/
 st_table* htShift_ptr = NULL; /* shift hash table */
-
 
 static void be_shiftHashInit ARGS((void)); 
 static void be_shiftHash_Quit ARGS((void)); 
@@ -58,8 +58,6 @@ static int be_shiftHash_key_hash ARGS((char* _key, const int size));
 
 static enum st_retval be_shiftHash_CallbackDeleteEntryAndKey
 ARGS((char* key, char* record, char* dummy));
-
-
 
 /**Function********************************************************************
 
@@ -73,9 +71,9 @@ ARGS((char* key, char* record, char* dummy));
 ******************************************************************************/
 void Be_Init()
 {
+  Rbc_pkg_init();
   be_shiftHashInit();
 }
-
 
 /**Function********************************************************************
 
@@ -90,11 +88,8 @@ void Be_Init()
 void Be_Quit()
 {
   be_shiftHash_Quit();
+  Rbc_pkg_quit();
 }
-
-
-
-
 
 /**Function********************************************************************
 
@@ -104,16 +99,16 @@ void Be_Quit()
   Description        [Call be_shiftHash_Quit() before quit from the be  
   module]
 
-  SideEffects        [Private global var htShift_ptr will change]
+  SideEffects        [Private global vars htShift_ptr will change]
 
-  SeeAlso            [Be_ShiftVar, be_shiftHash_Quit]
+  SeeAlso            [Be_LogicalShiftVar, Hash_Quit]
 
 ******************************************************************************/
 static void be_shiftHashInit() 
 {
-  /* Initializes the shifting hash table */
+  /* Initializes the shifting hash tables */
   nusmv_assert(htShift_ptr == NULL); /* not already initialized */
- 
+
   htShift_ptr = st_init_table( &be_shiftHash_key_cmp, 
 			       &be_shiftHash_key_hash );
 
@@ -128,14 +123,14 @@ static void be_shiftHashInit()
 
   Description        [Call be_shiftHash_Quit() before quit from BMC module]
 
-  SideEffects        [Private global var htShift_ptr will be put to NULL]
+  SideEffects        [Private global vars htShift_ptr will be put to NULL]
 
-  SeeAlso            [Be_ShiftVar, be_shiftHashInit]
+  SeeAlso            [be_shiftHashInit]
 
 ******************************************************************************/
 static void be_shiftHash_Quit() 
 {
-  /* Destroys the shifting hash table */
+  /* Destroys the shifting hash tables */
   if (htShift_ptr != NULL) {
     st_foreach(htShift_ptr, be_shiftHash_CallbackDeleteEntryAndKey, 
 	       NULL /*dummy*/);
@@ -154,13 +149,13 @@ static int be_shiftHash_key_cmp(const char* _key1, const char* _key2)
   const shift_memoize_key* key1 = (shift_memoize_key*) _key1;
   const shift_memoize_key* key2 = (shift_memoize_key*) _key2;
   
-  return (key1->be != key2->be) | (key1->shift != key2->shift);
+  return (key1->be != key2->be) || (key1->shift != key2->shift);
 }
 
 static int be_shiftHash_key_hash(char* _key, const int size) 
 {
   shift_memoize_key* key = (shift_memoize_key*) _key;
-  return ((unsigned int)((int)key->be >> 2) ^ (key->shift) ) % size;
+  return (int) ((((nusmv_ptruint) key->be >> 2) ^ (key->shift) ) % size);
 }  
 
 

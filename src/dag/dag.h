@@ -15,6 +15,7 @@
   Copyright   [
   This file is part of the ``dag'' package of NuSMV version 2.
   Copyright (C) 2000-2001 by University of Genova.
+  Copyright (C) 2011 by FBK.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,11 +31,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
   Revision    [v. 1.0]
 
@@ -44,26 +45,26 @@
 #define __DAG_H__
 
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
 
 /* Standard includes. */
-#if HAVE_MALLOC_H
-# if HAVE_SYS_TYPES_H
+#if NUSMV_HAVE_MALLOC_H
+# if NUSMV_HAVE_SYS_TYPES_H
 #  include <sys/types.h>
 # endif  
 # include <malloc.h>
-#elif HAVE_SYS_MALLOC_H
-# if HAVE_SYS_TYPES_H
+#elif NUSMV_HAVE_SYS_MALLOC_H
+# if NUSMV_HAVE_SYS_TYPES_H
 #  include <sys/types.h>
 # endif  
 # include <sys/malloc.h>
-#elif HAVE_STDLIB_H
+#elif NUSMV_HAVE_STDLIB_H
 # include <stdlib.h>
 #endif
 
-#if HAVE_UNISTD_H
+#if NUSMV_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
@@ -72,6 +73,7 @@
 #include "utils/list.h"
 #include "util.h"
 #include "st.h"
+
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -82,9 +84,41 @@
 #define DAG_DEFAULT_DENSITY           20
 #define DAG_DEFAULT_GROWTH           1.5
 
-/* Setting and clearing leftmost bit in 32-bit pointers. */
-#define DAG_BIT_SET   (int) 0x80000000
-#define DAG_BIT_CLEAR (int) 0x7FFFFFFF
+/* Constants for setting and clearing pointer annotation bit which is 
+   lowest (rightmost) bit. 
+*/
+#if !defined(NUSMV_SIZEOF_VOID_P) || !defined(NUSMV_SIZEOF_LONG)
+#error Constants NUSMV_SIZEOF_VOID_P and NUSMV_SIZEOF_LONG must be defined
+#endif
+
+#if (NUSMV_SIZEOF_VOID_P == NUSMV_SIZEOF_LONG)
+/* The lowest bit of a pointer is used to store additional info
+   (about complementation). We can use this bit only because pointers
+   never use it (it is always 0 for any pointer). This is
+   ensured by the alignment of pointers which is required to be at
+   least 2 bytes.
+
+   Note: in past the highest (leftmost) bit was used as the annotation
+   bit. But it appeared that if the library is invoked from Java on
+   multi-processor machine then malloc behaves differently and it is
+   possible for a pointer to be from the higher half of memory, i.e.
+   in memory address the highest bit could be 0 as well as 1. As
+   result we could not use it any more and changed the
+   implementation.
+
+   Current implementation is similar to CUDD's one.  
+
+   Warning: on most machine alignment is 4 bytes which is more than
+   enough for us.  However in some case additional compilation options
+   (e.g. -malign-double) may be required to force proper alignment.
+*/
+# define DAG_ANNOTATION_BIT  ((nusmv_ptrint) 1)
+#else
+/* this fallback setting is for 32-bit only */
+# warning Size of pointers and long are different (may hide a serious problem)
+# define DAG_ANNOTATION_BIT   ((nusmv_ptrint) 1)
+#endif
+
 
 /* Dag statistics. */
 #define DAG_NODE_NO  (int)  0  /* How many nodes created (overall). */
@@ -137,7 +171,9 @@ typedef struct Dag_DfsFunctions Dag_DfsFunctions_t;  /* Depth First Search. */
 struct Dag_Vertex {
   int             symbol;
   char          * data;
-  lsList          outList;
+
+  Dag_Vertex_t* * outList;
+  unsigned        numSons;
 
   Dag_Manager_t * dag;
   int             mark;
@@ -192,45 +228,57 @@ extern Dag_DfsFunctions_t dag_DfsClean;
 
 /**Macro**********************************************************************
   Synopsis    [Filters a pointer from bit annotations.]
-  Description [The leftmost bit is filtered to 0 by a bitwise-and with
-               DAG_BIT_CLEAR == 0x7FFFFFFF mask. The result is the pointer
+  Description [The annotation bit is filtered to 0. The result is the pointer
                purified from the bit annotation.]
   SideEffects [none]
   SeeAlso     []
 ******************************************************************************/
 #define Dag_VertexGetRef(p)\
-((Dag_Vertex_t*)((int)p & DAG_BIT_CLEAR))
+((Dag_Vertex_t*)((nusmv_ptrint)p & (~ DAG_ANNOTATION_BIT)))
 
 /**Macro**********************************************************************
   Synopsis    [Sets (forces) a bit annotation to 1.]
-  Description [The leftmost bit is forced to 1 by a bitwise-or with
-               DAG_BIT_SET == 0x80000000 mask .]
+  Description [The annotation bit is forced to 1 by a bitwise-or with
+               DAG_ANNOTATION_BIT mask.]
   SideEffects [The value of p changes to the purified value.]
   SeeAlso     []
 ******************************************************************************/
 #define Dag_VertexSet(p)\
-(p = (Dag_Vertex_t*)((int)p | DAG_BIT_SET))
+(p = (Dag_Vertex_t*)((nusmv_ptrint)p | DAG_ANNOTATION_BIT))
 
 /**Macro**********************************************************************
   Synopsis    [Clears (forces) a bit annotation to 0.]
-  Description [The leftmost bit is forced to 0 by a bitwise-and with
-               DAG_BIT_CLEAR == 0x7FFFFFFF mask.]
+  Description [The annotation bit is forced to 0 by a bitwise-and with
+               complement of DAG_ANNOTATION_BIT mask.]
   SideEffects [The value of p changes to the purified value.]
   SeeAlso     []
 ******************************************************************************/
 #define Dag_VertexClear(p)\
-(p = (Dag_Vertex_t*)((int)p & DAG_BIT_CLEAR))
+(p = (Dag_Vertex_t*)((nusmv_ptrint)p & (~ DAG_ANNOTATION_BIT)))
 
 /**Macro**********************************************************************
   Synopsis    [Tests if the edge is annotated.]
-  Description [Uses a bitwise-and with DAG_BIT_SET == 0x80000000 to test the
-               leftmost bit of p. The result is either 0x00000000 if the bit
-               is not set, or 0x80000000 if the bit is set.]
+  Description [Uses a bitwise-and with DAG_ANNOTATION_BIT to test the
+               annotation bit of p. The result is either 0(false) or
+               not 0(true)]
   SideEffects [none]
   SeeAlso     []
 ******************************************************************************/
 #define Dag_VertexIsSet(p)\
-((int)p & DAG_BIT_SET)
+((nusmv_ptrint)p & DAG_ANNOTATION_BIT)
+
+/**Macro**********************************************************************
+  Synopsis    [Controls the sign of a dag.]
+  Description [The pointer is filtered by a bitwise-xor with either
+               DAG_ANNOTATION_BIT or !DAG_ANNOTATION_BIT. The pointer is not
+               altered, but the leftmost bit is complemented when
+               s==DAG_ANNOTATION_BIT and goes unchanged when
+               s!=DAG_ANNOTATION_BIT.]
+  SideEffects [none]
+  SeeAlso     []
+******************************************************************************/
+#define DagId(r,s) \
+  (Dag_Vertex_t*)((nusmv_ptrint)s ^ (nusmv_ptrint)r)
 
 /**AutomaticStart*************************************************************/
 
@@ -238,21 +286,47 @@ extern Dag_DfsFunctions_t dag_DfsClean;
 /* Function prototypes                                                       */
 /*---------------------------------------------------------------------------*/
 
-EXTERN void Dag_Dfs(Dag_Vertex_t * dfsRoot, Dag_DfsFunctions_t * dfsFun, char * dfsData);
-EXTERN Dag_Manager_t * Dag_ManagerAlloc();
-EXTERN Dag_Manager_t * Dag_ManagerAllocWithParams(int dagInitVerticesNo, int maxDensity, int growthFactor);
-EXTERN void Dag_ManagerFree(Dag_Manager_t * dagManager, Dag_ProcPtr_t freeData, Dag_ProcPtr_t freeGen);
-EXTERN void Dag_ManagerGC(Dag_Manager_t * dagManager, Dag_ProcPtr_t freeData, Dag_ProcPtr_t freeGen);
-EXTERN void Dag_PrintStats(Dag_Manager_t * dagManager, int clustSz, FILE * outFile);
-EXTERN Dag_Vertex_t * Dag_VertexLookup(Dag_Manager_t * dagManager, int vSymb, char * vData, lsList vSons);
-EXTERN Dag_Vertex_t * Dag_VertexInsert(Dag_Manager_t * dagManager, int vSymb, char * vData, lsList vSons);
-EXTERN void Dag_VertexMark(Dag_Vertex_t * v);
-EXTERN void Dag_VertexUnmark(Dag_Vertex_t * v);
+EXTERN void 
+Dag_Dfs(Dag_Vertex_t* dfsRoot, Dag_DfsFunctions_t* dfsFun, char* dfsData);
+
+EXTERN Dag_Manager_t* Dag_ManagerAlloc();
+
+EXTERN Dag_Manager_t* 
+Dag_ManagerAllocWithParams(int dagInitVerticesNo, int maxDensity, 
+                           int growthFactor);
+
+EXTERN void 
+Dag_ManagerFree(Dag_Manager_t* dagManager, Dag_ProcPtr_t freeData, 
+                Dag_ProcPtr_t freeGen);
+
+EXTERN void 
+Dag_ManagerGC(Dag_Manager_t* dagManager, Dag_ProcPtr_t freeData, 
+              Dag_ProcPtr_t freeGen);
+
+EXTERN void Dag_PrintStats(Dag_Manager_t* dagManager, int clustSz, 
+                           FILE* outFile);
+
+EXTERN Dag_Vertex_t*
+Dag_VertexLookup ARGS((Dag_Manager_t* dagManager,
+                       int vSymb,
+                       char* vData,
+                       Dag_Vertex_t** vSons,
+                       unsigned numSons));
+
+EXTERN Dag_Vertex_t*
+Dag_VertexInsert ARGS((Dag_Manager_t* dagManager,
+                       int vSymb,
+                       char* vData,
+                       Dag_Vertex_t** vSons,
+                       unsigned numSons));
+
+EXTERN void Dag_VertexMark(Dag_Vertex_t* v);
+EXTERN void Dag_VertexUnmark(Dag_Vertex_t* v);
+EXTERN void PrintStat(Dag_Vertex_t* dfsRoot, FILE* statFile, char* prefix);
 
 /**AutomaticEnd***************************************************************/
 
-EXTERN void PrintStat(Dag_Vertex_t* dfsRoot, FILE* statFile);
-EXTERN Dag_Vertex_t* Dag_Ennarize (Dag_Vertex_t* dfsRoot);
+
 
 
 #endif /* __DAG_H__ */

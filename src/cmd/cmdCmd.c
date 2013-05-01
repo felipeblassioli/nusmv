@@ -10,7 +10,7 @@
 
   Copyright   [
   This file is part of the ``cmd'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -26,41 +26,32 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
+#if HAVE_CONFIG_H 
+#include "nusmv-config.h"
+#endif
 #include "cmdInt.h"
 #include "utils/error.h" /* for CATCH */
+
+#if NUSMV_HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 /* 
  * Support to define unused varibles
  */
-static char rcsid[] UTIL_UNUSED = "$Id: cmdCmd.c,v 1.8.2.1.2.1 2005/03/11 16:24:44 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: cmdCmd.c,v 1.8.2.1.4.4.4.6 2009-08-03 11:45:38 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Stucture declarations                                                     */
 /*---------------------------------------------------------------------------*/
-
-/**Struct**********************************************************************
-
-  Synopsis    [required]
-
-  Description [optional]
-
-  SeeAlso     [optional]
-
-******************************************************************************/
-typedef struct CommandDescrStruct {
-  char *name;
-  PFI command_fp;
-  int changes_hmgr;
-} CommandDescr_t;
-
 
 /*---------------------------------------------------------------------------*/
 /* Variable declarations                                                     */
@@ -72,7 +63,14 @@ static char NuSMVShellChar = '!';      /* can be reset using the "set shell_char
 
 static int autoexec;		/* indicates currently in autoexec */
 
-extern options_ptr options;
+
+/* to check currently executed command reentrancy capability */
+static boolean is_curr_cmd_reentrant = false; 
+static void 
+cmd_set_curr_reentrant(boolean value) {is_curr_cmd_reentrant = value;}
+static boolean cmd_is_curr_reentrant(void) {return is_curr_cmd_reentrant;}
+
+
 /**AutomaticStart*************************************************************/
 
 /*---------------------------------------------------------------------------*/
@@ -85,7 +83,12 @@ static void variableInterpolation ARGS((int argc, char **argv));
 static char * variableInterpolationRecur ARGS((char *str));
 static char * split_line ARGS((char * command, int * argc, char *** argv));
 static int check_shell_escape ARGS((char * p, int * status));
+static void disarm_signal_andler ARGS((void));
+static void arm_signal_andler ARGS((void));
+
+#if NUSMV_HAVE_SIGNAL_H
 static void sigterm ARGS((int sig));
+#endif
 
 /**AutomaticEnd***************************************************************/
 
@@ -98,31 +101,28 @@ static void sigterm ARGS((int sig));
   pointer to code of the form: <p>
 
                 int <br>
-		CommandTest(hmgr, argc, argv)<br>
-                  Hrc_Manager_t **hmgr;<br>
+		CommandTest(argc, argv)<br>
                   int argc;<br>
                   char **argv;<br>
                 {<br>
 		    return 0;<br>
 		}<p>
 
-  Note the double de-reference on the hmgr which is passed to the command;
-  this allows the command to replace the current hmgr.  argv\[0\] will generally
+  argv\[0\] will generally
   be the command name, and argv\[1\] ... argv\[argc-1\] are the arguments for the
   command.  util_getopt() can be used to parse the arguments, but
   util_getopt_reset() must be used before calling util_getopt().  The command
   function should return 0 for normal operation, 1 for any error.  The changes
   flag is used to automatically save the hmgr before executing the command (in
-  order to support undo).]
+  order to support undo).
+  The flag reentrant is true if the command execution can be interrupted without
+  leaving the internal status inconsistent.
+  ]
 
   SideEffects []
 
 ******************************************************************************/
-void
-Cmd_CommandAdd(
-  char * name,
-  PFI  funcFp,
-  int  changes)
+void Cmd_CommandAdd(char* name, PFI  funcFp, int  changes, boolean reentrant)
 {
   char *key, *value;
   CommandDescr_t *descr;
@@ -131,7 +131,9 @@ Cmd_CommandAdd(
   key = name;
   if (avl_delete(cmdCommandTable, &key, &value)) {
     /* delete existing definition for this command */
-    fprintf(nusmv_stderr, "warning: redefining '%s'\n", name);
+    if (opt_verbose_level_gt(OptsHandler_get_instance(), 1)) {
+      fprintf(nusmv_stderr, "warning: redefining '%s'\n", name);
+    }
     CmdCommandFree(value);
   }
 
@@ -139,8 +141,79 @@ Cmd_CommandAdd(
   descr->name = util_strsav(name);
   descr->command_fp = funcFp;
   descr->changes_hmgr = changes;
+  descr->reentrant = reentrant;
   status = avl_insert(cmdCommandTable, descr->name, (char *) descr);
   nusmv_assert(!status);  /* error here in SIS version, TRS, 8/4/95 */
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Removes given command from the command table.]
+
+  Description [Returns true if command was found and removed,
+  false if not found]
+
+  SideEffects []
+
+******************************************************************************/
+boolean Cmd_CommandRemove(const char* name)
+{
+  char *key, *value;
+  boolean status;
+
+  key = (char*) name;
+  status = (avl_delete(cmdCommandTable, &key, &value) != 0);
+  if (status) CmdCommandFree(value);
+  
+  return status;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [True iff a command named 'name' is defined.]
+
+  Description []
+
+  SideEffects []
+
+******************************************************************************/
+boolean Cmd_CommandDefined(const char* name)
+{
+  char *key;
+  boolean status;
+
+  key = (char*) name;
+  status = (avl_lookup(cmdCommandTable, key, (char**) NULL) != 0);
+  
+  return status;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns the command stored under 'name' in the command table.]
+
+  Description [Returned value does not belong to caller.]
+
+  SideEffects []
+
+******************************************************************************/
+CommandDescr_t *Cmd_CommandGet(const char* name)
+{
+  char *key;
+  CommandDescr_t *value;
+  boolean status;
+
+  key = (char*) name;
+  status = (avl_lookup(cmdCommandTable, key, (char**) &value) != 0);
+
+  if (status) {
+    return value;
+  } else {
+    return (CommandDescr_t*) NULL;
+  }
 }
 
 
@@ -157,28 +230,23 @@ Cmd_CommandAdd(
   SideEffects []
 
 ******************************************************************************/
-int
-Cmd_CommandExecute(
-  char * command)
+int Cmd_CommandExecute(char* command)
 {
   int status, argc;
   int loop;
   char *commandp, **argv;
 
-  (void) signal(SIGINT, SIG_IGN);
+  disarm_signal_andler();
+
   commandp = command;
   do {
-    if (check_shell_escape(commandp, &status)) {
-      break;
-    }
+    if (check_shell_escape(commandp, &status)) break;
     
     commandp = split_line(commandp, &argc, &argv);
     loop = 0;
     status = apply_alias(&argc, &argv, &loop);
     if (status == 0) {
-
       variableInterpolation(argc, argv);
-
       status = com_dispatch(argc, argv);
     }
     CmdFreeArgv(argc, argv);
@@ -193,7 +261,7 @@ Cmd_CommandExecute(
   Synopsis    [Secure layer for Cmd_CommandExecute]
 
   Description [This version is securly callable from scripting languages. 
-  Do not call Cmd_CommandExecute directly from scripting language, otherwise
+  Do not call Cmd_CommandExecute directly from a scripting language, otherwise
   the script execution could be aborted without any warning.]
 
   SideEffects []
@@ -239,6 +307,37 @@ CmdCommandFree(
 }
 
 
+/**Function********************************************************************
+
+  Synopsis    [Copies value.]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     []
+
+******************************************************************************/
+CommandDescr_t *
+CmdCommandCopy(
+  CommandDescr_t * value)
+{
+  CommandDescr_t * res;
+
+  nusmv_assert(value != (CommandDescr_t*) NULL);
+
+  res = ALLOC(CommandDescr_t, 1);
+  nusmv_assert(res != (CommandDescr_t*) NULL);
+
+  res->name         = util_strsav(value->name);
+  res->command_fp   = value->command_fp;
+  res->changes_hmgr = value->changes_hmgr;
+  res->reentrant    = value->reentrant;
+
+  return res;
+}
+
+
 /*---------------------------------------------------------------------------*/
 /* Definition of static functions                                            */
 /*---------------------------------------------------------------------------*/
@@ -274,24 +373,33 @@ com_dispatch(
 
   descr = (CommandDescr_t *) value;
 
-  (void) signal(SIGINT, sigterm);
+  arm_signal_andler();
 
   CATCH {
+    cmd_set_curr_reentrant(descr->reentrant);
     status = (*descr->command_fp)(argc, argv);
+    cmd_set_curr_reentrant(true);
 
     /* automatic execution of arbitrary command after each command */
     /* usually this is a passive command ... */
     if (status == 0 && ! autoexec) {
-      if (avl_lookup(cmdFlagTable, "autoexec", &value)) {
-	autoexec = 1;
-	status = Cmd_CommandExecute(value);
-	autoexec = 0;
+      OptsHandler_ptr opt = OptsHandler_get_instance();
+      if (OptsHandler_is_option_registered(opt, "autoexec")) {
+        value = OptsHandler_get_string_option_value(opt, "autoexec");
+
+        nusmv_assert((char*)NULL != value);
+
+        autoexec = 1;
+        status = Cmd_CommandExecute(value);
+        autoexec = 0;
       }
     }
   } FAIL { 
     return(1);
   }
-  (void) signal(SIGINT, SIG_IGN);
+
+  disarm_signal_andler();
+
   return status;
 }
 
@@ -471,8 +579,6 @@ variableInterpolation(int argc, char **argv)
       argv[i] = newStr;
     }
   } /* end of iterating through all arguments */
-
-  return;
 }/* end of variable interpolation */
 
 
@@ -508,11 +614,11 @@ variableInterpolationRecur(char *str)
 {
   int i;               /* iterators */
   int findEndDollar;   /* flag to denote that a $ has been found. So
-			* search till end of variable
-			*/
+                        * search till end of variable
+                        */
   int endDollarIndex;  /* index in the current string of the end of the
-			* variable
-			*/
+                        * variable
+                        */
   int dollarIndex;     /* index in the current string of the dollar sign */  
   int singleQuote;     /* flag that symbolizes that a quote is started */ 
   int doubleQuote;     /* flag that symbolizes that a quote is started */
@@ -522,24 +628,25 @@ variableInterpolationRecur(char *str)
   int subLen;          /* length of the variable */
   int index;           /* variable use to step through the various strings */
   char *curStr;        /* current string which may change as substitutions
-			* take place
-			*/
+                        * take place
+                        */
   char *newCurStr;     /* new string pieced together with the expanded value */
   char c;              /* current character in the string */
 
   int freeNewValue;    /* new value of string returned by recursion needs
-			* to be freed.
-			*/
+                        * to be freed.
+                        */
   char dollar;         /* character that stores the dollar sign */
   int lastPos;         /* position of the last character of the variable
-			* in the string.
-			*/
+                        * in the string.
+                        */
   int envVar;           /* flag to say that the variable is not found in
-			 * the table, hence may be an environment variable
-			 */
+                         * the table, hence may be an environment variable
+                         */
 
   dollar = '$';
   curStrIndex = 0;
+  value = (char*) NULL;
   subLen = 0;
   findEndDollar = 0;
   singleQuote = 0;
@@ -563,15 +670,15 @@ variableInterpolationRecur(char *str)
       doubleQuote = !doubleQuote;
       /* also a variable termination */
       if (findEndDollar) {
-	findEndDollar = 0;
-	endDollarIndex = curStrIndex;
+        findEndDollar = 0;
+        endDollarIndex = curStrIndex;
       }
     }
     /* detect a $ if not within quotes */
     if ((c == '$') && (!singleQuote) && (!doubleQuote)) {
       if (findEndDollar == 1) {
-	(void)fprintf(nusmv_stderr, "Cannot have nested $ signs, not found termination\n");
-	break;
+        (void)fprintf(nusmv_stderr, "Cannot have nested $ signs, not found termination\n");
+        break;
       }
       /* note the beginning of the dollar position */
       dollarIndex = curStrIndex;
@@ -585,14 +692,14 @@ variableInterpolationRecur(char *str)
      * Termination characters except '\0' are ignored within quotes
      */
     if ((findEndDollar) &&
-	((c == '\0') ||
-	 ((!singleQuote) && (!doubleQuote) &&
-	  ((c == ':') || (c == '/'))))) {
+        ((c == '\0') ||
+         ((!singleQuote) && (!doubleQuote) &&
+          ((c == ':') || (c == '/'))))) {
       /*     if (((c == '\n') || (c == '\t') || (isspace(c)) ||
-	(c == ':') || (c == ';') || (c == '\0') ||
-	(c == '#') || (c == '/')) && (findEndDollar)) { */
-	findEndDollar = 0;
-	endDollarIndex = curStrIndex;
+             (c == ':') || (c == ';') || (c == '\0') ||
+             (c == '#') || (c == '/')) && (findEndDollar)) { */
+      findEndDollar = 0;
+      endDollarIndex = curStrIndex;
     } /* end of find termination characters */
 
     /* found the interpolation variable and its end*/
@@ -603,79 +710,86 @@ variableInterpolationRecur(char *str)
       envVar = 0;
       subStr = NULL;
       if (endDollarIndex > (dollarIndex +1)) {
-	/* if not empty string */
-	subStr = ALLOC(char, endDollarIndex - dollarIndex);
-	/* copy the variable into another string */
-	for ( i = 0; i <  endDollarIndex - dollarIndex - 1; i++) {
-	  subStr[i] = curStr[dollarIndex+1+i];
-	}
-	subStr[i] = '\0';
-	/* quiet if of the form var$:iable or var$foo:iable and
-	 * $foo not in flag table
-	 */
-	if (avl_lookup(cmdFlagTable, subStr, (char **)&value) != 0) {
-	  /* found the variable in the alias table */
-	  if (strchr((char *)value, (int)dollar) != NULL) {
-	    /* if more $s in the value */
-	    value = variableInterpolationRecur(value);
-	    subLen = strlen(value);
-	    /* to be freed later since variableInterpolationRecur
-	     * returns a new string to be freed later.
-	     */
-	    freeNewValue = 1;
+        OptsHandler_ptr opt = OptsHandler_get_instance();
+        /* if not empty string */
+        subStr = ALLOC(char, endDollarIndex - dollarIndex);
+        /* copy the variable into another string */
+        for ( i = 0; i <  endDollarIndex - dollarIndex - 1; i++) {
+          subStr[i] = curStr[dollarIndex+1+i];
+        }
+        subStr[i] = '\0';
+        /* quiet if of the form var$:iable or var$foo:iable and
+         * $foo not in flag table
+         */
+        if (OptsHandler_is_option_registered(opt, subStr)) {
 
-	  }  else {
-	  /* if no dollars in the value, substitute the return value
-	   * in the string
-	   */
-	    subLen = strlen(value);
-	  }
-	} else { 
-	  /* if the variable is not found, it might be an
-	   * environment variable and so keep it. This might be
-	   * a hazard for bogus variables but that is upto the user.
-	   */
-	  value = subStr;
-	  /* for environment variable keep the $ sign */
-	  subLen = strlen(value) +1;
-	  envVar = 1;
-	}
+          value = OptsHandler_get_string_representation_option_value(opt,
+                                                                     subStr);
+          /* NULL strings are returned as "NULL" string (4 chars +
+             delimiter) instead of NULL pointer (0x0). */
+          nusmv_assert((char*)NULL != value);
+
+          /* found the variable in the alias table */
+          if (strchr((char *)value, (int)dollar) != NULL) {
+            /* if more $s in the value */
+            value = variableInterpolationRecur(value);
+            subLen = strlen(value);
+            /* to be freed later since variableInterpolationRecur
+             * returns a new string to be freed later.
+             */
+            freeNewValue = 1;
+
+          }  else {
+            /* if no dollars in the value, substitute the return value
+             * in the string
+             */
+            subLen = strlen(value);
+          }
+        } else { 
+          /* if the variable is not found, it might be an
+           * environment variable and so keep it. This might be
+           * a hazard for bogus variables but that is upto the user.
+           */
+          value = subStr;
+          /* for environment variable keep the $ sign */
+          subLen = strlen(value) +1;
+          envVar = 1;
+        }
 
       } /* end of interpolation variable not trivial */
       /* prefix + strlen(substituted value) + suffix */
       newCurStr = ALLOC(char, dollarIndex + 
-			      subLen +
-			      strlen(curStr) - endDollarIndex + 1);
-			
-      
-      
+                        subLen +
+                        strlen(curStr) - endDollarIndex + 1);
+
+
       /* copy prefix */
       newCurStr = strncpy(newCurStr, curStr, dollarIndex);
       i = dollarIndex;
       if (subLen) {
-	/* copy substituted value */
-	if (envVar) {
-	  /* if it is an environment variable, keep the $ sign */
-	  newCurStr[i++] = '$';
-	}
-	index = 0;
-	while (value[index] != '\0') {
-	  newCurStr[i++] = value[index++];
-	}
-	if (freeNewValue) {
-	  FREE(value);
-	}
+        /* copy substituted value */
+        if (envVar) {
+          /* if it is an environment variable, keep the $ sign */
+          newCurStr[i++] = '$';
+        }
+        index = 0;
+        while (value[index] != '\0') {
+          newCurStr[i++] = value[index++];
+        }
+        if (freeNewValue) {
+          FREE(value);
+        }
       }
       /* freed here cos value might be subStr in one case */
       if (subStr != NULL) {
-	FREE(subStr);
+        FREE(subStr);
       }
       /* copy suffix */
       index = endDollarIndex;
       /* figure out where to start the next search */
       lastPos = i;
       while (curStr[index] != '\0') {
-	newCurStr[i++] = curStr[index++];
+        newCurStr[i++] = curStr[index++];
       }
       newCurStr[i] = '\0';
       FREE(curStr);
@@ -717,31 +831,25 @@ split_line(
   register int i, j;
   register char *new_arg;
   array_t *argv_array;
-  int single_quote, double_quote;
+  boolean single_quote, double_quote;
 
   argv_array = array_alloc(char *, 5);
 
   p = command;
-  for(;;) {
+  while (true) {
     /* skip leading white space */
-    while (isspace(*p)) {
-      p++;
-    }
+    while (isspace(*p)) p++;
 
     /* skip until end of this token */
-    single_quote = double_quote = 0;
-    for(start = p; (c = *p) != '\0'; p++) {
+    single_quote = double_quote = false;
+
+    for (start = p; (c = *p) != '\0'; p++) {
       if (c == ';' || c == '#' || isspace(c)) {
-        if (! single_quote && ! double_quote) {
-          break;
-        }
+        if (!single_quote && !double_quote) break;
       }
-      if (c == '\'') {
-        single_quote = ! single_quote;
-      }
-      if (c == '"') {
-        double_quote = ! double_quote;
-      }
+
+      if (c == '\'') single_quote = !single_quote;
+      else if (c == '"') double_quote = !double_quote;
     }
     if (single_quote || double_quote) {
       fprintf(nusmv_stderr, "ignoring unbalanced quote ...\n");
@@ -749,11 +857,18 @@ split_line(
     if (start == p) break;
 
     new_arg = ALLOC(char, p - start + 1);
+    nusmv_assert(new_arg != (char*) NULL);
+
+    single_quote=double_quote=false;
     j = 0;
-    for(i = 0; i < p - start; i++) {
+    for (i = 0; i < p - start; i++) {
       c = start[i];
-      if ((c != '\'') && (c != '\"')) {
-        new_arg[j++] = isspace(c) ? ' ' : start[i];
+
+      if (c == '\'' && !double_quote) single_quote = !single_quote;
+      else if (c=='"' && !single_quote) double_quote = !double_quote;
+
+      if ((c != '\'' || double_quote) && (c != '\"' || single_quote)) {
+        new_arg[j++] = isspace(c) ? ' ' : c;
       }
     }
     new_arg[j] = '\0';
@@ -784,25 +899,28 @@ split_line(
   SeeAlso     [optional]
 
 ******************************************************************************/
-static int
-check_shell_escape(
-  char * p,
-  int * status)
+static int check_shell_escape(char* p, int* status)
 {
-    char *value;
-    while (isspace(*p)) {
-	p++;
-    }
-    if ((value = Cmd_FlagReadByName("shell_char")) != NIL(char)){
-	NuSMVShellChar = *value;
-    }
-    if (*p == NuSMVShellChar) {
-	*status = system(p+1);
-	return 1;
-    }
-    return 0;
+#if NUSMV_HAVE_SYSTEM
+  OptsHandler_ptr opt = OptsHandler_get_instance();
+  while (isspace(*p)) p++;
+
+  if (OptsHandler_is_option_registered(opt, "shell_char")) {
+    const char* tmp = OptsHandler_get_string_option_value(opt, "shell_char");
+    NuSMVShellChar = tmp[0];
+  }
+  if (*p == NuSMVShellChar) {
+    *status = system(p+1);
+    return 1;
+  }
+#else
+#warning "Shell escape is not supported"
+#endif
+  return 0;
 }
 
+
+#if NUSMV_HAVE_SIGNAL_H
 /**Function********************************************************************
 
   Synopsis    [Signal handler.]
@@ -816,6 +934,52 @@ static void
 sigterm(int sig)
 {
   fprintf(nusmv_stdout, "Interrupt\n");
+  if (!opt_batch(OptsHandler_get_instance()) && !cmd_is_curr_reentrant()) {
+    fprintf(nusmv_stderr, 
+            "Warning: %s status may be not consistent. Use 'reset' "\
+            "command if needed.\n", get_pgm_name(OptsHandler_get_instance()));
+  }
+
   (void) signal(sig, sigterm);
   util_longjmp();
+}
+#endif /* NUSMV_HAVE_SIGNAL_H */
+
+
+/**Function********************************************************************
+
+  Synopsis [Enable signal trapping depending on the interactive/batch
+  mode.]
+
+  SideEffects []
+
+  SeeAlso     [com_dispatch]
+
+******************************************************************************/
+static void arm_signal_andler() 
+{
+  if (! opt_batch(OptsHandler_get_instance())) { /* interactive mode */
+#if NUSMV_HAVE_SIGNAL_H
+    (void) signal(SIGINT, sigterm);
+#endif
+  }
+}
+
+/**Function********************************************************************
+
+  Synopsis [Enable signal trapping depending on the interactive/batch
+  mode.]
+
+  SideEffects []
+
+  SeeAlso     [com_dispatch]
+
+******************************************************************************/
+static void disarm_signal_andler() 
+{
+  if (! opt_batch(OptsHandler_get_instance())) { /* interactive mode */
+#if NUSMV_HAVE_SIGNAL_H
+    (void) signal(SIGINT, SIG_IGN);
+#endif
+  }
 }

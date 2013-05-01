@@ -4,7 +4,7 @@ VAR
   proc1 : process user(semaphore);
   proc2 : process user(semaphore);
 ASSIGN
-  init(semaphore) := 0;
+  init(semaphore) := FALSE;
 SPEC
   AG (proc1.state = entering -> AF proc1.state = critical)
 
@@ -19,13 +19,13 @@ ASSIGN
       state = entering & !semaphore : critical;
       state = critical : {critical,exiting};
       state = exiting : idle;
-      1 : state;
+      TRUE : state;
     esac;
   next(semaphore) := 
     case
-      state = entering : 1;
-      state = exiting : 0;
-      1 : semaphore;
+      state = entering : TRUE;
+      state = exiting : FALSE;
+      TRUE : semaphore;
     esac;
 FAIRNESS
   running

@@ -10,7 +10,7 @@ MODULE inverter(input)
 VAR
   output : boolean;
 ASSIGN
-  init(output) := 0;
+  init(output) := FALSE;
   next(output) := !input;
 FAIRNESS
   running

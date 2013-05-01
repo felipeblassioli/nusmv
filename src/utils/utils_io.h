@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,13 +30,13 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: utils_io.h,v 1.1.2.1 2003/08/05 14:32:02 nusmv Exp $]
+  Revision    [$Id: utils_io.h,v 1.1.2.1.4.1.6.1 2009-07-20 14:02:40 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -45,6 +45,7 @@
 
 #include "utils.h"
 #include "dd/dd.h"
+#include "prop/Prop.h"
 
 /*---------------------------------------------------------------------------*/
 /* Function prototypes                                                       */
@@ -57,8 +58,9 @@ EXTERN void reset_indent_size ARGS((void));
 EXTERN void set_indent_size ARGS((int));
 
 EXTERN void indent ARGS((FILE *));
+EXTERN void indent_print ARGS((FILE *, const char *, ...));
 EXTERN void indent_node ARGS((FILE *,char *, node_ptr, char *));
 EXTERN void print_in_process ARGS((char *, node_ptr));
-EXTERN void print_invar ARGS((FILE *, node_ptr));
+EXTERN void print_invar ARGS((FILE *, Prop_ptr));
 
 #endif /* __UTILS_IO_H__ */

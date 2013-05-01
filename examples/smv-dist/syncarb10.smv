@@ -10,7 +10,7 @@ VAR
 ASSIGN
   init(Token) := init-token;
   next(Token) := token-in;
-  init(Persistent) := 0;
+  init(Persistent) := FALSE;
   next(Persistent) := Request & (Persistent | Token);
 
 DEFINE
@@ -27,21 +27,21 @@ SPEC
 MODULE main
 
 VAR
-  e10 : arbiter-element(self,e9,0);
-  e9 : arbiter-element(e10,e8,0);
-  e8 : arbiter-element(e9,e7,0);
-  e7 : arbiter-element(e8,e6,0);
-  e6 : arbiter-element(e7,e5,0);
-  e5 : arbiter-element(e6,e4,0);
-  e4 : arbiter-element(e5,e3,0);
-  e3 : arbiter-element(e4,e2,0);
-  e2 : arbiter-element(e3,e1,0);
-  e1 : arbiter-element(e2,self,1);
+  e10 : arbiter-element(self,e9,FALSE);
+  e9 : arbiter-element(e10,e8,FALSE);
+  e8 : arbiter-element(e9,e7,FALSE);
+  e7 : arbiter-element(e8,e6,FALSE);
+  e6 : arbiter-element(e7,e5,FALSE);
+  e5 : arbiter-element(e6,e4,FALSE);
+  e4 : arbiter-element(e5,e3,FALSE);
+  e3 : arbiter-element(e4,e2,FALSE);
+  e2 : arbiter-element(e3,e1,FALSE);
+  e1 : arbiter-element(e2,self,TRUE);
 
 DEFINE
-  grant-in := 1;
+  grant-in := TRUE;
   e1.token-in := token-in;
-  override-out := 0;
+  override-out := FALSE;
   grant-out := grant-in & !e1.override-out;
 
 --SPEC

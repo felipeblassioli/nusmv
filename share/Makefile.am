@@ -24,11 +24,11 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.4 2003/08/04 11:29:51]
 
@@ -45,4 +45,4 @@ subdirs_files = $(filter-out $(bad_names), \
 
 
 sharedatadir =  $(datadir)/nusmv/
-nobase_sharedata_DATA = master.nusmvrc $(subdirs_files)
+nobase_dist_sharedata_DATA = master.nusmvrc $(subdirs_files)

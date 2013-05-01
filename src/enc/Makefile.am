@@ -26,30 +26,48 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.5 2003/11/14 10:44:02]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = enc.h  encInt.h  enc.c  \
-  operators.h operators.c \
-  symb/Encoding.h  symb/Encoding_private.h  symb/EncCache.c  symb/Encoding.c \
-  symb/EncCache.h \
-  symb/GroupSet.h symb/GroupSet.c \
-  bdd/bdd.h  bdd/bddInt.h  \
-  bdd/BddEnc.h  bdd/BddEnc_private.h  bdd/BddEncCache.h  \
-  bdd/BddEnc.c  bdd/BddEncCache.c 
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
+
+PKG_H = enc.h operators.h
+PKG_C = enc.c encCmd.c operators.c
+
+BASE_H = base/BaseEnc.h base/BaseEnc_private.h base/BoolEncClient.h base/BoolEncClient_private.h
+BASE_C = base/BaseEnc.c base/BoolEncClient.c
+
+BOOL_H = bool/BitValues.h bool/BoolEnc.h bool/BoolEnc_private.h
+BOOL_C = bool/BitValues.c bool/BoolEnc.c
+
+BDD_H = bdd/BddEncCache.h bdd/BddEnc.h bdd/BddEnc_private.h bdd/bdd.h 
+BDD_C = bdd/BddEncBddPrintWff.c bdd/BddEnc.c bdd/BddEncCache.c
+
+BE_H = be/BeEnc.h be/BeEnc_private.h
+BE_C = be/BeEnc.c
+
+UTILS_H = utils/AddArray.h  utils/OrdGroups.h
+UTILS_C = utils/AddArray.c  utils/OrdGroups.c  utils/utils.c
+
+PKG_SOURCES = $(PKG_H) $(BASE_H) $(BOOL_H) $(BDD_H) $(BE_H) $(UTILS_H) \
+							encInt.h bdd/bddInt.h                                    \
+							$(PKG_C) $(BASE_C) $(BOOL_C) $(BDD_C) $(BE_C) $(UTILS_C)
+
 
 encdir = $(includedir)/nusmv/enc
-nobase_enc_HEADERS = enc.h operators.h symb/Encoding.h symb/GroupSet.h \
-	      bdd/bdd.h bdd/BddEnc.h 
+nobase_enc_HEADERS = $(PKG_H) $(BASE_H) $(BOOL_H) $(BDD_H) \
+										 $(BE_H) $(UTILS_H)
+
 # -------------------------------------------------------
 
 noinst_LTLIBRARIES = libenc.la

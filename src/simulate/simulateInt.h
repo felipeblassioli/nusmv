@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``simulate'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,42 +30,44 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: simulateInt.h,v 1.4.4.12.2.1 2005/11/16 12:09:47 nusmv Exp $]
+  Revision    [$Id: simulateInt.h,v 1.4.4.12.4.6.4.3 2010-01-29 12:50:45 nusmv Exp $]
 
 ******************************************************************************/
 
 #ifndef _SIMULATEINT
 #define _SIMULATEINT
 
+#if HAVE_CONFIG_H
+#include "nusmv-config.h"
+#endif 
+
 #include <stdio.h>
 #include <stdlib.h>
-
-#if HAVE_CONFIG_H
-# include "config.h"
-#endif
 
 #include "simulate.h"
 
 #include "utils/utils.h"
 #include "dd/dd.h"
 #include "opt/opt.h"
+
+#include "fsm/FsmBuilder.h"
 #include "fsm/bdd/BddFsm.h"
+
 #include "compile/compile.h"
 #include "trace/Trace.h"
 #include "trace/TraceManager.h"
-#include "compile/compileFsmMgr.h"
 
 
-#if HAVE_SYS_SIGNAL_H
+#if NUSMV_HAVE_SYS_SIGNAL_H
 #  include <sys/signal.h>
 #endif
-#if HAVE_SIGNAL_H
+#if NUSMV_HAVE_SIGNAL_H
 #  include <signal.h>
 #endif
 
@@ -77,22 +79,23 @@
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
 /*---------------------------------------------------------------------------*/
-/* maximum length of the string containing constraints */
-#define CONSTR_LENGTH 256
 /* Length of the string used for the choice entered in interac. sim.*/
 #define CHOICE_LENGTH 8
 
 
 EXTERN DdManager* dd_manager;
-EXTERN options_ptr options;
 EXTERN cmp_struct_ptr cmps;
 EXTERN int trace_number;
 
+EXTERN FILE* nusmv_stdin;
 EXTERN FILE* nusmv_stderr;
 EXTERN FILE* nusmv_stdout;
 
 EXTERN TraceManager_ptr global_trace_manager;
 EXTERN FsmBuilder_ptr global_fsm_builder; 
+
+EXTERN char* simulation_buffer;
+EXTERN size_t simulation_buffer_size;
 
 /*---------------------------------------------------------------------------*/
 /* Function prototypes                                                       */
@@ -101,12 +104,14 @@ EXTERN int
 Simulate_CmdPickOneState ARGS((BddFsm_ptr, Simulation_Mode, int, char *));
 EXTERN int Simulate_CmdShowTraces ARGS((int, int, boolean, char *));
 
-EXTERN bdd_ptr current_state_bdd_get ARGS((void));
-EXTERN void current_state_bdd_reset ARGS((void)); 
-EXTERN void current_state_set ARGS((bdd_ptr state, TraceLabel label)); 
-EXTERN void current_state_label_reset ARGS((void)); 
-EXTERN void current_state_bdd_free ARGS((void));
+EXTERN 
+bdd_ptr simulate_get_constraints_from_string ARGS((const char* constr_str, 
+                                                   BddEnc_ptr enc, 
+                                                   boolean allow_nexts,
+                                                   boolean allow_inputs));
 
-EXTERN node_ptr proc_selector_internal_vname;
+
+EXTERN bdd_ptr current_state_bdd_get ARGS((void));
+EXTERN void current_state_set ARGS((bdd_ptr state, TraceLabel label)); 
 
 #endif /* _SIMULATEINT */

@@ -4,9 +4,10 @@
 
   PackageName [enc.bdd]
 
-  Synopsis    [The Bdd encoding cache public interface]
+  Synopsis    [The Bdd encoding cache interface]
 
-  Description []
+  Description [This interface and relative class is intended to be
+  used exclusively by the BddEnc class]
                                                
   SeeAlso     [BddEncCache.c]
 
@@ -14,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``enc.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,22 +31,23 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
-#ifndef __ENC_BDD_BDD_ENC_CACHE_H__
-#define __ENC_BDD_BDD_ENC_CACHE_H__
+#ifndef __BDD_ENC_CACHE_H__
+#define __BDD_ENC_CACHE_H__
 
-#include "bdd.h"
-#include "BddEnc.h"
+#include "compile/symb_table/SymbTable.h"
+#include "dd/dd.h"
 
 #include "utils/utils.h"
 #include "node/node.h"
+#include "enc/utils/AddArray.h"
 
 /**Type***********************************************************************
 
@@ -65,49 +67,55 @@ typedef struct BddEncCache_TAG*  BddEncCache_ptr;
 
 
 /* ---------------------------------------------------------------------- */
+/* Types                                                                  */
+/* ---------------------------------------------------------------------- */
+
+EXTERN node_ptr zero_number; /* constant from DD package */
+EXTERN node_ptr one_number; /* constant from DD package */
+/* ---------------------------------------------------------------------- */
 /* Public methods                                                         */
 /* ---------------------------------------------------------------------- */
 
-EXTERN BddEncCache_ptr BddEncCache_create ARGS((BddEnc_ptr enc));
+EXTERN BddEncCache_ptr 
+BddEncCache_create ARGS((SymbTable_ptr symb_table, DdManager* dd));
+
 EXTERN void BddEncCache_destroy ARGS((BddEncCache_ptr self));
-
-EXTERN void BddEncCache_push_status_and_reset ARGS((BddEncCache_ptr self));
-
-EXTERN void BddEncCache_pop_status ARGS((BddEncCache_ptr self));
 
 EXTERN void 
 BddEncCache_new_constant ARGS((BddEncCache_ptr self, node_ptr constant, 
-			       add_ptr constant_add));
+                               add_ptr constant_add));
+EXTERN void 
+BddEncCache_remove_constant ARGS((BddEncCache_ptr self, node_ptr constant));
 
 EXTERN boolean 
-BddEncCache_is_constant_defined ARGS((BddEncCache_ptr self, 
-				      node_ptr constant));
-
+BddEncCache_is_constant_encoded ARGS((const BddEncCache_ptr self, 
+                                      node_ptr constant));
 EXTERN add_ptr 
-BddEncCache_lookup_constant ARGS((BddEncCache_ptr self, node_ptr constant));
+BddEncCache_lookup_constant ARGS((const BddEncCache_ptr self, 
+                                  node_ptr constant));
 
-EXTERN void BddEncCache_new_var ARGS((BddEncCache_ptr self, node_ptr var_name, 
-				      add_ptr var_add));
+EXTERN void 
+BddEncCache_new_boolean_var ARGS((BddEncCache_ptr self, node_ptr var_name,
+                                  add_ptr var_add));
+EXTERN void 
+BddEncCache_remove_boolean_var ARGS((BddEncCache_ptr self, node_ptr var_name));
 
 EXTERN boolean 
-BddEncCache_is_var_defined ARGS((BddEncCache_ptr self, node_ptr var_name));
-
+BddEncCache_is_boolean_var_encoded ARGS((const BddEncCache_ptr self, 
+                                         node_ptr var_name));
 EXTERN add_ptr 
-BddEncCache_lookup_var ARGS((BddEncCache_ptr self, node_ptr var_name));
+BddEncCache_lookup_boolean_var ARGS((const BddEncCache_ptr self, node_ptr var_name));
 
-EXTERN void 
-BddEncCache_set_definition ARGS((BddEncCache_ptr self, node_ptr name, 
-				 add_ptr def));
+EXTERN void BddEncCache_set_evaluation ARGS((BddEncCache_ptr self,
+                                             node_ptr expr,
+                                             AddArray_ptr add_array));
+EXTERN void BddEncCache_remove_evaluation ARGS((BddEncCache_ptr self,
+                                                node_ptr expr));
+EXTERN AddArray_ptr BddEncCache_get_evaluation ARGS((BddEncCache_ptr self,
+                                                     node_ptr expr));
 
-EXTERN add_ptr 
-BddEncCache_get_definition ARGS((BddEncCache_ptr self, node_ptr name));
+EXTERN void BddEncCache_clean_evaluation_about ARGS((BddEncCache_ptr self, 
+                                                     NodeList_ptr symbs));
+EXTERN void BddEncCache_clean_evaluation ARGS((BddEncCache_ptr self));
 
-EXTERN void 
-BddEncCache_set_evaluation ARGS((BddEncCache_ptr self, node_ptr name, 
-				 add_ptr add));
-
-EXTERN add_ptr BddEncCache_get_evaluation ARGS((BddEncCache_ptr self, 
-						node_ptr name));
-
-
-#endif /* __ENC_BDD_BDD_ENC_CACHE_H__ */
+#endif /* __BDD_ENC_CACHE_H__ */

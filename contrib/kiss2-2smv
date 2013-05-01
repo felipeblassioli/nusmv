@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (C) 1999, 2000, 2001, 2002 Marco Roveri.
-# Originally written by Marco Roveri <roveri@irst.itc.it>
+# Originally written by Marco Roveri <roveri@fbk.eu>
 
 # This program is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -42,7 +42,7 @@ my %smv_reserved = (
                     );
 
 sub help {
-    print STDERR "KISS2 to SMV file converter by roveri\@irst.itc.it\n";
+    print STDERR "KISS2 to SMV file converter by roveri\@fbk.eu\n";
     print STDERR "Version $version\n";
     print STDERR "Usage: kiss2-2smv [-h] [-m] [-d] [-o file] [-f file]\n";
     print STDERR "\t -h      This help message\n";
@@ -187,7 +187,7 @@ sub print_mapping {
 
 sub print_header {
     print STDOUT "-- Generated with a translator from Kiss2 to SMV by\n";
-    print STDOUT "-- Marco Roveri roveri\@irst.itc.it\n";
+    print STDOUT "-- Marco Roveri roveri\@fbk.eu\n";
     print STDOUT "MODULE main\n";
 }
 

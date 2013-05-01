@@ -4,77 +4,57 @@
 
   PackageName [ltl2smv]
 
-  Synopsis    [Functions performing convertion of LTL formula to
+  Synopsis    [Functions performing conversion of LTL formula to
   SMV module]
 
   Description [see the header of file ltl2smv.h]
 
-  SeeAlso     [mc]
+  SeeAlso     []
 
-  Author      [Marco Roveri]
+  Author      [Marco Roveri, Andrei Tchaltsev]
 
   Copyright   [
-  This file is part of the ``ltl2smv'' package of NuSMV version 2. 
-  Copyright (C) 1998-2004 by CMU and ITC-irst. 
+  This file is part of the ``ltl2smv'' package of NuSMV version 2.
+  Copyright (C) 1998-2005 by CMU and FBK-irst.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "ltl2smv.h"
-#include "ltl2smvInt.h"
+#include "utils/utils.h"
+#include "parser/symbols.h"
+#include "utils/assoc.h"
+#include "utils/ustring.h"
+#include "node/node.h"
+#include "fsm/sexp/Expr.h"
+#include "utils/error.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
-#include <math.h>
-#include <string.h>
+#include <stdarg.h>
 
-static char rcsid[] UTIL_UNUSED = "$Id: ltl2smv.c,v 1.1.2.3 2004/11/19 14:53:47 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: ltl2smv.c,v 1.1.4.10.4.16 2009-12-14 18:15:29 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Type declarations                                                         */
 /*---------------------------------------------------------------------------*/
-
-struct node_struct {
-  char* str;
-  char op;
-  char* el;
-  char* pel;
-  int flag; 
-  struct node_struct* left;
-  struct node_struct* right;
-};
-
-typedef struct str_list_struct{
-  char* name;
-  char* str;
-  struct str_list_struct* next;
-} str_list;
-
-typedef struct output_list_struct{
-  char* key;
-  char* item;
-  struct output_list_struct* next;
-} output_list;
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -83,1054 +63,986 @@ typedef struct output_list_struct{
 /*---------------------------------------------------------------------------*/
 /* MACRO declaration                                                         */
 /*---------------------------------------------------------------------------*/
-/* To avoid the creation of too long item the parser cannot handle */
-#undef ENABLE_COMMENTS_PRINT_OUT 
+/* Set or unset the debugging mode (value 1 and 0 respectively).*/
+#define OUTPUT_DEBUGGING 0
 
-#define BWIDTH 1024
-#define STRHASHSIZE 512
+/*
+   The NO_DEFINE_FOR_OR_and_NOT_OPT define controls whether in the
+   tableau construction it is created or not a DEFINE for each OR and
+   NOT occurring in the rewritten formula. Originally, a DEFINE was
+   created for each OR and NOT occurring in the rewritten
+   formula. Now, by default this creation is disabled. The reason
+   being that on large LTL properties having disabled such creation
+   results in a drammatic reduction of the size of the generated
+   internal representation of the MODULE corresponding to the tableau,
+   and as a consequence also the size of the generated file, and in
+   its subsequent handling by the flattener. To re-enable the old
+   behavior comment the following define.
+*/
+#define NO_DEFINE_FOR_OR_and_NOT_OPT
+
 #define PRE_PREFIX "LTL_"
 #define PREFIXNAME "_SPECF_"
-#define MODULE_NAME "ltl_spec_"
-
 /*---------------------------------------------------------------------------*/
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
 
-extern FILE*  ltl2smv_yyin;
+EXTERN FILE* nusmv_stdout;
 
-node* ltl2smv_Specf;
+/* the body of the module being created during transformation.
+ See transform_ltl_expression for more info
+*/
+static node_ptr define_declarations;
+static node_ptr trans_declarations;
+static node_ptr var_declarations;
+static node_ptr justice_declarations;
+static node_ptr init_declarations;
 
-static int line_number = 0;
-static str_list** Str_hash = NULL;
-static output_list * Define_list = NULL;
-static output_list * Next_list = NULL;
-static output_list * Fairness_list = NULL;
-static output_list * Initially_list = NULL;
-static output_list * Var_list = NULL;
-static int Spec_Counter = 0;
-static int ccounter = 0;
+/* node to string association.
+ The string is the string representation of the node (for leaf nodes)
+ or a unique name (for all other nodes participating in the transformation)
+*/
+static hash_ptr expr_to_name_hash = NULL;
+
+/* used to generate unique positive numbers (for variable name)*/
+static unsigned int uniquePositiveNumber = 0;
+
+/* a positive number identifying particular conversion.
+  Provided as a parameter to the function ltl2smv
+*/
+static unsigned int specificationNumber = 0;
+
 
 /*---------------------------------------------------------------------------*/
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
-static int get_digits ARGS((int n));
-static char *Mymalloc ARGS((unsigned size));
-static output_list *mymalloc_output_list ARGS((void));
-static void print_node ARGS((FILE * ofile, node * t));
-static void print_formula ARGS((FILE * ofile, node *t));
-static node * expand_case_body ARGS((node * body));
-static node *expand_formula ARGS((node *t));
-static char *op_string ARGS((char *op, char *str1, char *str2));
-static char* gen_name_number ARGS((int n));
-static int str_hash_func ARGS((char *s));
-static str_list *mymalloc_str_list ARGS((void));
-static void add_var_list ARGS((char *key, char *item));
-static char *reg_var ARGS((char *str));
-static char *formula_string ARGS((node *t));
-static char *gen_next_term ARGS((char *s));
-static output_list *search_list ARGS((output_list *list, char *s));
-static int define_check ARGS((char *s));
-static void add_define_list ARGS((char *lit, char *s));
-static int next_check ARGS((char *s));
-static void add_next_list ARGS((char *lit, char *s));
-static int fairness_check ARGS((char *s));
-static void add_fairness_list ARGS((char *lit, char *s));
-static int initially_check ARGS((char *s));
-static void add_initially_list ARGS((char *lit, char *s));
-static char *get_plit ARGS((node *t));
-static void set_node ARGS((node *t));
-static void init_str_hash ARGS((void));
-static void quit_str_hash ARGS((void));
-static void init_all_lists ARGS((void));
-static void quit_all_lists ARGS((void));
-static void remove_outer_par ARGS((char *s));
-static void print_smv_format ARGS((FILE * ofile));
-static void set_information ARGS((node *t));
-static node *reduce_formula ARGS((node *t));
+static void initialise_transformation ARGS((unsigned int specificationNumber_));
+static void deinitialise_transformation ARGS((void));
 
+static node_ptr normalise_formula ARGS((node_ptr t));
+static node_ptr perform_memory_sharing ARGS((node_ptr t));
+static node_ptr transform_ltl_expression ARGS((node_ptr t, boolean polarity));
+static node_ptr generate_smv_module ARGS((node_ptr t));
+
+static node_ptr expr_to_name ARGS((node_ptr node));
+static node_ptr add_to_list ARGS((node_ptr node, node_ptr list));
+static char* generate_string ARGS((const char *format, ...));
+static node_ptr expand_case_body ARGS((node_ptr));
+#if OUTPUT_DEBUGGING
+static void ltl2smv_print_module ARGS((FILE* ostream, node_ptr module));
+#endif
 
 /*---------------------------------------------------------------------------*/
 /* Definition of exported functions                                          */
 /*---------------------------------------------------------------------------*/
 
-
 /**Function********************************************************************
 
-  Synopsis    [The main routine converting an LTL formula to a fragment of an 
-  SMV program.]
+  Synopsis    [The main routine converting an LTL formula to am SMV Module.]
 
-  Description [ the parameters are:
-  counter - a number,  which is converted to the string representation 
-            and then used as a part of the generated SMV models name.
-            (_LTL#_SPECF_N_)
-  inFile  - the file from which the LTL Formula to be translated is read.
-  outFile - the file in which the SMV code corresponding to the tableau
-            of LTL Formula is written in. If NULL, then stdout is used.
+  Description [The parameters are:
+  uniqueId - is a positive integer number, which is converted to string
+            representation and then used as a part of the generated
+            SMV models name.  (_LTL_uniqueId_SPECF_N_)
+  in_ltl_expr - the input LTL Formula in the form of node_ptr. The
+            expression should be flattened, rewritten wrt input
+            variables, negated, i.e. be ready for conversion without
+            any additional transformations.
+
+
+  The function also performs memory-sharing on the input expression,
+  since the returned module may be smaller if the memory of
+  expression is shared. So DO NOT modify the output expressions.
+
+  But the invoker can modify the declarations and module itself (but
+  not their expressions). See generate_smv_module for more info.
+
+  The return value is the created SMV module in the form of node_ptr.
   ]
 
-  SideEffects [creates a new file]
+  SideEffects []
 
   SeeAlso     []
 
 ******************************************************************************/
-void ltl2smv(int counter, const char* inFile, const char* outFile)
+node_ptr ltl2smv(unsigned int uniqueId, node_ptr in_ltl_expr)
 {
-  FILE* input_file;
-  FILE* output_file;
+  nusmv_assert(uniqueId >= 0);
 
-  Spec_Counter = counter;
-  ccounter = 0;
-
-  line_number = 0;
-  Str_hash = NULL;
-
-  init_all_lists();
-
-  if ((char*)NULL == inFile) {
-    fprintf(stderr, "Error: ltl2smv : the input file is not specified.\n");
-    exit(1);
-    
-  }
-
-  if (Spec_Counter < 0) {
-    (void) fprintf(stderr, "Error: \"%d\" is not a natural number.\n",
-		   Spec_Counter);
-    exit(1);
-  }
-
-  /* opening the input file */
-  input_file = fopen(inFile, "r");
-  if (input_file == (FILE*)NULL) {
-    (void) fprintf(stderr, "Error: Unable to open file \"%s\" for reading.\n",
-		   inFile);
-    exit(1);
-  } else {
-    ltl2smv_yyin = input_file;
-  }
-
-  if (ltl2smv_yyparse()) {
-    (void) fclose(input_file);
-    (void) fprintf(stderr, "Error: Parsing error\n");
-    exit(1);
-  }
-
-  if (NULL != outFile) {
-    output_file = fopen(outFile, "w");
-    if (output_file == (FILE *)NULL) {
-      (void) fclose(input_file);
-      (void) fprintf(stderr, "Error: Unable to open file \"%s\" for writing.\n",
-		     outFile);
-      exit(1);
-    }
-  } else {
-    output_file = stdout;
+  {
+    /* the line number is set to LTL expression's line number.  */
+    extern int yylineno;
+    yylineno = node_get_lineno(in_ltl_expr);
   }
 
 
-  /* BEGIN COMMENT */
-#ifdef ENABLE_COMMENTS_PRINT_OUT
-  fprintf(output_file, "-- LTLSPEC ");
-  print_formula(output_file, ltl2smv_Specf);
-  fprintf(output_file, "\n");
+  /* DEBUGGING */
+#if OUTPUT_DEBUGGING
+#warning Debugging LTL2SMV facilities are compiled in!
+  fprintf(nusmv_stdout, "-- original LTL expression : ");
+  print_node(nusmv_stdout, in_ltl_expr);
+  fprintf(nusmv_stdout, "\n");
 #endif
-  /* END COMMENT */
 
-  ltl2smv_Specf = expand_formula(ltl2smv_Specf);
+  in_ltl_expr = normalise_formula(in_ltl_expr);
 
-  /* BEGIN COMMENT */
-#ifdef ENABLE_COMMENTS_PRINT_OUT
-  fprintf(output_file, "-- (expanded) ");
-  print_formula(output_file, ltl2smv_Specf);
-  fprintf(output_file, "\n");
+  /* DEBUGGING */
+#if OUTPUT_DEBUGGING
+#warning Debugging LTL2SMV facilities are compiled in!
+  fprintf(nusmv_stdout, "-- normalised LTL expression : ");
+  print_node(nusmv_stdout, in_ltl_expr);
+  fprintf(nusmv_stdout, "\n");
 #endif
-  /* END COMMENT */
 
-  ltl2smv_Specf = reduce_formula(ltl2smv_Specf);
+  initialise_transformation(uniqueId);
 
-  /* BEGIN COMMENT */
-#ifdef ENABLE_COMMENTS_PRINT_OUT
-  fprintf(output_file, "-- (reduced) ");
-  print_formula(output_file, ltl2smv_Specf);
-  fprintf(output_file, "\n");
+  in_ltl_expr = transform_ltl_expression(in_ltl_expr, false);
+  in_ltl_expr = generate_smv_module(in_ltl_expr);
+
+  deinitialise_transformation();
+
+#if OUTPUT_DEBUGGING
+#warning Debugging LTL2SMV facilities are compiled in!
+  ltl2smv_print_module(stdout, in_ltl_expr);
 #endif
-  /* END COMMENT */
 
-
-  set_information(ltl2smv_Specf);
-  print_smv_format(output_file);
-
-  fclose(input_file);
-  if (NULL != outFile) fclose(output_file);
-
-  quit_str_hash();
-  quit_all_lists();
-
-  return ;
-};
-
-
-
-int ltl2smv_get_linenumber(void)
-{
-  return line_number;
+  return in_ltl_expr;
 }
-
-
-void ltl2smv_inc_linenumber(void)
-{
-  ++line_number;
-}
-
-node *ltl2smv_gen_node(char op, node *left, node *right)
-{
-  node *ret;
-  ret = ltl2smv_mymalloc_node();
-  ret->op = op;
-  ret->left = left;
-  ret->right = right;
-  return ret;
-}
-
-char *ltl2smv_mycpy(char *text)
-{
-  char *cptr;
-  cptr = (char *) Mymalloc(strlen(text) + 1);
-  strcpy(cptr, text);
-  return(cptr);
-}
-
-node* ltl2smv_gen_leaf(char *str)
-{
-  node *ret;
-  ret = ltl2smv_mymalloc_node();
-  ret->op = 'l';
-  ret->str = ltl2smv_mystrconcat3("(", str, ")");
-  return (ret);
-}
-
-
-node* ltl2smv_mymalloc_node(void)
-{
-  node *ret;
-  ret = (node*) Mymalloc(sizeof(node));
-  ret->str = (char*) NULL;
-  ret->op = (char) NULL;
-  ret->el = (char*) NULL;
-  ret->pel = (char*) NULL;
-  ret->flag = 0;
-  ret->left = (node*) NULL;
-  ret->right = (node*) NULL;
-  return(ret);
-}
-
-
 
 
 /*---------------------------------------------------------------------------*/
 /* Definition of static functions                                            */
 /*---------------------------------------------------------------------------*/
 
-/* returns the number of digits of n */
-static int get_digits(int n)
+/**Function********************************************************************
+
+  Synopsis    [Initialises the conversion performed by this package]
+
+  Description [The specificationNumber is the same operand provided to ltl2smv]
+
+  SideEffects [initialises all the data structures required for conversion]
+
+  SeeAlso     [ltl2smv]
+
+******************************************************************************/
+static void initialise_transformation(unsigned int specificationNumber_)
 {
-  int d;
-  for (d = 1; n != 0; ++d)  n = n/10;
-  return d;
-}
+  specificationNumber = specificationNumber_;
 
-static char *Mymalloc(unsigned size)
-{
-  char *ret;
+  nusmv_assert(NULL == expr_to_name_hash);
+  expr_to_name_hash = new_assoc();
 
-  ret = malloc(size);
-  if (ret == NULL) {
-    fprintf(stderr, "malloc returns NULL\n");
-    exit(1);
-  }
-  return(ret);
-}
+  uniquePositiveNumber = 0; /* zero the counter for unique name generation */
 
-
-static output_list *mymalloc_output_list(void)
-{
-  output_list *ret;
-  ret = (output_list *) Mymalloc(sizeof(output_list));
-  ret->key = NULL;
-  ret->item = NULL;
-  ret->next = NULL;
-  return (ret);
+  define_declarations = Nil;
+  trans_declarations = Nil;
+  init_declarations = Nil;
+  justice_declarations = Nil;
+  var_declarations = Nil;
 }
 
 
+/**Function********************************************************************
 
-static void print_node(FILE * ofile, node * t)
-{
-  fprintf(ofile, " ----\n");
-  fprintf(ofile, " pointer = %d\n", (int) t);
-  if (t->op == 'l')
-    fprintf(ofile, " leaf %s\n", t->str);
-  else if (t->op != (char)NULL){
-    fprintf(ofile, " op = %c\n", t->op);
-    fprintf(ofile, " left pointer = %d\n", (int) t->left);
-    fprintf(ofile, " right pointer = %d\n", (int) t->right);
-    print_node(ofile, t->left);
-    print_node(ofile, t->right);
-  }
-  else {
-    fprintf(stderr, "t->op == NULL in print_tree\n");
-    exit(1);
-  }
-  return;
-}
+  Synopsis    [deinitialises the package]
 
-static void print_formula(FILE * ofile, node *t)
+  Description [The only required thing is to free the hash table: exp -> name]
+
+  SideEffects []
+
+  SeeAlso     []
+
+******************************************************************************/
+static void deinitialise_transformation()
 {
-  fprintf(ofile, "(");
-  if (t->op == 'l')
-    fprintf(ofile, "%s", t->str);
-  else if (t->op != (char)NULL){
-    if (t->right == NULL) {
-      fprintf(ofile, "%c", t->op);
-      print_formula(ofile, t->left);
-    }
-    else {
-      print_formula(ofile, t->left);
-      fprintf(ofile, "%c", t->op);
-      print_formula(ofile, t->right);
-    }
-  }
-  else {
-    fprintf(stderr, "t->op == NULL in print_formula\n");
-    exit(1);
-  }
-  fprintf(ofile, ")");
-  return;
+  nusmv_assert(NULL != expr_to_name_hash);
+  free_assoc(expr_to_name_hash);
+  expr_to_name_hash = (hash_ptr)NULL;
+
+  /* the lists of declarations are not freed, because they are returned
+   as a part of the module
+  */
 }
 
 
-static node * expand_case_body(node * body)
+/**Function********************************************************************
+
+  Synopsis           [Normalises the formula]
+
+  Description        [Normalisations will create a new formula with
+  the following transformations:
+   "a & b"   => "!(!a & !b)"
+   "a -> b"  => "!a | b"
+   "a <-> b"  => "!(!a | !b) | !(a | b)"
+   "a xnor b" => "!(!a | !b) | !(a | b)"
+   "a xor b"  => "!(!a | b) | !(!a | b)"
+   "Z a" => "! Y !a"
+   "F a" => "1 U a"
+   "G a" => "!(1 U !a)"
+   "a V b" => "!(!a U !b)"
+   "O a" => "1 S a"
+   "H a" => "!(1 S !a)"
+   "a T b" => "!(!a S !b)"
+
+   If two consecutive NOT are met => both removed.
+
+   The expression is also memory-shared, i.e. find_atom
+   of find_node is invoked on every(!) expressions, including
+   on the leaf-nodes (i.e. nodes not participating in the conversion directly).
+   ]
+
+  SideEffects []
+
+  SeeAlso            []
+
+******************************************************************************/
+static node_ptr normalise_formula(node_ptr t)
 {
-  assert(body != NULL);
-  assert((body->op == 'c') || (body->op == 'l'));
+  node_ptr left = Nil, right = Nil;
+  node_ptr or, or1, or2, tmp;
 
-  if (body->op == 'c') {
-    node * res;
-    node * cond      = (body->left)->left;
-    node * cond_res  = (body->left)->right;
-    node * case_rest = expand_case_body(body->right);
+  if (Nil == t) return Nil;
 
-    assert((body->left)->op == ':');
-    res = ltl2smv_gen_node('|', ltl2smv_gen_node('&', cond, cond_res),
-                        ltl2smv_gen_node('&', ltl2smv_gen_node('!', cond, NULL), case_rest));
-    return(res);
-  }
-  else {
-    return(body);
-  }
-}
-    
+  /* proceed with every kind of expression separately*/
+  switch (node_get_type(t)) {
 
-static node *expand_formula(node *t)
-{
-  node *ret;
-  node *body;
-  node *or, *or1, *or2, *not, *not1, *not2, *not3, *not4, *tmp;
+  case NOT: /* ! */
+    left = normalise_formula(car(t));
+    return Expr_not(left);
+  case OP_NEXT: /* X */
+  case OP_PREC: /* Y */
+    left = normalise_formula(car(t));
+    return find_node(node_get_type(t), left, Nil);
 
-  if (t == NULL) return (NULL);
+  case OR: /* | */
+    left = normalise_formula(car(t));
+    right = normalise_formula(cdr(t));
+    return Expr_or(left, right);
 
-  switch (t->op) {
-  case '|':
-  case '!':
-  case 'X':
-  case 'U':
-  case 'Y':
-  case 'S':
-    ret = t;
-    ret->left = expand_formula(t->left);
-    ret->right = expand_formula(t->right);
-    break;
-  case 'l':
-    ret = t;
-    break;
-  case 'c': /* it is case expression */
-    body = expand_case_body(t->left);
-    ret = expand_formula(body);
-    break;
-  case '&':
-    not1 = ltl2smv_gen_node('!',expand_formula(t->left),NULL);
-    not2 = ltl2smv_gen_node('!',expand_formula(t->right),NULL);
-    or  = ltl2smv_gen_node('|',not1,not2);
-    ret = ltl2smv_gen_node('!',or,NULL);
-    break;
-  case '>':
-    not = ltl2smv_gen_node('!',expand_formula(t->left),NULL);
-    ret = ltl2smv_gen_node('|',not,expand_formula(t->right));
-    break;
-  case '=':
-    /* a = b <-> (!(!a | !b) | !(a | b)) */
-    not2 = ltl2smv_gen_node('!',expand_formula(t->left),NULL);
-    not3 = ltl2smv_gen_node('!',expand_formula(t->right),NULL);
-    or1 = ltl2smv_gen_node('|', not2, not3);
-    not1 = ltl2smv_gen_node('!',or1, NULL);
-    /* not{2,3}->left is the already exapnded version of the left
-       right part of t */
-    or2 = ltl2smv_gen_node('|', not2->left, not3->left);
-    not4 = ltl2smv_gen_node('!', or2, NULL);
-    ret = ltl2smv_gen_node('|',not1, not4);
-    break;
-  case 'x': /* xor */
-    /* a xor b <-> (!(!a | b) | !(a | !b)) */
-    not1 = ltl2smv_gen_node('!', expand_formula(t->left), NULL);
-    not2 = ltl2smv_gen_node('!', expand_formula(t->right), NULL);
-    /* not{1,2}->left is the already exapnded version of the left
-       right part of t */
-    or1 = ltl2smv_gen_node('|', not1, not2->left);
-    or2 = ltl2smv_gen_node('|', not1->left, not2);
-    not3 = ltl2smv_gen_node('!', or1, NULL);
-    not4 = ltl2smv_gen_node('!', or2, NULL);
-    ret = ltl2smv_gen_node('|', not3, not4);
-    break;
-  case 'n': /* xnor */
-    /* a xnor b <-> a = b */
-    not2 = ltl2smv_gen_node('!',expand_formula(t->left),NULL);
-    not3 = ltl2smv_gen_node('!',expand_formula(t->right),NULL);
-    or1 = ltl2smv_gen_node('|', not2, not3);
-    not1 = ltl2smv_gen_node('!',or1, NULL);
-    /* not{2,3}->left is the already exapnded version of the left
-       right part of t */
-    or2 = ltl2smv_gen_node('|', not2->left, not3->left);
-    not4 = ltl2smv_gen_node('!', or2, NULL);
-    ret = ltl2smv_gen_node('|',not1, not4);
-    break;
-  case 'Z':
-    tmp = ltl2smv_gen_node('Y', ltl2smv_gen_node('!',expand_formula(t->left),NULL), NULL);
-    ret = ltl2smv_gen_node('!', tmp, NULL);
-    break;
-  case 'F':
-    ret = ltl2smv_gen_node('U',ltl2smv_gen_leaf(ltl2smv_mycpy("1")),expand_formula(t->left));
-    break;
-  case 'G':
-    tmp = ltl2smv_gen_node('U', ltl2smv_gen_leaf(ltl2smv_mycpy("1")), 
-                        ltl2smv_gen_node('!',expand_formula(t->left),NULL));
-    ret = ltl2smv_gen_node('!', tmp, NULL);
-    break;
-  case 'V':
-    tmp = ltl2smv_gen_node('U', ltl2smv_gen_node('!',expand_formula(t->left),NULL),
-		        ltl2smv_gen_node('!',expand_formula(t->right),NULL));
-    ret = ltl2smv_gen_node('!', tmp, NULL);
-    break;
-  case 'O':
-    ret = ltl2smv_gen_node('S',ltl2smv_gen_leaf(ltl2smv_mycpy("1")),expand_formula(t->left));
-    break;
-  case 'H':
-    tmp = ltl2smv_gen_node('S', ltl2smv_gen_leaf(ltl2smv_mycpy("1")), 
-                        ltl2smv_gen_node('!',expand_formula(t->left),NULL));
-    ret = ltl2smv_gen_node('!', tmp, NULL);
-    break;
-  case 'T':
-    tmp = ltl2smv_gen_node('S', ltl2smv_gen_node('!',expand_formula(t->left),NULL),
-		        ltl2smv_gen_node('!',expand_formula(t->right),NULL));
-    ret = ltl2smv_gen_node('!', tmp, NULL);
-    break;
+  case UNTIL: /* U */
+  case SINCE: /* S */
+    left = normalise_formula(car(t));
+    right = normalise_formula(cdr(t));
+    return find_node(node_get_type(t), left, right);
+
+  case AND: /* & */
+    left = normalise_formula(car(t));
+    right = normalise_formula(cdr(t));
+    or  = Expr_or(Expr_not(left), Expr_not(right));
+    return Expr_not(or);
+
+  case IMPLIES: /* ->  */
+    left = normalise_formula(car(t));
+    right = normalise_formula(cdr(t));
+    return Expr_or(Expr_not(left), right);
+
+  case IFF: /* <-> */
+  case XNOR: /* xnor */
+    /* a <-> b  =>  (!(!a | !b) | !(a | b)) */
+    left = normalise_formula(car(t));
+    right = normalise_formula(cdr(t));
+    or1 = Expr_or(Expr_not(left), Expr_not(right));
+    or2 = Expr_or(left, right);
+    return Expr_or(Expr_not(or1), Expr_not(or2));
+
+  case XOR: /* xor */
+    /* a xor b   =>   (!(!a | b) | !(a | !b)) */
+    left = normalise_formula(car(t));
+    right = normalise_formula(cdr(t));
+    or1 = Expr_or(Expr_not(left), right);
+    or2 = Expr_or(left, Expr_not(right));
+    return Expr_or(Expr_not(or1), Expr_not(or2));
+
+  case OP_NOTPRECNOT: /* Z  */
+    left = normalise_formula(car(t));
+    tmp = find_node(OP_PREC, Expr_not(left), Nil);
+    return Expr_not(tmp);
+
+  case OP_FUTURE: /* F */
+    left = normalise_formula(car(t));
+    return find_node(UNTIL, Expr_true(), left);
+
+  case OP_GLOBAL: /* G  */
+    left = normalise_formula(car(t));
+    tmp = find_node(UNTIL, Expr_true(), Expr_not(left));
+    return Expr_not(tmp);
+
+  case OP_ONCE: /* O */
+    left = normalise_formula(car(t));
+    return  find_node(SINCE, Expr_true(), left);
+
+  case OP_HISTORICAL: /* H */
+    left = normalise_formula(car(t));
+    tmp = find_node(SINCE, Expr_true(), Expr_not(left));
+    return Expr_not(tmp);
+
+  case TRIGGERED: /* T */
+  case RELEASES: /* V */
+    error_unreachable_code(); /* T and V were transformed by the parser */
+
+    /* Leafs, i.e. all the usual kinds of expressions.
+       They all considered as an atomic expressions and not
+       participate in LTL -> Module transformation.
+       Just perform memory-sharing.
+    */
+    /* In previous version of this function the leafs were expected to
+       be already shared, but now they are obligitory shared here
+       (the sharing makes the return module potentially smaller).
+    */
+  case CASE: /* Case are expanded as the logical expansion of
+                chains of ITE */
+  case IFTHENELSE:
+  case FAILURE: case FALSEEXP:  case TRUEEXP:
+  case NUMBER:  case NUMBER_UNSIGNED_WORD:  case NUMBER_SIGNED_WORD:
+  case UWCONST: case SWCONST:
+  case NUMBER_FRAC:  case NUMBER_REAL:
+  case NUMBER_EXP:
+  case TWODOTS:  case ATOM: case SELF:  case DOT:  case ARRAY:
+  case BIT_SELECTION:  case CONCATENATION: case EXTEND:
+  case WSIZEOF: case WRESIZE:  case CAST_TOINT:
+  case CAST_BOOL:  case CAST_WORD1:  case CAST_SIGNED:  case CAST_UNSIGNED:
+  case TIMES: case DIVIDE: case PLUS :case MINUS: case MOD: case UMINUS:
+  case LSHIFT: case RSHIFT: case LROTATE: case RROTATE:
+  case UNION: case SETIN:
+  case EQUAL: case NOTEQUAL: case LT: case GT: case LE: case GE:
+    return perform_memory_sharing(t);
+
   default:
-    fprintf(stderr, "expand_formula: unknown operator \"%c\"\n", t->op);
-    exit(1);
-    break;
+    error_unreachable_code(); /*  unknown operator */
+    return Nil;
   }
-  return(ret);
-}
-
-static char *op_string(char *op, char *str1, char *str2)
-{
-  char *ret;
-  int l1,l2,l3,l;
-
-  if (str2 == NULL) {
-    l1 = strlen(op);
-    l2 = strlen(str1);
-    l = l1 + l2 + 2 + 1;
-    ret = (char *)Mymalloc(sizeof(char)*l);
-    strcpy(ret, "(");
-    strcat(ret, op);
-    strcat(ret, str1);
-    strcat(ret, ")");
-  }
-  else {
-    l1 = strlen(op);
-    l2 = strlen(str1);
-    l3 = strlen(str2);
-    l = l1 + l2 + l3 + 2 + 1;
-    ret = (char *)Mymalloc(sizeof(char)*l);
-    strcpy(ret, "(");
-    strcat(ret, str1);
-    strcat(ret, op);
-    strcat(ret, str2);
-    strcat(ret, ")");
-  }
-  return(ret);
-}
-
-/* returned string must be freed */
-static char* gen_name_number(int n)
-{
-  char* ret;
-  size_t len;
-
-  len = strlen(PRE_PREFIX) + strlen(PREFIXNAME) +
-    get_digits(Spec_Counter) + get_digits(n) + 1;
-  
-  ret = (char*) Mymalloc(sizeof(char) * len);
-  
-  snprintf(ret, len, "%s%d%s%d", PRE_PREFIX, Spec_Counter, PREFIXNAME, n);
-  return ret;
 }
 
 
-static int str_hash_func(char *s)
-{
-  int i,l,a;
-  l = strlen(s);
-  for (a = i = 0; i<l; i++) {
-    a += (int) s[i];
-  }
-  a = a % STRHASHSIZE;
-  return (a);
-}
+/**Function********************************************************************
 
-static str_list *mymalloc_str_list(void)
-{
-  str_list *ret;
-  ret =(str_list *)Mymalloc(sizeof(str_list));
-  ret->name = NULL;
-  ret->str = NULL;
-  ret->next = NULL;
-  return (ret);
-}
+  Synopsis           [Make all sub-expressions of the expression
+  to share as much memory as possible, i.e. the same sub-expressions
+  will have the same pointer.]
 
-static void add_var_list(char *key, char *item)
-{
-  output_list *m;
- 
-  m = Var_list;
-  while(m != NULL) {
-    if ((strcmp(m->key, key) == 0) && (strcmp(m->item, item) == 0)) return;
-    m = m->next;
-  }
-  m = mymalloc_output_list();
-  m->key = key;
-  m->item = item;
-  m->next = Var_list;
-  Var_list = m;
-}
+  Description        []
 
-/* Creates a variable for the expression and returns it */
-static char *reg_var(char *str)
-{
-  int v;
-  str_list *l;
+  SideEffects        []
 
-  v = str_hash_func(str);
-  for (l = Str_hash[v]; l != NULL; l = l->next) {
-    if (strcmp(l->str, str) == 0) {
-      return(l->name);
+  SeeAlso            []
+
+******************************************************************************/
+static node_ptr perform_memory_sharing(node_ptr t)
+{
+  if (t == (node_ptr) NULL) return (node_ptr) NULL;
+
+  switch (node_get_type(t)) {
+    /* 0-arity */
+  case FAILURE: case FALSEEXP: case TRUEEXP:
+  case NUMBER: case NUMBER_UNSIGNED_WORD: case NUMBER_SIGNED_WORD:
+  case UWCONST: case SWCONST:
+  case NUMBER_FRAC: case NUMBER_REAL:
+  case NUMBER_EXP:
+  case ATOM: case SELF:
+    return find_atom(t);
+    /* not, unary minus */
+  case NOT:
+  case UMINUS:
+    if (node_get_type(t) == node_get_type(car(t))) {
+      /* remove duplicated NOT and UMINUS */
+      return perform_memory_sharing(car(car(t)));
     }
+    /* else behave as a usual unary operator */
+    /* 1-arity */
+  case CAST_BOOL:  case CAST_WORD1: case CAST_SIGNED: case CAST_UNSIGNED:
+    return Expr_resolve(SYMB_TABLE(NULL), node_get_type(t),
+                        perform_memory_sharing(car(t)), cdr(t));
+    /* 1 or 2 arity */
+  case DOT:
+    if (Nil == car(t)) {
+      return find_node(node_get_type(t),
+                       Nil,
+                       perform_memory_sharing(cdr(t)));
+    }
+    else { /* skip to 2-arity expressions */ }
+    /* 2-arity */
+  case OR: case AND: case XOR: case XNOR: case IFF: case IMPLIES:
+  case TWODOTS: case ARRAY:
+  case BIT_SELECTION:  case CONCATENATION: case EXTEND:
+  case WSIZEOF: case WRESIZE: case CAST_TOINT:
+  case CASE: /* CASE is no longer a part of LTL formula - just a usual exp */
+  case IFTHENELSE:
+  case COLON:
+  case TIMES: case DIVIDE: case PLUS :case MINUS: case MOD:
+  case LSHIFT: case RSHIFT: case LROTATE: case RROTATE:
+  case UNION: case SETIN:
+  case EQUAL: case NOTEQUAL: case LT: case GT: case LE: case GE:
+    return Expr_resolve(SYMB_TABLE(NULL), node_get_type(t),
+                        perform_memory_sharing(car(t)),
+                        perform_memory_sharing(cdr(t)));
   }
-  l = mymalloc_str_list();
-  l->str = str;
-  l->name = gen_name_number(ccounter++);
-  l->next = Str_hash[v];
-  Str_hash[v] = l;
 
-  return(l->name);
+  error_unreachable_code(); /* unknown kind of the expression */
+  return Nil;
 }
 
-/* Given a node, produces the string of its corresponding formula */
-static char *formula_string(node *t)
+/**Function********************************************************************
+
+  Synopsis           [The main conversion function.]
+
+  Description [It fills in the lists : var_declarations,
+  define_declarations, trans_declarations, init_declarations,
+  justice_declarations. These lists are list of nodes.
+  var_declarations: a list of ATOM (future VAR declarations)
+  define_declarations: a list of DEFINES body, i.e. EQDEF (see syntax
+  of DEFINE) trans_declarations: a list of TRANS expressions (but not
+  TRANS itself) init_declarations: a list of INIT expressions (but not
+  INIT itself) justice_declarations: a list of JUSTICE expressions(but
+  not JUSTICE itself)
+
+  NB: The elements of the lists use memory-sharing so
+  pointers can be compare to check their uniqueness.
+  (But the lists themselves do not use memory-sharing)
+
+  Returns the name of the input expression (see expr_to_name
+  for more details).
+
+  NB: The memory of expression is expected to be shared. Then the
+  same name will be used for the same sub-expression.
+  ]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+static node_ptr transform_ltl_expression(node_ptr t, boolean polarity)
 {
-  char *ret, *t1, *t2;
-  switch(t->op) {
-  case '|':
-    t1 = formula_string(t->left);
-    t2 = formula_string(t->right);
+  node_ptr name;
+  node_ptr nameLeft;
+  node_ptr nameRight;
+  node_ptr result;
+  node_ptr nameXY; /* an additional X or Y expression */
 
-    ret=op_string("|", t1, t2);
+  switch(node_get_type(t)) {
+  case OR:
+#ifndef NO_DEFINE_FOR_OR_and_NOT_OPT
+    name = expr_to_name(t);
+    nameLeft = transform_ltl_expression(car(t), polarity);
+    nameRight = transform_ltl_expression(cdr(t), polarity);
+    /* generate a new DEFINE */
+    result = find_node(EQDEF, name, Expr_or(nameLeft, nameRight));
+    define_declarations = add_to_list(result, define_declarations);
+    return name;
+#else
+    nameLeft = transform_ltl_expression(car(t), polarity);
+    nameRight = transform_ltl_expression(cdr(t), polarity);
+    return Expr_or(nameLeft, nameRight);
+#endif
 
-    free(t1);
-    free(t2);
-    break;
-  case '!':
-    t1 = formula_string(t->left);
+  case NOT:
+#ifndef NO_DEFINE_FOR_OR_and_NOT_OPT
+    name = expr_to_name(t);
+    nameLeft = transform_ltl_expression(car(t), !polarity);
+    /* generate a new DEFINE */
+    result = find_node(EQDEF, name, Expr_not(nameLeft));
+    define_declarations = add_to_list(result, define_declarations);
+    return name;
+#else
+    nameLeft = transform_ltl_expression(car(t), !polarity);
+    return Expr_not(nameLeft);
+#endif
 
-    ret = op_string("!", t1, NULL);
+  case OP_NEXT:  /* X */
+    name = expr_to_name(t);
+    /* add to VAR */
+    var_declarations = add_to_list(name, var_declarations);
 
-    free(t1);
-    break;
-  case 'X':
-    t1 = formula_string(t->left);
+    nameLeft = transform_ltl_expression(car(t), polarity);
 
-    ret = op_string("X", t1, NULL);
+    /* generate a new TRANS */
+    result = Expr_equal(Expr_next(nameLeft, SYMB_TABLE(NULL)),
+                        name,
+                        SYMB_TABLE(NULL));
+    trans_declarations = add_to_list(result, trans_declarations);
+    return name;
 
-    free(t1);
-    break;
-  case 'Y':
-    t1 = formula_string(t->left);
+  case OP_PREC: /* Y */
+    name = expr_to_name(t);
+    /* add to VAR */
+    var_declarations = add_to_list(name, var_declarations);
 
-    ret = op_string("Y", t1, NULL);
+    nameLeft = transform_ltl_expression(car(t), polarity);
 
-    free(t1);
-    break;
-  case 'U':
-    t1 = formula_string(t->left);
-    t2 = formula_string(t->right);
+    /* generate a new TRANS */
+    /* Note that the TRANS is similar to X's TRANS, but the NEXT operator
+       is applied to a different term */
+    result = Expr_equal(nameLeft,
+                        Expr_next(name, SYMB_TABLE(NULL)),
+                        SYMB_TABLE(NULL));
+    trans_declarations = add_to_list(result, trans_declarations);
+    /* generate a new INIT */
+    result = Expr_equal(name, Expr_false(), SYMB_TABLE(NULL));
+    init_declarations = add_to_list(result, init_declarations);
+    return name ;
 
-    ret = op_string("U", t1, t2);
+  case UNTIL:
+    name = expr_to_name(t);
+    /* generate X (expr) and add to VAR */
+    nameXY = expr_to_name(find_node(OP_NEXT, t, Nil));
+    var_declarations = add_to_list(nameXY, var_declarations);
 
-    free(t1); 
-    free(t2);
-    break;
-  case 'S':
-    t1 = formula_string(t->left);
-    t2 = formula_string(t->right);
+    nameLeft = transform_ltl_expression(car(t), polarity);
+    nameRight = transform_ltl_expression(cdr(t), polarity);
 
-    ret = op_string("S", t1, t2);
 
-    free(t1);
-    free(t2);
-    break;
-  case 'l':
-    ret = ltl2smv_mycpy(t->str);
-    break;
+    /* generate a new DEFINE */
+    result = find_node(EQDEF, name, Expr_or(nameRight,
+                                            Expr_and(nameLeft, nameXY)));
+    define_declarations = add_to_list(result, define_declarations);
+    /* generate a new TRANS */
+    result = Expr_equal(Expr_next(name, SYMB_TABLE(NULL)),
+                        nameXY,
+                        SYMB_TABLE(NULL));
+    trans_declarations = add_to_list(result, trans_declarations);
+    /* if the occurrence of the formula is positive, generate a new JUSTICE */
+    if (polarity == false) {
+      result = Expr_or(Expr_not(name), nameRight);
+      justice_declarations = add_to_list(result,
+                                         justice_declarations);
+    }
+    return name;
+
+  case SINCE:
+    name = expr_to_name(t);
+    /* generate Y (expr) and add to VAR */
+    nameXY = expr_to_name(find_node(OP_PREC, t, Nil));
+    var_declarations = add_to_list(nameXY, var_declarations);
+
+    nameLeft = transform_ltl_expression(car(t), polarity);
+    nameRight = transform_ltl_expression(cdr(t), polarity);
+
+    /* generate a new DEFINE */
+    result = find_node(EQDEF, name, Expr_or(nameRight,
+                                            Expr_and(nameLeft, nameXY)));
+    define_declarations = add_to_list(result, define_declarations);
+    /* generate a new TRANS */
+    result = Expr_equal(name,
+                        Expr_next(nameXY, SYMB_TABLE(NULL)),
+                        SYMB_TABLE(NULL));
+    trans_declarations = add_to_list(result, trans_declarations);
+    /* generate a new INIT */
+    result = Expr_equal(nameXY, Expr_false(), SYMB_TABLE(NULL));
+    init_declarations = add_to_list(result, init_declarations);
+    return name;
+
+    /* Leafs. Skip them */
+  case FAILURE: case FALSEEXP:  case TRUEEXP:
+  case NUMBER:  case NUMBER_UNSIGNED_WORD: case NUMBER_SIGNED_WORD:
+  case UWCONST: case SWCONST:
+  case NUMBER_FRAC:  case NUMBER_REAL:
+  case NUMBER_EXP:
+  case TWODOTS:  case ATOM:  case SELF: case DOT:  case ARRAY:
+  case BIT_SELECTION:  case CONCATENATION: case EXTEND:
+  case WSIZEOF: case WRESIZE: case CAST_TOINT:
+  case CASE: /* CASE is no longer a part of LTL formula - just a usual exp */
+  case IFTHENELSE:
+  case CAST_BOOL:  case CAST_WORD1: case CAST_SIGNED: case CAST_UNSIGNED:
+  case TIMES: case DIVIDE: case PLUS :case MINUS: case MOD:
+  case LSHIFT: case RSHIFT: case LROTATE: case RROTATE:
+  case UNION: case SETIN:
+  case EQUAL: case NOTEQUAL: case LT: case GT: case LE: case GE:
+    return t;
   default:
-    ;
+    error_unreachable_code(); /* unknown expression. This is for debugging only */
   }
-  return (ret);
+  return Nil;
 }
 
-static char *gen_next_term(char *s)
+
+/**Function********************************************************************
+
+  Synopsis           [Returns a name of the expression or
+  the expression itself]
+
+  Description        [If the expression is an LTL leaf node (i.e. not
+  a node participating in the transformation) then the node itself is
+  returned.
+  If the node is a node participating in the transformation then
+  the ATOM node with a unique name is returned.
+
+  NB: The memory sharing for expression will make the whole algorithm
+  more efficient because the same name will be returned
+  for the same subexpression]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+static node_ptr expr_to_name(node_ptr node)
 {
-  int l;
-  char *ret;
-  if (strcmp(s, "1") == 0) {
-    ret = Mymalloc(sizeof(char)*2);
-    strcpy(ret, "1");
+  node_ptr result = find_assoc(expr_to_name_hash, node);
+
+  if (Nil != result) return result; /* the association already exists */
+
+  /* no association has been created =>  create a new association */
+  switch (node_get_type(node)) {
+    /* operators participating in the conversion => create a name */
+  case NOT: /* ! */
+  case OR: /* | */
+  case OP_NEXT: /* X */
+  case OP_PREC: /* Y */
+  case UNTIL: /* U */
+  case SINCE: /* S */{
+    char* str = generate_string("%s%u%s%d", PRE_PREFIX, specificationNumber,
+                                PREFIXNAME, uniquePositiveNumber++);
+    result = find_node(ATOM, (node_ptr)find_string(str), Nil);
+    break;
   }
-  else if (strcmp(s, "0") == 0) {
-    ret = Mymalloc(sizeof(char)*2);
-    strcpy(ret, "0");
+
+    /* Leafs. just return the input node  */
+  case FAILURE: case FALSEEXP:  case TRUEEXP:
+  case NUMBER:  case NUMBER_UNSIGNED_WORD:  case NUMBER_SIGNED_WORD:
+  case UWCONST: case SWCONST:
+  case NUMBER_FRAC:  case NUMBER_REAL:
+  case NUMBER_EXP:
+  case TWODOTS:  case ATOM: case SELF: case DOT:  case ARRAY:
+  case BIT_SELECTION:  case CONCATENATION: case EXTEND:
+  case WSIZEOF: case WRESIZE: case CAST_TOINT:
+  case CASE: /* CASE is no longer a part of LTL formula - just a usual exp */
+  case IFTHENELSE:
+  case CAST_BOOL:  case CAST_WORD1:  case CAST_SIGNED:  case CAST_UNSIGNED:
+  case TIMES: case DIVIDE: case PLUS :case MINUS: case MOD:
+  case LSHIFT: case RSHIFT: case LROTATE: case RROTATE:
+  case UNION: case SETIN:
+  case EQUAL: case NOTEQUAL: case LT: case GT: case LE: case GE:
+    result = node;
+    break;
+  default: error_unreachable_code(); /* unknown expression: just for debugging */
   }
-  else {
-    l = strlen(s);
-    l += (strlen("next(") + strlen(")") + 1);
-    ret = Mymalloc(sizeof(char)*l);
-    strcpy(ret, "next(");
-    strcat(ret, s);
-    strcat(ret, ")");
+  /* remember the node and its name */
+  insert_assoc(expr_to_name_hash, node, result);
+
+  return result;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Add a node to a list. If the node is already in the list,
+  nothing happens]
+
+  Description        [Returns a new list (probably with the given node.]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+static node_ptr add_to_list(node_ptr node, node_ptr list)
+{
+  node_ptr iter = list;
+
+  while (Nil != iter) {
+    /* the node is the list */
+    if (node == car(iter)) return list;
+    iter = cdr(iter);
   }
-  return(ret);
+  /* the node is NOT in the list => add it */
+  return cons(node, list);
 }
 
-static output_list *search_list(output_list *list, char *s)
+
+/**Function********************************************************************
+
+  Synopsis           [Behaves similar to standard sprintf, but will allocates
+  the required memory by itself]
+
+  Description        [Warning:
+  1. memory belongs to the function. Do not modify the returned
+     string. Consecutive invocations damage the previously returned
+     strings.
+
+  2. The limit of generated strings is set to 100 bytes. Do not try
+  to generate a bigger string]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+static char* generate_string(const char* format, ...)
 {
-  output_list *l;
-  for (l = list; l != NULL; l = l->next) {
-    if (strcmp(l->key, s) == 0) {
-      return(l);
+  static char buffer[100]; /* 100 bytes should be enough */
+
+  int len;
+  va_list ap;
+
+  va_start(ap, format);
+  len = vsnprintf(buffer, 100, format, ap); /* 100 - buffer length */
+  va_end(ap);
+
+  nusmv_assert(len >= 0); /* an error in the vsnprintf */
+  nusmv_assert(len < 100); /* buffer overflow */
+  return buffer;
+
+#if 0
+  !!! HERE is the implementation of the string with arbitrary length. !!!
+  !!! Apparently this implementation is less efficient !!!!
+
+  /* the buffer is not deallocated every. This is correct */
+  static char* buffer = NULL;
+  static int bufferSize = 0;
+
+  int len;
+  char* returnString;
+
+  do {
+    /* try to print with the standard vsnprintf */
+    va_list ap;
+    va_start(ap, format);
+    len = vsnprintf(buffer, bufferSize, format, ap);
+    va_end(ap);
+
+    nusmv_assert(len >= 0); /* an error in the vsnprintf */
+
+    /* buffer is too small */
+    if (len == bufferSize) {
+      bufferSize = 100 + bufferSize * 2; /* increase the buffer */
+      buffer = REALLOC(char, buffer, bufferSize);
+      len = bufferSize;
     }
+  } while(len == bufferSize); /* buffer was increased. Try one more time */
+
+  /* allocate the memory which will be returned */
+  returnString = ALLOC(char, len + 1);
+  strncpy(returnString, buffer, len + 1);
+  return returnString;
+#endif
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [After invocation of transform_ltl_expression, this
+  function generates SMV modules from the obtained lists
+  of DEFINEs, INITs, etc.]
+
+  Description        [The parameter whole_expression_name
+  is the name (see expr_to_name) of the whole LTL expression.
+
+  All expressions in the module are memory-shared, but
+  the module itself is not. The invoker may modify or delete
+  all the declarations (and lists insided VAR and DEFINE), but
+  should not modify the expressions (including EQDEF in DEFINEs).]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+static node_ptr generate_smv_module(node_ptr whole_expression_name)
+{
+  node_ptr all_declr;
+  node_ptr iter;
+  node_ptr tmp;
+
+  /* add the INIT with the name of the whole expression */
+  all_declr = cons(new_node(INIT, whole_expression_name, Nil), Nil);
+
+  /* add the JUSTICEs to the list of all declarations */
+  iter = justice_declarations;
+  tmp = Nil;
+  while (Nil != iter) {
+    tmp = cons(new_node(JUSTICE, car(iter), Nil), tmp);
+    iter = cdr(iter);
   }
-  return(NULL);
-}
+  all_declr = append(all_declr, reverse(tmp));
 
-void free_output_list(output_list *list) 
-{
-  while(list != NULL) {
-    output_list * l = list;
-    
-    list = list->next;
-    free(l);
+  /* add the INITs to the list of all declarations */
+  iter = init_declarations;
+  tmp = Nil;
+  while (Nil != iter) {
+    tmp = cons(new_node(INIT, car(iter), Nil), tmp);
+    iter = cdr(iter);
   }
-}
+  all_declr = append(all_declr, reverse(tmp));
 
-/* returns whether the string s is in the Define_List */
-static int define_check(char *s)
-{
-  if (search_list(Define_list, s) != NULL) return(1);
-  return(0);
-}
-
-static void add_define_list(char *lit, char *s)
-{
-  output_list *l;
-  l = mymalloc_output_list();
-  l->key = lit;
-  l->item = s;
-  l->next = Define_list;
-  Define_list = l;
-}  
-
-static int next_check(char *s)
-{
-  if (search_list(Next_list, s) != NULL) return(1);
-  return(0);
-}
-
-static void add_next_list(char *lit, char *s)
-{
-  output_list *l;
-  l = mymalloc_output_list();
-  l->key = lit;
-  l->item = s;
-  l->next = Next_list;
-  Next_list = l;
-}  
-
-static int fairness_check(char *s)
-{
-  if (search_list(Fairness_list, s) != NULL) return(1);
-  return(0);
-}
-
-static void add_fairness_list(char *lit, char *s)
-{
-  output_list *l;
-  l = mymalloc_output_list();
-  l->key = lit;
-  l->item = s;
-  l->next = Fairness_list;
-  Fairness_list = l;
-}  
-
-static int initially_check(char *s)
-{
-  if (search_list(Initially_list, s) != NULL) return(1);
-  return(0);
-}
-
-static void add_initially_list(char *lit, char *s)
-{
-  output_list *l;
-  l = mymalloc_output_list();
-  l->key = lit;
-  l->item = s;
-  l->next = Initially_list;
-  Initially_list = l;
-}  
-
-/* return the name of the variable that represents the expression */
-static char *get_plit(node *t)
-{
-  char *ret;
-  ret = ((t->pel != NULL) ? t->pel : t->el);
-  return(ret);
-}
-
-/* populates the lists (Var_List, Define_List, etc) from the parse tree */
-static void set_node(node *t)
-{
-  char *fs;
-
-  if (t == NULL) return;
-  switch(t->op) {
-  case '|':
-    t->pel = reg_var(formula_string(t));
-    break;
-  case '!':
-    t->pel = reg_var(formula_string(t));
-    break;
-  case 'X':
-    fs = formula_string(t);
-    t->el = reg_var(fs);
-    add_var_list(fs, t->el);
-    break;
-  case 'Y':
-    fs = formula_string(t);
-    t->el = reg_var(fs);
-    add_var_list(fs, t->el);
-    break;
-  case 'U':
-    t->pel = reg_var(formula_string(t));
-    fs = op_string("X", formula_string(t), NULL);
-    t->el = reg_var(fs);
-    add_var_list(fs, t->el);
-    break;
-  case 'S':
-    t->pel = reg_var(formula_string(t));
-    fs = op_string("Y", formula_string(t), NULL);
-    t->el = reg_var(fs);
-    add_var_list(fs, t->el);
-    break;
-  case 'l':
-    t->el = t->str;
-    break;
-  default:
-    ;
+  /* add the TRANSs to the list of all declarations */
+  iter = trans_declarations;
+  tmp = Nil;
+  while (Nil != iter) {
+    tmp = cons(new_node(TRANS, car(iter), Nil), tmp);
+    iter = cdr(iter);
   }
-  set_node(t->left);
-  set_node(t->right);
-  switch(t->op) {
-  case '|':
-    if (define_check(t->pel) == 0) {
-      add_define_list(t->pel, op_string(" := ",
-				t->pel, 
-				op_string("|",
-					  get_plit(t->left), 
-					  get_plit(t->right))));
-    }
-    break;
-  case '!':
-    if (define_check(t->pel) == 0) {
-      add_define_list(t->pel, op_string(" := ",
-				t->pel, 
-				op_string("!",
-					  get_plit(t->left), NULL)));
-    }
-    break;
-  case 'X':
-    if (next_check(t->el) == 0) {
-      add_next_list(t->el, op_string(" = ",
-				     gen_next_term(get_plit(t->left)),
-				     t->el));
-    }
-    break;
-  case 'Y':
-    if (next_check(t->el) == 0) {
-      /* Note that the index is t->el as with X, but the generated 
-         string has the terms in a different order */
-      add_next_list(t->el, op_string(" = ",
-				     get_plit(t->left),
-				     gen_next_term(t->el)));
-    }
-    if (initially_check(t->el) == 0) {
-      add_initially_list(t->el, op_string(" = ",
-                                          t->el,
-                                          "0"));
-    }
-    break;
-  case 'U':
-    if (define_check(t->pel) == 0) {
-      add_define_list(t->pel, op_string(" := ",
-				t->pel, 
-				op_string("|",
-					  get_plit(t->right), 
-					  op_string("&",
-						    get_plit(t->left),
-						    t->el))));
-							    
-    }
-    if (next_check(t->el) == 0) {
-      add_next_list(t->el, op_string(" = ",
-				     gen_next_term(get_plit(t)),
-				     t->el));
-    }
-    if (fairness_check(t->pel) == 0) {
-      add_fairness_list(t->pel, op_string("|",
-				 op_string("!",t->pel,NULL),
-				 get_plit(t->right)));
-    }
-    break;
-  case 'S':
-    if (define_check(t->pel) == 0) {
-      add_define_list(t->pel, op_string(" := ",
-				t->pel, 
-				op_string("|",
-					  get_plit(t->right), 
-					  op_string("&",
-						    get_plit(t->left),
-						    t->el))));
-							    
-    }
-    if (next_check(t->el) == 0) {
-      add_next_list(t->el, op_string(" = ",
-				     get_plit(t),
-				     gen_next_term(t->el)));
-    }
+  all_declr = append(all_declr, reverse(tmp));
 
-
-    if (initially_check(t->el) == 0) {
-      add_initially_list(t->el, op_string(" = ",
-                                          t->el,
-                                          "0"));
-    }
-    break;
-  default:
-    ;
-  }    
-}
-
-static void init_str_hash(void)
-{
-  int i;
-  
-  assert(Str_hash == NULL);
-  Str_hash = (str_list **) Mymalloc(sizeof(str_list *) * STRHASHSIZE);
-  for (i = 0; i < STRHASHSIZE; i++) {
-    Str_hash[i] = NULL;
+  /* add the DEFINESs to the list of all declarations */
+  {
+/*     node_ptr shared_defines = Nil; /\* defines with shared memory *\/ */
+/*     iter = define_declarations; */
+/*     while (Nil != iter) { */
+/*       shared_defines = find_node(CONS, car(iter), shared_defines); */
+/*       iter = cdr(iter); */
+/*     } */
+/*     all_declr = find_node(CONS, */
+/*                           find_node(DEFINE, shared_defines, Nil), all_declr); */
+    all_declr = cons(new_node(DEFINE, define_declarations, Nil), all_declr);
   }
+
+  /* add the VARs to the list of all declarations */
+  {
+    node_ptr new_vars = Nil;/* all the variable declaration */
+    node_ptr boolean = find_node(BOOLEAN, Nil, Nil);
+    iter = var_declarations;
+    while (Nil != iter) {
+      new_vars = cons(new_node(COLON, car(iter), boolean), new_vars);
+      iter = cdr(iter);
+    }
+    all_declr = cons(new_node(VAR, new_vars, Nil), all_declr);
+  }
+
+  /* create the module name */
+  {
+    char* name = generate_string("%s%u", LTL_MODULE_BASE_NAME,
+                                 specificationNumber);
+    iter = find_node(ATOM, (node_ptr)find_string(name), Nil);
+  }
+
+  return new_node(MODULE, new_node(MODTYPE, iter, Nil), all_declr);
 }
 
 
-static void quit_str_hash(void)
-{
-  int i;
-  
-  if (Str_hash != NULL) {
-    for (i = 0; i < STRHASHSIZE; i++) {
-      str_list * l = Str_hash[i];
+/**Function********************************************************************
 
-      while (l != NULL) {
-        str_list * n = l;
-        l=l->next;
-        free(n);
+  Synopsis           [Expands the body of a case]
+
+  Description        [Given a case expression, of the form
+  <textarea>
+  case
+     c1 : e1;
+     c2 : e2;
+     ...
+  esac;
+  </textarea>
+  it returns <tt> (c1 and e1) or (!c1 and ((c2 and e2) or (!c2 and (....)))) </tt>
+]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+node_ptr expand_case_body(node_ptr expr) {
+  nusmv_assert(Nil != expr);
+
+  if ((CASE == node_get_type(expr)) ||
+      (IFTHENELSE == node_get_type(expr))) {
+    node_ptr c, t, e;
+
+    nusmv_assert((COLON == node_get_type(car(expr))));
+
+    c = car(car(expr));
+    t = cdr(car(expr));
+    e = expand_case_body(cdr(expr));
+
+    return Expr_or(Expr_and(c, t), Expr_and(Expr_not(c), e));
+  }
+
+  return expr;
+}
+
+
+
+#if OUTPUT_DEBUGGING
+#warning Debugging LTL2SMV facilities are compiled in!
+/**Function********************************************************************
+
+  Synopsis           [Prints the tableau in SMV format]
+
+  Description        [Prints the tableau in SMV format]
+
+  SideEffects        [None]
+
+******************************************************************************/
+static void ltl2smv_print_module(FILE* ostream, node_ptr module)
+{
+  node_ptr iter;
+
+  nusmv_assert(Nil != module);
+  nusmv_assert(MODULE == node_get_type(module));
+  /* print the name */
+  nusmv_assert(MODTYPE == node_get_type(car(module)));
+  nusmv_assert(ATOM == node_get_type(car(car(module))));
+  nusmv_assert(Nil == cdr(car(module)));
+
+  fprintf(ostream, "MODULE %s\n", get_text((string_ptr)car(car(car(module)))));
+
+  iter = cdr(module);
+  while (Nil != iter) {
+    nusmv_assert(CONS == node_get_type(iter));
+    switch (node_get_type(car(iter))) {
+
+    case VAR: { /* variable declarations */
+      node_ptr var;
+      var = car(car(iter));
+      if ( Nil != var) {
+        fprintf(ostream, "VAR\n");
+        while (Nil != var) { /* iterate over variable declarations */
+
+          nusmv_assert(CONS == node_get_type(var));
+          nusmv_assert(COLON == node_get_type(car(var)));
+          nusmv_assert(ATOM == node_get_type(car(car(var))));
+          nusmv_assert(BOOLEAN == node_get_type(cdr(car(var))));
+
+          fprintf(ostream, "   %s : boolean;\n",
+                  get_text((string_ptr)car(car(car(var)))));
+
+          var = cdr(var);
+        }
       }
-      Str_hash[i] = NULL;
+      break;
     }
-    free(Str_hash);
-    Str_hash = NULL;
-  }
-}
 
-static void init_all_lists(void) {
-  Define_list = NULL;
-  Next_list = NULL;
-  Fairness_list = NULL;
-  Initially_list = NULL;
-  Var_list = NULL;
-}
+    case DEFINE: { /* define declarations */
+      node_ptr def;
+      def = car(car(iter));
+      if ( Nil != def) {
+        fprintf(ostream, "DEFINE\n");
+        while (Nil != def) { /* iterate over define declarations */
 
-static void quit_all_lists(void) {
-  free_output_list(Define_list);
-  Define_list = NULL;
-  free_output_list(Next_list);
-  Next_list = NULL;
-  free_output_list(Fairness_list);
-  Fairness_list = NULL;
-  free_output_list(Initially_list);
-  Initially_list = NULL;
-  free_output_list(Var_list);
-  Var_list = NULL;
-}
+          nusmv_assert(CONS == node_get_type(def));
+          nusmv_assert(EQDEF == node_get_type(car(def)));
 
-static void remove_outer_par(char *s)
-{
-  int l;
-  l = strlen(s);
-  if (l < 2) return;
-  if (s[0] == '(') s[0] = ' ';
-  if (s[l-1] == ')') s[l-1] = ' ';
+          fprintf(ostream, "   ");
+          print_node(ostream, car(def));
+          fprintf(ostream, ";\n");
+
+          def = cdr(def);
+        }
+      } /* if */
+      break;
+    }
+
+    case INIT: /* INIT  declarations */
+      fprintf(ostream, "INIT\n   ");
+      print_node(ostream, car(car(iter)));
+      fprintf(ostream, "\n");
+      break;
+
+    case TRANS: /* TRANS  declarations */
+      fprintf(ostream, "TRANS\n   ");
+      print_node(ostream, car(car(iter)));
+      fprintf(ostream, "\n");
+      break;
+
+    case JUSTICE: /* JUSTICE  declarations */
+      fprintf(ostream, "JUSTICE\n   ");
+      print_node(ostream, car(car(iter)));
+      fprintf(ostream, "\n");
+      break;
+    default: error_unreachable_code(); /* unexpected node */
+    } /*switch */
+
+    iter = cdr(iter);
+  } /* while */
+
   return;
-}
-
-static void print_smv_format(FILE * ofile)
-{
-  output_list *l;
-
-  fprintf(ofile, "MODULE %s%d\n", MODULE_NAME, Spec_Counter);
-  if (Var_list != NULL) {
-    fprintf(ofile, "VAR\n");
-    for (l = Var_list; l != NULL; l = l ->next) {
-      /* printf("%s : boolean; -- %s", l->item, l->key); */
-      fprintf(ofile, "   %s : boolean; ", l->item);
-      fprintf(ofile, "\n");
-    }
-  }
-  if (Initially_list != NULL) {
-    for (l = Initially_list; l != NULL; l = l ->next) {
-      fprintf(ofile, "INIT\n");
-      remove_outer_par(l->item);
-      fprintf(ofile, "  %s", l->item);
-      fprintf(ofile, "\n");
-    }
-  }
-  if (Next_list != NULL) {
-    for (l = Next_list; l != NULL; l = l ->next) {
-      fprintf(ofile, "TRANS\n");
-      remove_outer_par(l->item);
-      fprintf(ofile, "  %s", l->item);
-      fprintf(ofile, "\n");
-    }
-  }
-  if (Define_list != NULL) {
-    fprintf(ofile, "DEFINE\n");
-    for (l = Define_list; l != NULL; l = l ->next) {
-      remove_outer_par(l->item);
-      fprintf(ofile, "  %s;", l->item);
-      fprintf(ofile, "\n");
-    }
-  }
-  if (Fairness_list != NULL) {
-    for (l = Fairness_list; l != NULL; l = l ->next) {
-      fprintf(ofile, "FAIRNESS\n");
-      remove_outer_par(l->item);
-      fprintf(ofile, "  %s", l->item);
-      fprintf(ofile, "\n");
-    }
-  }
-  fprintf(ofile, "INIT\n");
-  fprintf(ofile, "   %s\n", get_plit(ltl2smv_Specf));
-}
-
-static void set_information(node *t)
-{
-  init_str_hash();
-  set_node(t);
-}
-
-static node *reduce_formula(node *t)
-{
-  if (t == NULL) return (NULL);
-  if (t->op == 'l') return (t);
-  if (t->op == '!') {
-    if (t->left != NULL) {
-      if (t->left->op =='!') {
-	t = t->left->left;
-      }
-    }
-    else {
-      fprintf(stderr, "Something is wrong in reduce_formula\n");
-      exit(1);
-    }
-  }
-  t->left = reduce_formula(t->left);
-  t->right = reduce_formula(t->right);
-  return (t);
-}
-
-#if 0 /* unused functions */
-static void initbit(void)
-{
-  int i;
-  bit[0] = 1;
-  for (i = 1; i < 33; i++) {
-    bit[i] = bit[i-1]<<1;
-  }
-} 
-
-static char *shortitob(long num)
-{
-  char *b;
-  int i;
-  b = (char *)Mymalloc(sizeof(char)*(33));
-  for (i = 0; i < 32; i++) {
-    b[i] =  (((num & bit[i]) == 0)? '0':'1');
-  }
-  b[32] = '\0';
-  return(b);
-}
-
-static char *itob(int num)
-{
-   char *b;
-   int i;
-
-   b = (char *)Mymalloc(sizeof(char)*(BWIDTH+1));
-   for (i = 0; i < BWIDTH; i++) {
-     b[i] = '0';
-   }
-   b[BWIDTH] = '\0';
-
-   for (i = 0; i < 32; i++)
-     b[i] =  (((num & bit[i]) == 0)? '0':'1');
-
-/*   printf("itob(%d) = %d\n", num, btoi(b)); */
-   return(b);
 }
 #endif

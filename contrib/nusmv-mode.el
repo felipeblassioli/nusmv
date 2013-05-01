@@ -1,12 +1,13 @@
 ;;; nusmv-mode.el --- major-mode for editing and running NuSMV sources
 
-;; Copyright (C) 2003 Roger Villemaire
+;; Copyright (C) 2003-2008 Roger Villemaire
 
 ;; Author: Roger Villemaire <villemaire.roger@uqam.ca>
 ;;	Pier-Luc Simard
 ;;	Nicolas Leclerc
 ;; Created: October 2003
-;; Version: 1.0
+;; Updated: August 2008
+;; Version: 1.1
 ;; Keywords: languages NuSMV
 
 ;; This program is free software; you can redistribute it and/or
@@ -26,7 +27,7 @@
 
 ;;; Commentary:
 ;;; This library provides an Emacs interface to NuSMV
-;;; <http://nusmv.irst.itc.it/>.  It will work only with Emacs >= 21.
+;;; <http://nusmv.fbk.eu/>.  It will work only with Emacs >= 21.
 ;;; The main features are fontification, line indentation (TAB)
 ;;; and inferior execution.  The content of the the option file (by default
 ;;; the same name as the source but with extension .opt) will be automatically
@@ -110,7 +111,7 @@
 ;;;    Some NuSMV error messages span two lines like
 ;;;file bidon.smv: line 8: recursively defined: x
 ;;;in definition of init(x) at line 8
-;;;    The first chunk will be sended to the error buffer but the second
+;;;    The first chunk will be sent to the error buffer but the second
 ;;;    one will go to the output buffer. I don't see any simple solution. 
 ;;;    Something could be done in NuSMV. Either send only errors to standard 
 ;;;    errors (so the output of the help command would go to standard output)
@@ -148,7 +149,11 @@
 ;;;    b : boolean;
 ;;;
 
-
+;;; Version 1.1 changes' list 2008/08/23:
+;;; Update the mode to NuSMV 2.4.3.
+;;; The first NuSMV prompt is now preceded by some control sequence, show
+;;; it as such in nusmv-output-mode.
+;;; Update the list of NuSMV commands for TAB completion.
 
 ;;; Code:
 ;;;
@@ -676,7 +681,10 @@ fully loaded."
 	  nusmv-error-regexp-3)
   "Format of NuSMV and m4 error message.")
 
-(defvar nusmv-prompt-regexp "^NuSMV > "
+;; 2008/08/23 "^NuSMV > " doesn't catch the prompt anymore.
+;; In NuSMV 2.4.3, the first prompt is preceded by the string ESC[?1034h
+;; The following code will accept any string ending by "NuSMV > ".
+(defvar nusmv-prompt-regexp ".*NuSMV > "
   "Format of NuSMV interactive prompt.")
 
 ;; In interactive mode the following incomplete lines (i.e. no line-end)
@@ -1367,7 +1375,7 @@ If none ask the user to save the current buffer in a file."
 
 (defvar nusmv-output-mode-map '())
 
-
+;; RV 2008/08/23 New commands' list as for NuSMV 2.4.3
 (defvar nusmv-commands
 (list
 "add_property"
@@ -1377,15 +1385,20 @@ If none ask the user to save the current buffer in a file."
 "build_boolean_model"
 "build_flat_model"
 "build_model"
+"check_ctlspec"
+"check_fsm"
 "check_invar"
 "check_invar_bmc"
+"check_invar_bmc_inc"
 "check_ltlspec"
 "check_ltlspec_bmc"
+"check_ltlspec_bmc_inc"
 "check_ltlspec_bmc_onepb"
+"check_ltlspec_sbmc"
+"check_ltlspec_sbmc_inc"
 "check_property"
+"check_pslspec"
 "check_spec"
-"check_trans"
-"check_wff"
 "compute"
 "compute_reachable"
 "dynamic_var_ordering"
@@ -1395,6 +1408,7 @@ If none ask the user to save the current buffer in a file."
 "gen_invar_bmc"
 "gen_ltlspec_bmc"
 "gen_ltlspec_bmc_onepb"
+"gen_ltlspec_sbmc"
 "get_internal_status"
 "go"
 "go_bmc"
@@ -1405,15 +1419,20 @@ If none ask the user to save the current buffer in a file."
 "print_bdd_stats"
 "print_clusterinfo"
 "print_current_state"
+"print_fair_states"
+"print_fair_transitions"
+"print_fsm_stats"
 "print_iwls95options"
 "print_reachable_states"
 "print_usage"
 "process_model"
 "quit"
 "read_model"
+"read_trace"
 "reset"
 "set"
 "set_bdd_parameters"
+"show_plugins"
 "show_property"
 "show_traces"
 "show_vars"

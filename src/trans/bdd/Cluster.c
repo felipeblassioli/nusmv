@@ -13,7 +13,7 @@
 
   Copyright   [
   This file is part of the ``trans.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -29,18 +29,18 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "Cluster.h"
 #include "utils/object_private.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: Cluster.c,v 1.1.2.2 2004/05/31 09:59:59 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: Cluster.c,v 1.1.2.2.4.1.6.2 2007-06-18 16:51:00 nusmv Exp $";
 
 
 /*---------------------------------------------------------------------------*/
@@ -51,21 +51,25 @@ static char rcsid[] UTIL_UNUSED = "$Id: Cluster.c,v 1.1.2.2 2004/05/31 09:59:59 
   Synopsis    [Cluster Class]
 
   Description [ This class contains informations about a cluster:<br>
-  	<dl> 
+          <dl> 
             <dt><code>curr_cluster</code>
                 <dd> The clusterized transition relation.  
             <dt><code>ex_state_input</code>
                 <dd>  List of variables (state and input vars) that can be 
-		existentially quantified when curr_cluster is multiplied in
-		the product.
-            <dt><code>ex_state_input</code>
+                existentially quantified when curr_cluster is multiplied in
+                the product.
+            <dt><code>ex_state</code>
                 <dd> List of variables (only state vars) that can be 
-		existentially quantified when curr_cluster is multiplied in the
-		product. 
-	</dl>
-	<br>
-	In addition, this class inherits from the Object class and contains
-	a virtual copy constructor. ]
+                existentially quantified when curr_cluster is multiplied in the
+                product. 
+        </dl>
+        <br>
+        Note that frozen variables are not taken into account because
+        they are never abstracted away (or used some other way) in
+        pre- or post-image computation.
+        <br>
+        In addition, this class inherits from the Object class and contains
+        a virtual copy constructor. ]
 
   SeeAlso     []   
   
@@ -119,18 +123,18 @@ static void cluster_finalize ARGS((Object_ptr object, void* arg));
 static Object_ptr cluster_copy ARGS((const Object_ptr object));
 
 static void cluster_copy_aux ARGS((const Cluster_ptr object, 
-				   Cluster_ptr copy));
+                                   Cluster_ptr copy));
 
 static void cluster_iwls95_init ARGS((ClusterIwls95_ptr self, 
-				      DdManager* dd,  
-				      const ClusterOptions_ptr cl_options, 
-				      const double v_c, 
-				      const double w_c, 
-				      const double x_c, 
-				      const double y_c, 
-				      const double z_c, 
-				      const double min_c, 
-				      const double max_c));
+                                      DdManager* dd,  
+                                      const ClusterOptions_ptr cl_options, 
+                                      const double v_c, 
+                                      const double w_c, 
+                                      const double x_c, 
+                                      const double y_c, 
+                                      const double z_c, 
+                                      const double min_c, 
+                                      const double max_c));
 
 static void cluster_iwls95_deinit ARGS((ClusterIwls95_ptr self, DdManager* dd));
 static void cluster_iwls95_finalize ARGS((Object_ptr object, void* arg));
@@ -139,7 +143,7 @@ static Object_ptr cluster_iwls95_copy ARGS((const Object_ptr object));
 
 static void 
 cluster_iwls95_copy_aux ARGS((const ClusterIwls95_ptr object, 
-			      ClusterIwls95_ptr copy));
+                              ClusterIwls95_ptr copy));
 
 /**Function********************************************************************
 
@@ -240,7 +244,7 @@ void Cluster_set_trans(Cluster_ptr self, DdManager* dd, bdd_ptr current)
 
   Description        [Returns a pointer to the list of variables to be
   quantified respect to the transition relation inside the cluster. Returned
-  bdd will be referenced.]
+  bdd is referenced.]
 
   SideEffects        []
 
@@ -273,7 +277,7 @@ bdd_ptr Cluster_get_quantification_state_input(const Cluster_ptr self)
   
 ******************************************************************************/
 void Cluster_set_quantification_state_input(Cluster_ptr self, 
-					    DdManager* dd, bdd_ptr new)
+                                            DdManager* dd, bdd_ptr new)
 {
   CLUSTER_CHECK_INSTANCE(self);
 
@@ -292,7 +296,7 @@ void Cluster_set_quantification_state_input(Cluster_ptr self,
   Synopsis           [Returns a pointer to the list of variables (state vars
   only) to be quantified]
 
-  Description        [Returned value will be referenced]
+  Description        [Returned value is referenced]
 
   SideEffects        []
 
@@ -324,7 +328,7 @@ bdd_ptr Cluster_get_quantification_state(const Cluster_ptr self)
   
 ******************************************************************************/
 void Cluster_set_quantification_state(Cluster_ptr self, 
-				      DdManager* dd, bdd_ptr new)
+                                      DdManager* dd, bdd_ptr new)
 {
   CLUSTER_CHECK_INSTANCE(self);
 
@@ -358,21 +362,21 @@ void Cluster_set_quantification_state(Cluster_ptr self,
   
 ******************************************************************************/
 ClusterIwls95_ptr ClusterIwls95_create(DdManager* dd, 
-				       const ClusterOptions_ptr cl_options, 
-				       const double v_c, 
-				       const double w_c, 
-				       const double x_c, 
-				       const double y_c, 
-				       const double z_c, 
-				       const double min_c, 
-				       const double max_c)
+                                       const ClusterOptions_ptr cl_options, 
+                                       const double v_c, 
+                                       const double w_c, 
+                                       const double x_c, 
+                                       const double y_c, 
+                                       const double z_c, 
+                                       const double min_c, 
+                                       const double max_c)
 {
   ClusterIwls95_ptr self =  ALLOC(ClusterIwls95, 1);
 
   CLUSTER_IWLS95_CHECK_INSTANCE(self); 
 
   cluster_iwls95_init(self, dd, cl_options, v_c, w_c, x_c, 
-		      y_c, z_c, min_c, max_c);
+                      y_c, z_c, min_c, max_c);
   return self;
 }
 
@@ -414,9 +418,9 @@ static void cluster_init(Cluster_ptr self, DdManager* dd)
 {
   object_init(OBJECT(self));
 
-  self->curr_cluster    = bdd_one(dd);
-  self->ex_state_input  = bdd_one(dd);
-  self->ex_state        = bdd_one(dd);
+  self->curr_cluster    = bdd_true(dd);
+  self->ex_state_input  = bdd_true(dd);
+  self->ex_state        = bdd_true(dd);
 
   OVERRIDE(Object, finalize) = cluster_finalize;
   OVERRIDE(Object, copy) = cluster_copy; 
@@ -526,15 +530,15 @@ static void cluster_copy_aux(const Cluster_ptr self, Cluster_ptr copy)
   
 ******************************************************************************/
 static void cluster_iwls95_init(ClusterIwls95_ptr self, 
-				DdManager* dd, 
-				const ClusterOptions_ptr cl_options, 
-				const double v_c, 
-				const double w_c, 
-				const double x_c, 
-				const double y_c, 
-				const double z_c, 
-				const double min_c, 
-				const double max_c)
+                                DdManager* dd, 
+                                const ClusterOptions_ptr cl_options, 
+                                const double v_c, 
+                                const double w_c, 
+                                const double x_c, 
+                                const double y_c, 
+                                const double z_c, 
+                                const double min_c, 
+                                const double max_c)
 
 {
   double w1; 
@@ -632,7 +636,7 @@ static Object_ptr cluster_iwls95_copy(const Object_ptr object)
   
 ******************************************************************************/
 static void cluster_iwls95_copy_aux(const ClusterIwls95_ptr self, 
-				    ClusterIwls95_ptr copy)
+                                    ClusterIwls95_ptr copy)
 {
   cluster_copy_aux(CLUSTER(self), CLUSTER(copy));
 

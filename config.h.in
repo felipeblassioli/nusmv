@@ -6,11 +6,17 @@
 /* Executable file names suffix */
 #undef EXEEXT
 
-/* Define to 1 if you have the <bsd/sgtty.h> header file. */
-#undef HAVE_BSD_SGTTY_H
+/* Define to __attribute((noreturn)) or empty if not available */
+#undef FUNCATTR_NORETURN
+
+/* Enables the named addon */
+#undef HAVE_COMPASS
 
 /* Have preprocessor */
 #undef HAVE_CPP
+
+/* If cudd-2.4 or greater is available */
+#undef HAVE_CUDD_24
 
 /* Define to 1 if you have the <dirent.h> header file, and it defines `DIR'.
    */
@@ -21,6 +27,9 @@
 
 /* Define to 1 if you don't have `vprintf' but do have `_doprnt.' */
 #undef HAVE_DOPRNT
+
+/* Define to 1 if you have the <errno.h> header file. */
+#undef HAVE_ERRNO_H
 
 /* Define to 1 if you have the <float.h> header file. */
 #undef HAVE_FLOAT_H
@@ -37,8 +46,8 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
-/* Define to 1 if you have the `bsd' library (-lbsd). */
-#undef HAVE_LIBBSD
+/* Define to 1 if you have the `isatty' function. */
+#undef HAVE_ISATTY
 
 /* Disables expat usage */
 #undef HAVE_LIBEXPAT
@@ -71,11 +80,17 @@
 /* Define to 1 if you have the `mkstemp' function. */
 #undef HAVE_MKSTEMP
 
+/* Define to 1 if you have the `mktemp' function. */
+#undef HAVE_MKTEMP
+
 /* Define to 1 if you have the <ndir.h> header file, and it defines `DIR'. */
 #undef HAVE_NDIR_H
 
 /* Uses the old version of zchaff */
 #undef HAVE_OLD_ZCHAFF
+
+/* Define to 1 if you have the `popen' function. */
+#undef HAVE_POPEN
 
 /* Define to 1 if you have the `pow' function. */
 #undef HAVE_POW
@@ -87,11 +102,11 @@
    and to 0 otherwise. */
 #undef HAVE_REALLOC
 
-/* Disables SA package */
-#undef HAVE_SA
+/* Define to 1 if you have the <regex.h> header file. */
+#undef HAVE_REGEX_H
 
-/* Disables cpp use inside SA */
-#undef HAVE_SA_CPP
+/* No sat solvers available */
+#undef HAVE_SAT_SOLVER
 
 /* Define to 1 if you have the `setvbuf' function. */
 #undef HAVE_SETVBUF
@@ -142,8 +157,11 @@
 /* Define to 1 if you have the `strstr' function. */
 #undef HAVE_STRSTR
 
-/* Define to 1 if you have the `strtol */
-#undef HAVE_STRTOL
+/* Define to 1 if you have the `strtol,' function. */
+#undef HAVE_STRTOL_
+
+/* Define to 1 if you have the `system' function. */
+#undef HAVE_SYSTEM
 
 /* Define to 1 if you have the <sys/dir.h> header file, and it defines `DIR'.
    */
@@ -162,6 +180,9 @@
 /* Define to 1 if you have the <sys/param.h> header file. */
 #undef HAVE_SYS_PARAM_H
 
+/* Define to 1 if you have the <sys/resource.h> header file. */
+#undef HAVE_SYS_RESOURCE_H
+
 /* Define to 1 if you have the <sys/signal.h> header file. */
 #undef HAVE_SYS_SIGNAL_H
 
@@ -174,6 +195,9 @@
 /* Define to 1 if you have the <sys/types.h> header file. */
 #undef HAVE_SYS_TYPES_H
 
+/* Define to 1 if you have the `tmpnam' function. */
+#undef HAVE_TMPNAM
+
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
@@ -183,15 +207,37 @@
 /* Define to 1 if the system has the type `_Bool'. */
 #undef HAVE__BOOL
 
+/* Library bug message */
+#undef LIBRARY_BUGREPORT
+
+/* Library build date */
+#undef LIBRARY_BUILD_DATE
+
+/* Library Email */
+#undef LIBRARY_EMAIL
+
+/* Library Name */
+#undef LIBRARY_NAME
+
+/* Library Version */
+#undef LIBRARY_VERSION
+
+/* Library Website */
+#undef LIBRARY_WEBSITE
+
+/* Names of linked addons */
+#undef LINKED_CORE_ADDONS
+
 /* Define to 1 if `lstat' dereferences a symlink specified with a trailing
    slash. */
 #undef LSTAT_FOLLOWS_SLASHED_SYMLINK
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
 /* Define to 1 if your C compiler doesn't accept -c and -o together. */
 #undef NO_MINUS_C_MINUS_O
-
-/* Name of package */
-#undef PACKAGE
 
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
@@ -214,36 +260,39 @@
 /* Preprocessor call string */
 #undef PROG_CPP
 
-/* Define to 1 if the C compiler supports function prototypes. */
-#undef PROTOTYPES
-
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE
 
-/* Define to 1 if the `setvbuf' function takes the buffering type as its
-   second argument and the buffer pointer as the third, as on System V before
-   release 3. */
-#undef SETVBUF_REVERSED
+/* The size of `int', as computed by sizeof. */
+#undef SIZEOF_INT
+
+/* The size of `long', as computed by sizeof. */
+#undef SIZEOF_LONG
+
+/* The size of `long long', as computed by sizeof. */
+#undef SIZEOF_LONG_LONG
+
+/* The size of `void *', as computed by sizeof. */
+#undef SIZEOF_VOID_P
 
 /* Define to 1 if you have the ANSI C header files. */
 #undef STDC_HEADERS
-
-/* Version number of package */
-#undef VERSION
 
 /* Define to 1 if `lex' declares `yytext' as a `char *' by default, not a
    `char[]'. */
 #undef YYTEXT_POINTER
 
-/* Define like PROTOTYPES; this can be used by system headers. */
-#undef __PROTOTYPES
+/* Define to __FUNCTION__ or "" if `__func__' does not conform to ANSI C. */
+#undef __func__
 
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const
 
-/* Define as `__inline' if that's what the C compiler calls it, or to nothing
-   if it is not supported. */
+/* Define to `__inline__' or `__inline' if that's what the C compiler
+   calls it, or to nothing if 'inline' is not supported under any name.  */
+#ifndef __cplusplus
 #undef inline
+#endif
 
 /* Define to rpl_malloc if the replacement function should be used. */
 #undef malloc
@@ -251,5 +300,5 @@
 /* Define to rpl_realloc if the replacement function should be used. */
 #undef realloc
 
-/* Define to `unsigned' if <sys/types.h> does not define. */
+/* Define to `unsigned int' if <sys/types.h> does not define. */
 #undef size_t

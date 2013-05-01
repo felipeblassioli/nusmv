@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,31 +30,31 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
-#if HAVE_MALLOC_H
-# if HAVE_SYS_TYPES_H
+#if NUSMV_HAVE_MALLOC_H
+# if NUSMV_HAVE_SYS_TYPES_H
 #  include <sys/types.h>
 # endif  
 # include <malloc.h>
-#elif HAVE_SYS_MALLOC_H
-# if HAVE_SYS_TYPES_H
+#elif NUSMV_HAVE_SYS_MALLOC_H
+# if NUSMV_HAVE_SYS_TYPES_H
 #  include <sys/types.h>
 # endif  
 # include <sys/malloc.h>
 #endif
 
-#if HAVE_STDLIB_H
+#if NUSMV_HAVE_STDLIB_H
 # include <stdlib.h>
 #endif 
 
@@ -78,26 +78,43 @@ struct heap_
 
 typedef struct heap_ * heap;
 
+typedef struct heap_el heap_el_struct;
+
+typedef struct heap_ heap_struct;
+
+#ifdef HEAP_TEST
+#define FREE(_f_) free(_f_)
+#define nusmv_assert(_f_) assert(_f_)
+#define ALLOC(type, num)	\
+    ((type *) malloc(sizeof(type) * (num)))
+#define REALLOC(type, obj, num)	\
+    (obj) ? ((type *) realloc((char *) obj, sizeof(type) * (num))) : \
+	    ((type *) malloc(sizeof(type) * (num)))
+#else
+#include "util.h"
+#include "defs.h"
+#endif
+
 heap heap_create()
 {
-  heap h = malloc(sizeof(struct heap_));
-  assert(h);
+  heap h = ALLOC(heap_struct,1);
+  nusmv_assert(h);
 
   h->maxlength = HEAP_MAXLENGTH_INIT;
   h->length = 0;
-  h->array = malloc(sizeof(struct heap_el) * h->maxlength);
-  assert(h->array);
+  h->array = ALLOC(heap_el_struct, h->maxlength);
+  nusmv_assert(h->array);
 
   return h;
 }
 
 void heap_destroy(heap h)
 {
-  assert(h);
-  assert(h->length == 0);
+  nusmv_assert(h);
+  nusmv_assert(h->length == 0);
   
-  free(h->array);
-  free(h);
+  FREE(h->array);
+  FREE(h);
 }
 
 static void heap_switch(heap h, int pos1, int pos2)
@@ -114,12 +131,12 @@ static void heap_switch(heap h, int pos1, int pos2)
 
 void heap_add(heap h, float val, void * el)
 {
-  assert(h);
+  nusmv_assert(h);
 
   if (h->length == h->maxlength) {
     h->maxlength = h->maxlength * 2 + 1;
-    h->array = realloc(h->array, sizeof(struct heap_el) * h->maxlength);
-    assert(h->array);
+    h->array = REALLOC(heap_el_struct, h->array, h->maxlength);
+    nusmv_assert(h->array);
   }
 
   {
@@ -145,7 +162,7 @@ void heap_add(heap h, float val, void * el)
 
 int heap_isempty(heap h)
 {
-  assert(h);
+  nusmv_assert(h);
   return (h->length == 0);
 }
 
@@ -153,8 +170,8 @@ void * heap_getmax(heap h)
 {
   void * el;
 
-  assert(h);
-  assert(h->length > 0);
+  nusmv_assert(h);
+  nusmv_assert(h->length > 0);
 
   el = h->array[0].el;
   
@@ -208,8 +225,8 @@ int main(int argc, char * argv[])
 
   h = heap_create();
   
-  array = malloc(sizeof(int) * length);
-  assert(array);
+  array = ALLOC(int,length);
+  nusmv_assert(array);
 
   for (c = 1; c <= num; c++) {
     int i, i1, i2;
@@ -233,7 +250,7 @@ int main(int argc, char * argv[])
     for (i = 0; i < length; i++) {
       int val = (int)heap_getmax(h);
       printf(" %d", val);
-      assert(val == i+1);
+      nusmv_assert(val == i+1);
     }
     printf("\n");
     assert(heap_isempty(h));

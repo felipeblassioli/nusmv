@@ -2,7 +2,7 @@ MODULE and-gate(in1,in2)
 VAR
   out : boolean;
 ASSIGN
-  init(out) := 0;
+  init(out) := FALSE;
   next(out) := (in1 & in2) union out;
 
 MODULE and-gate-init(in1,in2,init-out)
@@ -16,25 +16,25 @@ MODULE or-gate(in1,in2)
 VAR
   out : boolean;
 ASSIGN
-  init(out) := 0;
+  init(out) := FALSE;
   next(out) := (in1 | in2) union out;
 
 MODULE c-element(in1,in2)
 VAR
   out : boolean;
 ASSIGN
-  init(out) := 0;
+  init(out) := FALSE;
   next(out) := 
     case
       in1 = in2 : in1 union out;
-      1 : out;
+      TRUE : out;
     esac;
 
 MODULE mutex-half(inp,other-out)
 VAR
   out : boolean;
 ASSIGN
-  init(out) := 0;
+  init(out) := FALSE;
   next(out) := inp union out;
 TRANS
   !(next(out) & next(other-out))
@@ -43,7 +43,7 @@ MODULE user
 VAR
   req : boolean;
 ASSIGN
-  init(req) := 0;
+  init(req) := FALSE;
   next(req) := (!ack) union req;
 
 MODULE cell(left,right,token)
@@ -73,12 +73,12 @@ DEFINE
 
 MODULE main
 VAR
-  e-6 : process cell(e-1,e-2,1);
-  e-5 : process cell(e-6,e-1,0);
-  e-4 : process cell(e-5,e-6,0);
-  e-3 : process cell(e-4,e-5,1);
-  e-2 : process cell(e-3,e-4,0);
-  e-1 : process cell(e-2,e-3,0);
+  e-6 : process cell(e-1,e-2,TRUE);
+  e-5 : process cell(e-6,e-1,FALSE);
+  e-4 : process cell(e-5,e-6,FALSE);
+  e-3 : process cell(e-4,e-5,TRUE);
+  e-2 : process cell(e-3,e-4,FALSE);
+  e-1 : process cell(e-2,e-3,FALSE);
 
 SPEC
   AG (

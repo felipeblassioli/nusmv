@@ -13,7 +13,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -29,11 +29,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -41,7 +41,7 @@
 #include "utils/utils.h" /* for nusmv_assert */
 #include "utils/ustring.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: ustring.c,v 1.5.6.1 2003/07/22 15:25:03 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: ustring.c,v 1.5.6.1.4.2 2005-03-03 12:32:24 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -73,6 +73,8 @@ static string_mgr_ *string_mgr;
 static int string_hash_fun ARGS((string_ptr string));
 static int string_eq_fun ARGS((string_ptr a1, string_ptr a2));
 static string_ptr string_alloc ARGS((void));
+static void string_free ARGS((string_ptr str));
+
 
 /*---------------------------------------------------------------------------*/
 /* Definition of exported functions                                          */
@@ -105,6 +107,31 @@ void init_string()
 void quit_string()
 {
   /* Shut down the string manager */
+  int i;
+
+  /* Free the hash table and all string copies. */
+  for (i = 0; i < STRING_HASH_SIZE; ++i) {
+    string_ptr curr = string_mgr->string_hash[i];
+    while ((string_ptr)NULL != curr) {
+      string_ptr next = curr->link;
+      string_free(curr);
+      curr = next;
+    }
+  }
+
+  FREE(string_mgr->string_hash);
+
+  /* Free memory chunks */
+  {
+    string_ptr * curr = string_mgr->memoryList;
+    while ((string_ptr*)NULL != curr) {
+      string_ptr * next = (string_ptr *) curr[0];
+      FREE(curr);
+      curr = next;
+    }
+  }
+
+  FREE(string_mgr);
 }
 
 char * get_text(string_ptr str) {
@@ -112,7 +139,7 @@ char * get_text(string_ptr str) {
   return(str->text);
 }
 
-string_ptr find_string(char *text)
+string_ptr find_string(char* text)
 {
   string_rec str;
   string_ptr * string_hash;
@@ -194,4 +221,10 @@ static string_ptr string_alloc()
   string_mgr->nextFree = str->link;
   str->link = (string_ptr)NULL;
   return(str);
+}
+
+
+static void string_free(string_ptr str)
+{
+  FREE(str->text);
 }

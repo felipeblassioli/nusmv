@@ -4,7 +4,7 @@
 ;;;;
 ;;;; This file can be used and modified freely.
 
-;;;; Modified by Marco Roveri roveri@irst.itc.it to capture NuSMV
+;;;; Modified by Marco Roveri roveri@fbk.eu to capture NuSMV
 ;;;; language features (i.e. to fontify and indent NuSMV
 ;;;; constructs). Notice that the commands to interact with SMV
 ;;;; executable works only if the CMU SMV is used they are not working

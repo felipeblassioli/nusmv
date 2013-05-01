@@ -14,82 +14,136 @@
   Author      [Roberto Cavada]
 
   Copyright   [
-  This file is part of the ``parser.psl'' package of NuSMV version 2. 
-  Copyright (C) 2005 by ITC-irst. 
+  This file is part of the ``parser.psl'' package of NuSMV version 2.
+  Copyright (C) 2005 by FBK-irst.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information on NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
+#if HAVE_CONFIG_H
+# include "nusmv-config.h"
+#endif
+
 #include <stdio.h>
-#include <errno.h>
+#include <limits.h>
+#include <stdlib.h>
+#include "utils/portability.h" /* for errno */
+
+/* The below code is only meaningful for flex version 2.5.31 which is
+   buggy since it does not define the yy_prev_more_offset static
+   variable */
+#if defined YY_FLEX_SUBMINOR_VERSION &&         \
+  defined YY_FLEX_MAJOR_VERSION &&              \
+  defined YY_FLEX_MINOR_VERSION
+#if YY_FLEX_SUBMINOR_VERSION == 31 &&           \
+  YY_FLEX_MINOR_VERSION == 5 &&                 \
+  YY_FLEX_MAJOR_VERSION == 2
+static int yy_prev_more_offset = 0;
+#endif
+#endif
+
+#if NUSMV_HAVE_STRING_H
+#include <string.h> /* for strdup */
+#else
+char* strdup(const char*); /* forward declaration */
+#endif
+
 
 #include "pslExpr.h"
 #include "psl_grammar.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: psl_input.l,v 1.1.4.9 2005/11/15 09:04:17 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: psl_input.l,v 1.1.2.21.6.8 2009-11-02 17:50:12 nusmv Exp $";
 
 static int psl_skip_comment ARGS((void));
+EXTERN void psl_yyerror ARGS((char* s, ...));
 
 
+#if NUSMV_HAVE_ERRNO_H
 #define YY_INPUT(buf, result, max_size) \
-	if ( YY_CURRENT_BUFFER->yy_is_interactive ) \
-		{ \
-		int c = '*', n; \
-		for (n=0; n<max_size && \
-		     (c = getc(psl_yyin)) != EOF && \
+        if ( YY_CURRENT_BUFFER->yy_is_interactive ) \
+                { \
+                int c = '*', n; \
+                for (n=0; n<max_size && \
+                     (c = getc(psl_yyin)) != EOF && \
                      c!=' ' && c!='\n' && c!='\t' && c!='\r' && c!='\f'; ++n ) \
-			buf[n] = (char) c; \
-		if (c==' ' || c=='\n' || c=='\t' || c=='\r' || c=='\f') buf[n++] = (char) c; \
-		if (c == EOF && ferror(psl_yyin)) YY_FATAL_ERROR( "input in flex scanner failed" ); \
-		result = n; \
-		} \
-	else \
-		{ \
-		errno=0; \
-		while ( (result = fread(buf, 1, max_size, psl_yyin))==0 && ferror(psl_yyin)) \
-			{ \
-			if(errno != EINTR) \
-				{ \
-				YY_FATAL_ERROR( "input in flex scanner failed" ); \
-				break; \
-				} \
-			errno=0; \
-			clearerr(psl_yyin); \
-			} \
-		}
+                        buf[n] = (char) c; \
+                if (c==' ' || c=='\n' || c=='\t' || c=='\r' || c=='\f') buf[n++] = (char) c; \
+                if (c == EOF && ferror(psl_yyin)) YY_FATAL_ERROR( "input in flex scanner failed" ); \
+                result = n; \
+                } \
+        else \
+                { \
+        errno=0; \
+                while ( (result = fread(buf, 1, max_size, psl_yyin))==0 && ferror(psl_yyin)) \
+                        { \
+                        if(errno != EINTR) \
+                                { \
+                                YY_FATAL_ERROR( "input in flex scanner failed" ); \
+                                break; \
+                                } \
+                        errno=0; \
+                        clearerr(psl_yyin); \
+                        } \
+                }
+#else /* NUSMV_HAVE_ERRNO_H */
+#define YY_INPUT(buf, result, max_size) \
+        if ( YY_CURRENT_BUFFER->yy_is_interactive ) \
+                { \
+                int c = '*', n; \
+                for (n=0; n<max_size && \
+                     (c = getc(psl_yyin)) != EOF && \
+                     c!=' ' && c!='\n' && c!='\t' && c!='\r' && c!='\f'; ++n ) \
+                        buf[n] = (char) c; \
+                if (c==' ' || c=='\n' || c=='\t' || c=='\r' || c=='\f') buf[n++] = (char) c; \
+                if (c == EOF && ferror(psl_yyin)) YY_FATAL_ERROR( "input in flex scanner failed" ); \
+                result = n; \
+                } \
+        else \
+                { \
+                while ( (result = fread(buf, 1, max_size, psl_yyin))==0 && ferror(psl_yyin)) \
+                        { \
+                        clearerr(psl_yyin); \
+                        } \
+                }
+#endif /* NUSMV_HAVE_ERRNO_H */
 
 
 %}
 
 
+%a      15000
+%o      25000
+
+%option pointer
 %option noyywrap
 %option yylineno
+%option noreject
 %option always-interactive
 
 PSL_TOK_SPACE               [ \n\t\r\f]
 
 PSL_TOK_DIGIT               [0-9]
 PSL_TOK_ALPHA               [A-Za-z_]
-PSL_TOK_ALPHANUM            [A-Za-z_0-9-]
+PSL_TOK_ALPHANUM            [A-Za-z0-9_\$#-]
 
 PSL_TOK_COMMENT             "--"
 TKTRUE                      "TRUE"
@@ -99,6 +153,7 @@ TKINF                       "inf"
 TKINCONTEXT                 "IN"
 
 TKFORALL                    "forall"
+TKFORANY                    "forany"
 TKBOOLEAN                   "boolean"
 
 TKIN                        "in"
@@ -108,6 +163,10 @@ TKPOSEDGE                   "posedge"
 TKNEGEDGE                   "negedge"
 
 TKPROPERTY                  "property"
+TKSEQUENCE                  "sequence"
+TKSEREFORGR                 "grsequence"
+TKPSLSPEC                   "PSLSPEC"
+
 TKALWAYS                    "always"
 TKNEVER                     "never"
 TKEVENTUALLYBANG            "eventually!"
@@ -116,6 +175,22 @@ TKWITHINBANG                "within!"
 TKWITHIN                    "within"
 TKWITHINBANG_               "within!_"
 TKWITHIN_                   "within_"
+
+ /* Word operation tokens */
+TKBOOL                      "bool"
+TKWRESIZE                   "resize"
+TKWSIZEOF                   "sizeof"
+TKWTOINT                    "toint"
+TKUWCONST                   "uwconst"
+TKSWCONST                   "swconst"
+TKWORD1                     "word1"
+TKSIGNED                    "signed"
+TKUNSIGNED                  "unsigned"
+TKEXTEND                    "extend"
+TKWCONCATENATION            "::"
+TKWSELECT                   "select"
+
+ /* READ & WRITE? */
 
 TKWHILENOTBANG              "whilenot!"
 TKWHILENOT                  "whilenot"
@@ -158,6 +233,7 @@ TKLTMINUSGT                 "<->"
 TKPIPE                      "|"
 TKTILDEPIPE                 "~|"
 TKXOR                       "xor"
+TKXNOR                      "xnor"
 TKCARET                     "^"
 TKCARETTILDE                "^~"
 TKTILDECARET                "~^"
@@ -215,7 +291,8 @@ TKQUESTIONMARK              "?"
 TKCOLON                     ":"
 TKSEMI                      ";"
 TKDOT                       "."
-
+TKEQDEF                     ":="
+TKNAME                      "NAME"
 TKBANG                      "!"
 TKTILDE                     "~"
 
@@ -229,8 +306,11 @@ TKTILDE                     "~"
 {TKFALSE}                { return TKFALSE; }
 
 {TKINCONTEXT}            { return TKINCONTEXT; }
+{TKEQDEF}                { return TKEQDEF; }
+{TKNAME}                 { return TKNAME; }
 
-{TKFORALL}               { return TKFORALL; }
+{TKFORALL}               { psl_yylval.operator = TKFORALL; return TKFORALL; }
+{TKFORANY}               { psl_yylval.operator = TKFORANY; return TKFORANY; }
 {TKBOOLEAN}              { return TKBOOLEAN; }
 
 {TKPIPEMINUSGT}          { psl_yylval.operator = TKPIPEMINUSGT; return TKPIPEMINUSGT; }
@@ -263,6 +343,7 @@ TKTILDE                     "~"
 {TKCARETTILDE}           { psl_yylval.operator = TKCARETTILDE; return TKCARETTILDE; }
 {TKCARET}                { psl_yylval.operator = TKCARET; return TKCARET; }
 {TKXOR}                  { psl_yylval.operator = TKXOR; return TKXOR; }
+{TKXNOR}                 { psl_yylval.operator = TKXNOR; return TKXNOR; }
 
 {TKEQEQEQ}               { psl_yylval.operator = TKEQEQEQ; return TKEQEQEQ; }
 {TKEQEQ}                 { psl_yylval.operator = TKEQEQ; return TKEQEQ; }
@@ -271,6 +352,19 @@ TKTILDE                     "~"
 {TKBANGEQEQ}             { psl_yylval.operator = TKBANGEQEQ; return TKBANGEQEQ; }
 {TKBANGEQ}               { psl_yylval.operator = TKBANGEQ; return TKBANGEQ; }
 {TKBANG}                 { psl_yylval.operator = TKBANG; return TKBANG; }
+
+{TKBOOL}                 { psl_yylval.operator = TKBOOL; return TKBOOL; }
+{TKWRESIZE}              { psl_yylval.operator = TKWRESIZE; return TKWRESIZE; }
+{TKWSIZEOF}              { psl_yylval.operator = TKWSIZEOF; return TKWSIZEOF; }
+{TKWTOINT}               { psl_yylval.operator = TKWTOINT; return TKWTOINT; }
+{TKUWCONST}              { psl_yylval.operator = TKUWCONST; return TKUWCONST; }
+{TKSWCONST}              { psl_yylval.operator = TKSWCONST; return TKSWCONST; }
+{TKWORD1}                { psl_yylval.operator = TKWORD1; return TKWORD1; }
+{TKSIGNED}               { psl_yylval.operator = TKSIGNED; return TKSIGNED; }
+{TKUNSIGNED}             { psl_yylval.operator = TKUNSIGNED; return TKUNSIGNED; }
+{TKEXTEND}               { psl_yylval.operator = TKEXTEND; return TKEXTEND; }
+{TKWCONCATENATION}       { psl_yylval.operator = TKWCONCATENATION; return TKWCONCATENATION; }
+{TKWSELECT}              { psl_yylval.operator = TKWSELECT; return TKWSELECT; }
 
 {TKSPLATSPLAT}           { psl_yylval.operator = TKSPLATSPLAT; return TKSPLATSPLAT; }
 {TKSPLAT}                { psl_yylval.operator = TKSPLAT; return TKSPLAT; }
@@ -310,6 +404,10 @@ TKTILDE                     "~"
 {TKA}                    { psl_yylval.operator = TKA; return TKA; }
 
 {TKPROPERTY}             { return TKPROPERTY; }
+{TKSEQUENCE}             { return TKSEQUENCE; }
+{TKSEREFORGR}            { return TKSEREFORGR; }
+{TKPSLSPEC}              { return TKPSLSPEC; }
+
 
 {TKALWAYS}               { psl_yylval.operator = TKALWAYS; return TKALWAYS; }
 {TKNEVER}                { psl_yylval.operator = TKNEVER; return TKNEVER; }
@@ -364,11 +462,54 @@ TKTILDE                     "~"
 {TKCOLON}            { return TKCOLON; }
 {TKSEMI}             { return TKSEMI; }
 
-{PSL_TOK_DIGIT}+     { psl_yylval.ival = atoi(psl_yytext); return TKNUMBER; }
+
+{PSL_TOK_DIGIT}+{TKDOT}{PSL_TOK_DIGIT}+ {
+                                          psl_yylval.fval = strdup(psl_yytext);
+                                          return (TKREALNUMBER);
+                                        }
+{PSL_TOK_DIGIT}+     {
+                      long tmp;
+                      char* endptr;
+
+                      errno = 0;
+                      tmp = strtol(psl_yytext, &endptr, 10);
+
+                      /* range errors */
+                      if ((errno == ERANGE && \
+                           (tmp == LONG_MAX || tmp == LONG_MIN))
+                          || (errno != 0 && tmp == 0)
+
+                          /* no digits found */
+                          || (endptr == psl_yytext)
+
+                          /* garbage after digits */
+                          || (*endptr != '\0')
+
+                          /* as an additional check, verify that the value can
+                             fit into an ordinary int. tmp can not be negative */
+                          || (tmp < 0) || (INT_MAX < tmp)) {
+
+                        rpterr("illegal integer: \"%s\"", psl_yytext);
+                      }
+
+                      /* here tmp can be safely cast to int */
+                      psl_yylval.ival  = (int)(tmp);
+
+                      return TKNUMBER;
+                     }
+
+"0"([us])?[bBoOdDhH][0-9]*"_"[0-9a-fA-F][0-9a-fA-F_]* {
+                 psl_yylval.wval = strdup(psl_yytext);
+                 return(TKWORDNUMBER);
+               }
+
 
 {PSL_TOK_ALPHA}({PSL_TOK_ALPHANUM})*  { psl_yylval.idname=strdup(psl_yytext); return TKATOM; }
 
 {TKDOT}              { return TKDOT; }
+
+\"[^\"]*\"       { psl_yylval.idname=strdup(psl_yytext); return TKATOM; }
+
 
 <<EOF>>              { return TKEOF; }
 
@@ -376,7 +517,7 @@ TKTILDE                     "~"
 
 %%
 
-static int psl_skip_comment() 
+static int psl_skip_comment()
 {
   register int c;
 

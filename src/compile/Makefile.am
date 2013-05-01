@@ -26,29 +26,40 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.4 2003/09/30 10:04:25]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = compile.h compileFsmMgr.h compileInt.h compileBEval.c \
-	compileCheck.c compileCheckWff.c compileCmd.c compileCone.c \
-	compileFlatten.c compileFsmMgr.c \
-	compileStruct.c compileUtil.c compileWriteBool.c \
-	compileWriteFlat.c 
+INCLUDES = -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
+
+SUBDIRS = symb_table type_checking
+
+PKG_SOURCES = compile.h compileInt.h compileBEval.c		\
+	compileCheck.c compileCmd.c compileCone.c 		\
+	compileFlatten.c compileUtil.c                  	\
+	FlatHierarchy.h FlatHierarchy.c           		\
+	compileStruct.c  compileWrite.c compileWriteUdg.c       \
+	PredicateNormaliser.h PredicateNormaliser.c     	\
+	PredicateExtractor.h PredicateExtractor.c
 
 compiledir = $(includedir)/nusmv/compile
-compile_HEADERS = compileFsmMgr.h  compile.h
+# compileInt is currently used by other packages
+compile_HEADERS = compile.h  \
+	FlatHierarchy.h  PredicateExtractor.h  PredicateNormaliser.h
 
 # -------------------------------------------------------
 
 noinst_LTLIBRARIES = libcompile.la
 libcompile_la_SOURCES = $(PKG_SOURCES)
-
+libcompile_la_LIBADD = \
+	symb_table/libcompilest.la \
+	type_checking/libcompiletc.la

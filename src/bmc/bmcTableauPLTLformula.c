@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -31,11 +31,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -46,7 +46,7 @@
 #include "parser/symbols.h"
 #include "utils/error.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: bmcTableauPLTLformula.c,v 1.6.2.5.2.3 2004/11/19 11:12:41 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: bmcTableauPLTLformula.c,v 1.6.2.5.2.2.2.3.6.2 2009-09-17 11:49:47 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -161,12 +161,12 @@ typedef struct EvalSetType {
 /*---------------------------------------------------------------------------*/
 
 static be_ptr
-getTableauAtTime ARGS((const BmcVarsMgr_ptr vars_mgr,
+getTableauAtTime ARGS((const BeEnc_ptr be_enc,
                        const node_ptr pltl_wff,
                        const int time,
                        const int k, const int l));
 
-static be_ptr evaluateOn ARGS((const BmcVarsMgr_ptr vars_mgr,
+static be_ptr evaluateOn ARGS((const BeEnc_ptr be_enc,
 			       const node_ptr pltl_f,
 			       const node_ptr pltl_g,
 			       const int fromTime, const int toTime,
@@ -202,11 +202,11 @@ static int tau ARGS((const node_ptr pltl_wff));
 
 ******************************************************************************/
 be_ptr
-Bmc_TableauPLTL_GetTableau(const BmcVarsMgr_ptr vars_mgr,
+Bmc_TableauPLTL_GetTableau(const BeEnc_ptr be_enc,
                            const node_ptr pltl_wff,
                            const int k, const int l)
 {
- return getTableauAtTime(vars_mgr, pltl_wff, 0, k, l);
+ return getTableauAtTime(be_enc, pltl_wff, 0, k, l);
 }
 
 
@@ -227,11 +227,11 @@ Bmc_TableauPLTL_GetTableau(const BmcVarsMgr_ptr vars_mgr,
 
 ******************************************************************************/
 be_ptr
-Bmc_TableauPLTL_GetAllTimeTableau(const BmcVarsMgr_ptr vars_mgr,
+Bmc_TableauPLTL_GetAllTimeTableau(const BeEnc_ptr be_enc,
                                   const node_ptr pltl_wff,
                                   const int k)
 {
- return evaluateOn(vars_mgr, pltl_wff, NULL, 0, INF, k, 0, EVAL_AND, FORWARD);
+ return evaluateOn(be_enc, pltl_wff, NULL, 0, INF, k, 0, EVAL_AND, FORWARD);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -263,109 +263,113 @@ Bmc_TableauPLTL_GetAllTimeTableau(const BmcVarsMgr_ptr vars_mgr,
   SeeAlso      [evaluateOn]
 
 ******************************************************************************/
-static be_ptr getTableauAtTime(const BmcVarsMgr_ptr vars_mgr,
-			       const node_ptr pltl_wff,
-			       const int time, const int k, const int l)
+static be_ptr getTableauAtTime(const BeEnc_ptr be_enc,
+                               const node_ptr pltl_wff,
+                               const int time, const int k, const int l)
 {
- be_ptr subfTbl1, subfTbl2, tableau = NULL;
- node_ptr   subf1,    subf2;
+  be_ptr subfTbl1, subfTbl2, tableau = NULL;
+  node_ptr subf1, subf2;
+  node_ptr key;
 
- Be_Manager_ptr  beMgr = BmcVarsMgr_GetBeMgr(vars_mgr);
- be_ptr truth = Be_Truth(beMgr);
+  Be_Manager_ptr beMgr = BeEnc_get_be_manager(be_enc);
+  be_ptr truth = Be_Truth(beMgr);
 
- int evalDir=FORWARD, start, stop, evalType=EVAL_AND, evalTime;
+  int evalDir=FORWARD, start, stop, evalType=EVAL_AND, evalTime;
 
- int nodeType  = node_get_type(pltl_wff);
+  int nodeType  = node_get_type(pltl_wff);
 
- if (time<0 || (Bmc_Utils_IsNoLoopback(l) && (nodeType==OP_GLOBAL || time>k)))
-   return Be_Falsity(beMgr);
+  if (time<0 || (Bmc_Utils_IsNoLoopback(l) && 
+                 (nodeType==OP_GLOBAL || time>k))) {
+    return Be_Falsity(beMgr);
+  }
 
- else {
-   switch (getOpClass(nodeType)) {
+  /* memoization */
+  key = bmc_tableau_memoization_get_key(pltl_wff, time, k, l);
+  tableau = bmc_tableau_memoization_lookup(key);
+  if (tableau != (be_ptr) NULL) return tableau;
 
-   case CONSTANT_EXPR:
-     tableau =
-       (nodeType==TRUEEXP) ? Be_Truth  (beMgr):
-       (nodeType==FALSEEXP)? Be_Falsity(beMgr):
-                             NULL;
-     break;
+  switch (getOpClass(nodeType)) {
 
-   case LITERAL:
-     evalTime = Bmc_Utils_IsNoLoopback(l)? time : rho(time,l,k);
+  case CONSTANT_EXPR:
+    tableau =
+      (nodeType==TRUEEXP) ? Be_Truth(beMgr):
+    (nodeType==FALSEEXP)? Be_Falsity(beMgr):
+    NULL;
+    nusmv_assert(tableau != NULL);
+    return tableau; /* no memoization */
+
+  case LITERAL:
+    evalTime = Bmc_Utils_IsNoLoopback(l)? time : rho(time,l,k);
      
-     /* checks whether it is an input var at the initial/final state: */
-     if (evalTime == k) {
-       boolean is_input;
-
-       if (nodeType==NOT) {
-	 is_input = Encoding_is_symbol_input_var(
-                               BmcVarsMgr_GetSymbEncoding(vars_mgr),
-			       car(pltl_wff));
-       }
-       else {
-	 is_input = Encoding_is_symbol_input_var(
-                               BmcVarsMgr_GetSymbEncoding(vars_mgr),
-			       pltl_wff);
-       }
-
-       if (is_input) {
-	 tableau = Be_Falsity(beMgr);
-	 break;
-       }
-     }
+    /* checks whether it is an input var at the initial/final state: */
+    if (evalTime == k) {
+      SymbTable_ptr st;
+      boolean is_input;
        
-     tableau  =
-	 (nodeType==DOT) ? BmcVarsMgr_Name2Timed(vars_mgr,pltl_wff,evalTime,k) : 
-	 (nodeType==BIT) ? BmcVarsMgr_Name2Timed(vars_mgr,pltl_wff,evalTime,k) :
-	 (nodeType==ARRAY) ? BmcVarsMgr_Name2Timed(vars_mgr,pltl_wff,evalTime,k) :
-	 (nodeType==NOT) ? 
-	 Be_Not(beMgr, BmcVarsMgr_Name2Timed(vars_mgr,car(pltl_wff),
-					     evalTime,k)) : NULL;
-     break;
+      st = BaseEnc_get_symb_table(BASE_ENC(be_enc));
 
-   case PROP_CONNECTIVE:
-     subfTbl1 = getTableauAtTime(vars_mgr,car(pltl_wff),time,k,l);
-     subfTbl2 = getTableauAtTime(vars_mgr,cdr(pltl_wff),time,k,l);
+      if (nodeType==NOT) {
+        is_input = SymbTable_is_symbol_input_var(st, car(pltl_wff));
+      }
+      else is_input = SymbTable_is_symbol_input_var(st, pltl_wff);
 
-     tableau =
-       (nodeType==AND) ? Be_And(beMgr, subfTbl1, subfTbl2):
-       (nodeType==OR ) ? Be_Or (beMgr, subfTbl1, subfTbl2):
-       (nodeType==IFF) ? Be_Iff(beMgr, subfTbl1, subfTbl2):
-                         NULL;
-     break;
+      if (is_input) {
+        return Be_Falsity(beMgr); /* no memoization */
+      }
+    }
+       
+    tableau  =
+      (nodeType==DOT)?   BeEnc_name_to_timed(be_enc, pltl_wff, evalTime): 
+      (nodeType==BIT)?   BeEnc_name_to_timed(be_enc, pltl_wff, evalTime):
+      (nodeType==ARRAY)? BeEnc_name_to_timed(be_enc, pltl_wff, evalTime):
+      (nodeType==NOT)?   Be_Not(beMgr, BeEnc_name_to_timed(be_enc, car(pltl_wff), 
+                                                           evalTime)):
+      NULL;
+    nusmv_assert(tableau != NULL);
+    return tableau; /* no memoization */
 
-   case TIME_OPERATOR:
-     subf1 = car(pltl_wff);
-     subf2 = isBinaryOp(nodeType) ? cdr(pltl_wff) : NULL;
-     start = time;
+  case PROP_CONNECTIVE:
+    subfTbl1 = getTableauAtTime(be_enc,car(pltl_wff),time,k,l);
+    subfTbl2 = getTableauAtTime(be_enc,cdr(pltl_wff),time,k,l);
 
-     switch (nodeType) {
-     case OP_NEXT:       start=stop=time+1;                              break;
-     case OP_PREC:       start=stop=time-1;                              break;
-     case OP_NOTPRECNOT: if ((start=stop=time-1)==-1) tableau=truth;     break;
-     case OP_FUTURE:     stop=INF;  evalType=EVAL_OR;  evalDir=FORWARD;  break;
-     case OP_ONCE:       stop=0;    evalType=EVAL_OR;  evalDir=BACKWARD; break;
-     case OP_GLOBAL:     stop=INF;  evalType=EVAL_AND; evalDir=FORWARD;  break;
-     case OP_HISTORICAL: stop=0;    evalType=EVAL_AND; evalDir=BACKWARD; break;
-     case    UNTIL:      stop=INF;  evalType=EVAL_OR;  evalDir=FORWARD;  break;
-     case    SINCE:      stop=0;    evalType=EVAL_OR;  evalDir=BACKWARD; break;
-     case    RELEASES:   stop=INF;  evalType=EVAL_AND; evalDir=FORWARD;  break;
-     case    TRIGGERED:  stop=0;    evalType=EVAL_AND; evalDir=BACKWARD; break;
-     }
+    tableau =
+      (nodeType==AND) ? Be_And(beMgr, subfTbl1, subfTbl2):
+      (nodeType==OR ) ? Be_Or (beMgr, subfTbl1, subfTbl2):
+      (nodeType==IFF) ? Be_Iff(beMgr, subfTbl1, subfTbl2):
+      NULL;
+    break;
 
-     if (tableau==NULL)
-       tableau = evaluateOn(vars_mgr,subf1,subf2,
-                            start,stop,k,l,evalType,evalDir);
-     break;
+  case TIME_OPERATOR:
+    subf1 = car(pltl_wff);
+    subf2 = isBinaryOp(nodeType) ? cdr(pltl_wff) : NULL;
+    start = time;
 
-   default:
-     internal_error("Unexpected operator, node type %d", nodeType);
-   }
- }
+    switch (nodeType) {
+    case OP_NEXT:       start=stop=time+1;                              break;
+    case OP_PREC:       start=stop=time-1;                              break;
+    case OP_NOTPRECNOT: if ((start=stop=time-1)==-1) tableau=truth;     break;
+    case OP_FUTURE:     stop=INF;  evalType=EVAL_OR;  evalDir=FORWARD;  break;
+    case OP_ONCE:       stop=0;    evalType=EVAL_OR;  evalDir=BACKWARD; break;
+    case OP_GLOBAL:     stop=INF;  evalType=EVAL_AND; evalDir=FORWARD;  break;
+    case OP_HISTORICAL: stop=0;    evalType=EVAL_AND; evalDir=BACKWARD; break;
+    case    UNTIL:      stop=INF;  evalType=EVAL_OR;  evalDir=FORWARD;  break;
+    case    SINCE:      stop=0;    evalType=EVAL_OR;  evalDir=BACKWARD; break;
+    case    RELEASES:   stop=INF;  evalType=EVAL_AND; evalDir=FORWARD;  break;
+    case    TRIGGERED:  stop=0;    evalType=EVAL_AND; evalDir=BACKWARD; break;
+    }
 
- nusmv_assert(tableau != NULL);
+    if (tableau==NULL)
+      tableau = evaluateOn(be_enc,subf1,subf2,
+                           start,stop,k,l,evalType,evalDir);
+    break;
 
- return tableau;
+  default:
+    internal_error("Unexpected operator, node type %d", nodeType);
+  }
+
+  nusmv_assert(tableau != NULL);
+  bmc_tableau_memoization_insert(key, tableau); /* memoizes */
+  return tableau;
 }
 
 
@@ -399,18 +403,18 @@ static be_ptr getTableauAtTime(const BmcVarsMgr_ptr vars_mgr,
   SeeAlso      [getTableauAtTime, projectOntoMainDomain]
 
 ******************************************************************************/
-static be_ptr evaluateOn(const BmcVarsMgr_ptr vars_mgr,
-			 const node_ptr pltl_f,
-			 const node_ptr pltl_g,
-			 const int fromTime, const int toTime,
-			 const int k, const int l,
-			 const int evalType,
-			 const int evalDir)
+static be_ptr evaluateOn(const BeEnc_ptr be_enc,
+                         const node_ptr pltl_f,
+                         const node_ptr pltl_g,
+                         const int fromTime, const int toTime,
+                         const int k, const int l,
+                         const int evalType,
+                         const int evalDir)
 {
   int j,q;
   boolean isBinary = (pltl_g!=NULL);
 
-  Be_Manager_ptr beMgr = BmcVarsMgr_GetBeMgr(vars_mgr);
+  Be_Manager_ptr beMgr = BeEnc_get_be_manager(be_enc);
 
   EvalSet evalSet = projectOntoMainDomain((isBinary? pltl_g:pltl_f),
                                           fromTime,toTime,k,l,CLOSED,evalDir);
@@ -421,7 +425,7 @@ static be_ptr evaluateOn(const BmcVarsMgr_ptr vars_mgr,
      or the right argument of a binary operator. */
   FOR_EACH_INDEX_IN(j,evalSet) {
 
-    be_ptr tempTbl = getTableauAtTime(vars_mgr,
+    be_ptr tempTbl = getTableauAtTime(be_enc,
                                        (isBinary? pltl_g:pltl_f),
                                        j,k,l);
     if (isBinary) {
@@ -431,7 +435,7 @@ static be_ptr evaluateOn(const BmcVarsMgr_ptr vars_mgr,
       /* This loop evaluates the left argument of a binary operator. */
       FOR_EACH_INDEX_IN(q,evalSet2) {
 
-        be_ptr tempTblInner = getTableauAtTime(vars_mgr,pltl_f,q,k,l);
+        be_ptr tempTblInner = getTableauAtTime(be_enc,pltl_f,q,k,l);
 
         tempTbl = (evalType==EVAL_AND)?
                    Be_Or (beMgr, tempTbl, tempTblInner):
@@ -475,10 +479,10 @@ static be_ptr evaluateOn(const BmcVarsMgr_ptr vars_mgr,
 ******************************************************************************/
 
 static EvalSet projectOntoMainDomain(const node_ptr pltl_wff,
-				     int a, int b,
-				     const int k, const int l,
-				     const int interval_type, 
-				     const int eval_dir)
+                                     int a, int b,
+                                     const int k, const int l,
+                                     const int interval_type, 
+                                     const int eval_dir)
 {
   EvalSet evalSet;
 
@@ -488,6 +492,7 @@ static EvalSet projectOntoMainDomain(const node_ptr pltl_wff,
   if (Bmc_Utils_IsNoLoopback(l)) {
     evalSet.fromTime         = a;
     evalSet.backJumpFromTime = NO_BACKJUMP;
+    evalSet.backJumpToTime   = NO_BACKJUMP;
     evalSet.steps            = ((b==INF) ? (k-a+1) : (abs(b-a)+1)) -
                                ((interval_type==OPEN) ? 1:0);
   }
@@ -513,6 +518,7 @@ static EvalSet projectOntoMainDomain(const node_ptr pltl_wff,
       assert(b<=a);
       evalSet.fromTime  = a;
       evalSet.backJumpFromTime = NO_BACKJUMP;
+      evalSet.backJumpToTime   = NO_BACKJUMP;
       evalSet.steps =  (a-b+1) - ((interval_type==OPEN) ? 1:0);
     }
   }
@@ -555,6 +561,7 @@ static int tau(const node_ptr pltl_wff)
    }
    if (isPastOp(nodeType)) result++;
  }
- return(result);
+
+ return result;
 }
 

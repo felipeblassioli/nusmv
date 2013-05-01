@@ -26,43 +26,75 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.10 2003/10/07 14:39:27]
 
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
 
+LOADERS_H = loaders/TraceLoader.h loaders/TraceLoader_private.h	
+LOADERS_C = loaders/TraceLoader.c 
 if HAVE_LIBEXPAT
- TRACE_PLUGINS = plugins/TraceExplainer.c  plugins/TracePlugin.c \
-	        plugins/TraceTable.c plugins/TraceXmlDumper.c \
-		plugins/TraceXmlLoader.c 
-else 
- TRACE_PLUGINS = plugins/TraceExplainer.c  plugins/TracePlugin.c \
-	        plugins/TraceTable.c plugins/TraceXmlDumper.c 
- EXTRA_DIST = plugins/TraceXmlLoader.c
+  LOADERS_H += loaders/TraceXmlLoader.h  loaders/TraceXmlLoader_private.h
+  LOADERS_C += loaders/TraceXmlLoader.c
+else
+  EXTRA_DIST = loaders/TraceXmlLoader.h loaders/TraceXmlLoader_private.h \
+						 	 loaders/TraceXmlLoader.c 
 endif
 
-PKG_SOURCES = pkg_trace.h pkg_traceInt.h pkg_traceInt.h           \
-	TraceNode.h TraceNode_private.h Trace.h Trace_private.h   \
-	TraceManager.h plugins/TraceTable.h plugins/TraceTable_private.h  \
-	TraceLabel.h \
-	plugins/TracePlugin.h plugins/TracePlugin_private.h       \
-	plugins/TraceExplainer.h plugins/TraceExplainer_private.h \
-	plugins/TraceXml.h plugins/TraceXml_private.h \
-	pkg_trace.c  TraceNode.c Trace.c TraceManager.c traceCmd.c TraceLabel.c \
-	$(TRACE_PLUGINS)
+EXEC_H = exec/traceExec.h exec/BaseTraceExecutor.h exec/BaseTraceExecutor_private.h \
+	 exec/CompleteTraceExecutor.h exec/CompleteTraceExecutor_private.h \
+	 exec/PartialTraceExecutor.h exec/PartialTraceExecutor_private.h \
+	 exec/BDDCompleteTraceExecutor.h exec/BDDCompleteTraceExecutor_private.h \
+	 exec/BDDPartialTraceExecutor.h exec/BDDPartialTraceExecutor_private.h \
+	 exec/SATCompleteTraceExecutor.h exec/SATCompleteTraceExecutor_private.h \
+	 exec/SATPartialTraceExecutor.h	exec/SATPartialTraceExecutor_private.h
+
+EXEC_C = exec/traceExec.c exec/BaseTraceExecutor.c \
+	 exec/CompleteTraceExecutor.c exec/PartialTraceExecutor.c \
+	 exec/BDDCompleteTraceExecutor.c exec/BDDPartialTraceExecutor.c \
+	 exec/SATCompleteTraceExecutor.c exec/SATPartialTraceExecutor.c
+
+EVAL_H = eval/BaseEvaluator.h eval/BaseEvaluator_private.h
+
+EVAL_C = eval/BaseEvaluator.c
+
+PLUGINS_H = plugins/TraceExplainer.h plugins/TraceTable.h \
+						plugins/TraceExplainer_private.h plugins/TraceTable_private.h \
+						plugins/TraceXmlDumper.h \
+						plugins/TraceXmlDumper_private.h \
+						plugins/TracePlugin.h \
+						plugins/TracePlugin_private.h \
+	                                        plugins/TraceCompact.h plugins/TraceCompact_private.h
+
+PLUGINS_C =	plugins/TraceExplainer.c plugins/TracePlugin.c plugins/TraceXmlDumper.c \
+						plugins/TraceTable.c  plugins/TraceCompact.c
+
+PKG_H = pkg_trace.h TraceLabel.h TraceXml.h \
+				TraceManager.h TraceOpt.h Trace.h Trace_private.h
+PKG_C = pkg_trace.c traceEval.c traceTest.c Trace.c TraceLabel.c TraceOpt.c \
+				traceUtils.c traceCmd.c TraceManager.c Trace_private.c TraceXml.c
+
+
+PKG_SOURCES = pkg_traceInt.h $(PKG_H) $(PKG_C)  \
+  $(PLUGINS_H) $(PLUGINS_C)  \
+	$(EXEC_H) $(EXEC_C)  \
+	$(EVAL_H) $(EVAL_C)  \
+	$(LOADERS_H) $(LOADERS_C) 
 
 tracedir = $(includedir)/nusmv/trace
-nobase_trace_HEADERS = pkg_trace.h Trace.h TraceManager.h \
-	TraceLabel.h TraceNode.h plugins/TracePlugin.h
+nobase_trace_HEADERS = $(PKG_H) $(PLUGINS_H) $(EXEC_H) $(EVAL_H) $(LOADERS_H)
+
 
 # -------------------------------------------------------
 

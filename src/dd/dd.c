@@ -27,60 +27,62 @@
   Author      [Marco Roveri]
 
   Copyright   [
-  This file is part of the ``dd'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  This file is part of the ``dd'' package of NuSMV version 2.
+  Copyright (C) 1998-2001 by CMU and FBK-irst.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "ddInt.h"
 #include "enc/operators.h"
+#include "parser/symbols.h" /* for FAILURE value */
 
-
-static char rcsid[] UTIL_UNUSED = "$Id: dd.c,v 1.7.6.12.2.1 2004/06/17 09:04:51 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: dd.c,v 1.7.6.12.2.1.2.6.4.20 2010-02-08 12:25:27 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
 node_ptr one_number = Nil;
 node_ptr zero_number = Nil;
-node_ptr boolean_range = Nil; 
+node_ptr true_const = Nil;
+node_ptr false_const = Nil;
+node_ptr boolean_range = Nil;
 
 
 /*---------------------------------------------------------------------------*/
 /* Macro declarations                                                        */
 /*---------------------------------------------------------------------------*/
-#define common_error(variable, message) \
- if ((variable) == NULL) { \
-   rpterr((message));\
-   nusmv_exit(1); \
- }
+#define common_error(variable, message)         \
+  if ((variable) == NULL) {                     \
+    rpterr("%s", message);                    \
+    nusmv_exit(1);                              \
+  }
 
 #define common_error2(dd, variable, variable2, message) \
- if ((variable) == NULL) { \
-   rpterr((message));\
-   Cudd_RecursiveDeref((dd),(variable2));\
-   nusmv_exit(1); \
- }
+  if ((variable) == NULL) {                             \
+    rpterr("%s", message);                            \
+    Cudd_RecursiveDeref((dd),(variable2));              \
+    nusmv_exit(1);                                      \
+  }
 
 
 /*---------------------------------------------------------------------------*/
@@ -103,20 +105,26 @@ static void InvalidType(FILE *file, char *field, char *expected);
   for the maximum size of the cache and for the limit for fast unique
   table growth based on the available memory. Returns a pointer to the
   manager if successful; else abort depending the mode (interactive or
-  batch) the system is used.] 
+  batch) the system is used.]
 
   SideEffects        []
 
   SeeAlso            [quit_dd_package]
 
 ******************************************************************************/
-DdManager * init_dd_package(){
-  DdManager * dd;
+DdManager* init_dd_package()
+{
+  DdManager* dd;
 
-  one_number = find_node(NUMBER,(node_ptr)1,Nil);
-  zero_number = find_node(NUMBER,(node_ptr)0,Nil);
-  boolean_range = cons(zero_number,cons(one_number,Nil));
-  dd = Cudd_Init(0, 0, UNIQUE_SLOTS, CACHE_SLOTS, 0);
+  one_number = find_node(NUMBER, NODE_FROM_INT(1), Nil);
+  zero_number = find_node(NUMBER, NODE_FROM_INT(0), Nil);
+
+  true_const = Expr_true();
+  false_const = Expr_false();
+
+  boolean_range = cons(false_const, cons(true_const, Nil));
+  dd = Cudd_Init(0, 0, UNIQUE_SLOTS, CACHE_SLOTS, 0,
+                 zero_number, one_number, false_const, true_const);
   common_error(dd, "init_dd_package: Unable to initialize the manager.");
   return(dd);
 }
@@ -229,16 +237,15 @@ void walk_dd(DdManager * dd, VPFDD f, node_ptr l)
 ******************************************************************************/
 void dd_print_stats(DdManager *mgr, FILE *file)
 {
-    Cudd_PrintInfo(mgr, file);
+  Cudd_PrintInfo(mgr, file);
 
-    /* Print some guidance to the parameters */
-    fprintf(file, "\nMore detailed information about the semantics ");
-    fprintf(file, "and values of these parameters\n");
-    fprintf(file, "can be found in the documentation about the CU ");
-    fprintf(file, "Decision Diagram Package.\n");
-  
-    return;
+  /* Print some guidance to the parameters */
+  fprintf(file, "\nMore detailed information about the semantics ");
+  fprintf(file, "and values of these parameters\n");
+  fprintf(file, "can be found in the documentation about the CU ");
+  fprintf(file, "Decision Diagram Package.\n");
 
+  return;
 } /* end of dd_print_stats */
 
 /**Function********************************************************************
@@ -266,6 +273,12 @@ dd_block * dd_new_var_block(DdManager * dd, int start_index, int offset)
   */
   group = Cudd_MakeTreeNode(dd, start_index, offset, MTR_FIXED);
   common_error(group, "dd_new_var_block: group = NULL");
+
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 5)) {
+    fprintf(nusmv_stderr, "dd_new_var_block: low=%d, idx=%d, size=%d\n",
+            group->low, group->index, group->size);
+  }
+
   return((dd_block *) group);
 } /* end of dd_new_var_block */
 
@@ -274,19 +287,25 @@ dd_block * dd_new_var_block(DdManager * dd, int start_index, int offset)
 
   Synopsis    [Dissolves a group previously created by dd_new_var_block]
 
-  Description [Dissolves a group previously created by dd_new_var_block. 
-  Returns 0 if success, 1 otherwise]
+  Description [Dissolves a group previously created by
+  dd_new_var_block.  Returns 0 if the group was actually removed, 1
+  otherwise (that may be not due to an error)]
 
   SideEffects [Modifies the variable tree.]
 
 ******************************************************************************/
 int dd_free_var_block(DdManager* dd, dd_block* group)
 {
-  int res; 
+  int res;
 
-  if (Mtr_DissolveGroup((MtrNode*) group) == (MtrNode*) NULL) res = 1; 
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 5)) {
+    fprintf(nusmv_stderr, "dd_free_var_block: low=%d, idx=%d, size=%d\n",
+            group->low, group->index, group->size);
+  }
+
+  if (Mtr_DissolveGroup((MtrNode*) group) == (MtrNode*) NULL) res = 1;
   else res = 0;
-    
+
   return res;
 }
 
@@ -303,17 +322,41 @@ int dd_free_var_block(DdManager* dd, dd_block* group)
   SideEffects []
 
 ******************************************************************************/
-int dd_get_var_at_level(DdManager *dd, int level)
+int dd_get_index_at_level(DdManager *dd, int level)
 {
   int result;
 
   result = Cudd_ReadInvPerm(dd, level);
   if (result < 0) {
-    rpterr("dd_get_var_at_level: level %d out of bound.", level);
+    rpterr("dd_get_index_at_level: level %d out of bound.", level);
     nusmv_exit(1);
   }
   return(result);
-} /* end of dd_get_var_at_level */
+} /* end of dd_get_index_at_level */
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns the current position of the i-th variable in the
+  order.]
+
+  Description [Returns the current position of the i-th variable in the
+  order. If the index is CUDD_MAXINDEX, returns CUDD_MAXINDEX; otherwise,
+  if the index is out of bounds returns -1.]
+
+  SideEffects [None]
+
+  SeeAlso     [Cudd_ReadInvPerm Cudd_ReadPermZdd]
+
+******************************************************************************/
+int dd_get_level_at_index(DdManager *dd, int index)
+{
+  int result;
+
+  result = Cudd_ReadPerm(dd, index);
+  return result;
+}
+
 
 /**Function********************************************************************
 
@@ -328,6 +371,27 @@ int dd_get_size(DdManager *dd)
 {
   return Cudd_ReadSize(dd);
 } /* end of dd_get_size */
+
+/**Function********************************************************************
+
+  Synopsis    [Reorders variables according to given permutation.]
+
+  Description [Reorders variables according to given permutation.
+  The i-th entry of the permutation array contains the index of the variable
+  that should be brought to the i-th level.  The size of the array should be
+  equal or greater to the number of variables currently in use.
+  Returns 1 in case of success; 0 otherwise.]
+
+  SideEffects [Changes the variable order for all diagrams and clears
+  the cache.]
+
+  SeeAlso []
+
+******************************************************************************/
+int dd_set_order(DdManager* dd, int* permutation)
+{
+  return Cudd_ShuffleHeap(dd, permutation);
+} /* end of dd_set_order */
 
 /**Function********************************************************************
 
@@ -411,9 +475,9 @@ int dd_reordering_status(DdManager *dd, dd_reorderingtype * method)
 
   This functions takes as arguments:
   <ul>
-  <li> <tt>dd</tt> the DD manager; 
-  <li> <tt>heuristics</tt> method used for reordering; 
-  <li> <tt>minsize</tt> bound below which no reordering occurs; 
+  <li> <tt>dd</tt> the DD manager;
+  <li> <tt>heuristics</tt> method used for reordering;
+  <li> <tt>minsize</tt> bound below which no reordering occurs;
   </ul>
   ]
 
@@ -426,14 +490,39 @@ int dd_reordering_status(DdManager *dd, dd_reorderingtype * method)
 int dd_reorder(DdManager *dd, int method, int minsize)
 {
   int result;
-  
+
   result = Cudd_ReduceHeap(dd, method, minsize);
   if (result == 0) {
     rpterr("dd_reorder: reordering of ADD/BDD fails.");
     nusmv_exit(1);
-  } 
+  }
   return(result);
 } /* end of dd_reorder */
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns the number of times reordering has occurred.]
+
+  Description [Returns the number of times reordering has occurred in
+  the manager. The number includes both the calls to Cudd_ReduceHeap
+  from the application program and those automatically performed by
+  the package. However, calls that do not even initiate reordering are
+  not counted. A call may not initiate reordering if there are fewer
+  than minsize live nodes in the manager, or if CUDD_REORDER_NONE is
+  specified as reordering method. The calls to Cudd_ShuffleHeap are
+  not counted.]
+
+  SeeAlso     []
+
+  SideEffects []
+
+******************************************************************************/
+int dd_get_reorderings(DdManager* dd)
+{
+  return Cudd_ReadReorderings(dd);
+}
+
 
 /**Function********************************************************************
 
@@ -444,7 +533,7 @@ int dd_reorder(DdManager *dd, int method, int minsize)
   SideEffects []
 
 ******************************************************************************/
-dd_reorderingtype dd_get_ordering_method (DdManager * dd) 
+dd_reorderingtype dd_get_ordering_method (DdManager * dd)
 {
   dd_reorderingtype method;
 
@@ -465,62 +554,65 @@ dd_reorderingtype dd_get_ordering_method (DdManager * dd)
 int StringConvertToDynOrderType(char *string)
 {
 
-  if (strcmp("random", string) == 0) { 
+  if (strcmp("random", string) == 0) {
     return REORDER_RANDOM;
   }
-  else if (strcmp("random_pivot", string) == 0) { 
+  else if (strcmp("random_pivot", string) == 0) {
     return  REORDER_RANDOM_PIVOT;
   }
-  else if (strcmp("sift", string) == 0) { 
+  else if (strcmp("sift", string) == 0) {
     return REORDER_SIFT;
   }
-  else if (strcmp("sift_converge", string) == 0) { 
+  else if (strcmp("sift_converge", string) == 0) {
     return  REORDER_SIFT_CONV;
   }
-  else if (strcmp("symmetry_sift", string) == 0) { 
+  else if (strcmp("symmetry_sift", string) == 0) {
     return  REORDER_SYMM_SIFT;
   }
-  else if (strcmp("symmetry_sift_converge", string) == 0) { 
+  else if (strcmp("symmetry_sift_converge", string) == 0) {
     return  REORDER_SYMM_SIFT_CONV;
   }
-  else if (strcmp("window2", string) == 0) { 
+  else if (strcmp("window2", string) == 0) {
     return REORDER_WINDOW2;
   }
-  else if (strcmp("window3", string) == 0) { 
+  else if (strcmp("window3", string) == 0) {
     return  REORDER_WINDOW3;
   }
-  else if (strcmp("window4", string) == 0) { 
+  else if (strcmp("window4", string) == 0) {
     return  REORDER_WINDOW4;
   }
-  else if (strcmp("window2_converge", string) == 0) { 
+  else if (strcmp("window2_converge", string) == 0) {
     return  REORDER_WINDOW2_CONV;
   }
-  else if (strcmp("window3_converge", string) == 0) { 
+  else if (strcmp("window3_converge", string) == 0) {
     return  REORDER_WINDOW3_CONV;
   }
-  else if (strcmp("window4_converge", string) == 0) { 
+  else if (strcmp("window4_converge", string) == 0) {
     return  REORDER_WINDOW4_CONV;
   }
-  else if (strcmp("group_sift", string) == 0) { 
+  else if (strcmp("group_sift", string) == 0) {
     return  REORDER_GROUP_SIFT;
   }
-  else if (strcmp("group_sift_converge", string) == 0) { 
+  else if (strcmp("group_sift_converge", string) == 0) {
     return  REORDER_GROUP_SIFT_CONV;
   }
-  else if (strcmp("annealing", string) == 0) { 
+  else if (strcmp("annealing", string) == 0) {
     return  REORDER_ANNEALING;
   }
-  else if (strcmp("genetic", string) == 0) { 
+  else if (strcmp("genetic", string) == 0) {
     return  REORDER_GENETIC;
   }
-  else if (strcmp("exact", string) == 0) { 
+  else if (strcmp("exact", string) == 0) {
     return  REORDER_EXACT;
   }
-  else if (strcmp("linear", string) == 0) { 
+  else if (strcmp("linear", string) == 0) {
     return  REORDER_LINEAR;
   }
-  else if (strcmp("linear_converge", string) == 0) { 
+  else if (strcmp("linear_converge", string) == 0) {
     return  REORDER_LINEAR_CONV;
+  }
+  else if (strcmp("same", string) == 0) {
+    return REORDER_SAME;
   }
   else {
     return REORDER_NONE;
@@ -540,63 +632,63 @@ int StringConvertToDynOrderType(char *string)
 char * DynOrderTypeConvertToString(int method)
 {
   if (method == REORDER_NONE) {
-    return ""; 
+    return "";
   }
-  else if (method == REORDER_RANDOM) { 
+  else if (method == REORDER_RANDOM) {
     return "random";
   }
-  else if (method == REORDER_RANDOM_PIVOT) { 
+  else if (method == REORDER_RANDOM_PIVOT) {
     return "random_pivot";
   }
-  else if ((method == REORDER_SIFT) || (method == REORDER_GROUP_SIFT)) {
-    return "sift"; 
+  else if ((method == REORDER_SIFT)) {
+    return "sift";
   }
-  else if (method == REORDER_SIFT_CONV) { 
+  else if (method == REORDER_SIFT_CONV) {
     return "sift_converge";
   }
-  else if (method == REORDER_SYMM_SIFT) { 
+  else if (method == REORDER_SYMM_SIFT) {
     return "symmetry_sift";
   }
-  else if (method == REORDER_SYMM_SIFT_CONV) { 
+  else if (method == REORDER_SYMM_SIFT_CONV) {
     return "symmetry_sift_converge";
   }
   else if (method == REORDER_WINDOW2) {
-    return "window2"; 
+    return "window2";
   }
-  else if (method == REORDER_WINDOW3) { 
+  else if (method == REORDER_WINDOW3) {
     return "window3";
   }
-  else if (method == REORDER_WINDOW4) { 
+  else if (method == REORDER_WINDOW4) {
     return "window4";
   }
-  else if (method == REORDER_WINDOW2_CONV) { 
+  else if (method == REORDER_WINDOW2_CONV) {
     return "window2_converge";
   }
-  else if (method == REORDER_WINDOW3_CONV) { 
+  else if (method == REORDER_WINDOW3_CONV) {
     return "window3_converge";
   }
-  else if (method == REORDER_WINDOW4_CONV) { 
+  else if (method == REORDER_WINDOW4_CONV) {
     return "window4_converge";
   }
-  else if (method == REORDER_GROUP_SIFT) { 
+  else if (method == REORDER_GROUP_SIFT) {
     return "group_sift";
   }
-  else if (method == REORDER_GROUP_SIFT_CONV) { 
+  else if (method == REORDER_GROUP_SIFT_CONV) {
     return "group_sift_converge";
   }
-  else if (method == REORDER_ANNEALING) { 
+  else if (method == REORDER_ANNEALING) {
     return "annealing";
   }
-  else if (method == REORDER_GENETIC) { 
+  else if (method == REORDER_GENETIC) {
     return "genetic";
   }
-  else if (method == REORDER_EXACT) { 
+  else if (method == REORDER_EXACT) {
     return "exact";
   }
-  else if (method == REORDER_LINEAR) { 
+  else if (method == REORDER_LINEAR) {
     return "linear";
   }
-  else if (method == REORDER_LINEAR_CONV) { 
+  else if (method == REORDER_LINEAR_CONV) {
     return "linear_converge";
   }
   else if (method == REORDER_SAME) {
@@ -621,13 +713,12 @@ char * DynOrderTypeConvertToString(int method)
   SideEffects []
 
 ******************************************************************************/
-int dd_set_parameters(DdManager *mgr, avl_tree *valueTable, FILE *file)
+int dd_set_parameters(DdManager *mgr, OptsHandler_ptr opt, FILE *file)
 {
   int reorderMethod;
   dd_reorderingtype zddReorderMethod;
   st_table *newValueTable;
   st_generator *stgen;
-  avl_generator *avlgen;
   char *paramName;
   char *paramValue;
 
@@ -638,8 +729,7 @@ int dd_set_parameters(DdManager *mgr, avl_tree *valueTable, FILE *file)
   /* Build a new table with the parameter names but with
   ** the prefix removed. */
   newValueTable = st_init_table(st_ptrcmp, st_ptrhash);
-  avl_foreach_item(valueTable, avlgen, AVL_FORWARD, (char **)&paramName, 
-                   (char **)&paramValue) {
+  OPTS_FOREACH_OPTION(opt, (char **)&paramName, (char **)&paramValue) {
     if (strncmp(paramName, "BDD.", 4) == 0) {
       st_insert(newValueTable, (char *)&paramName[4],
                 (char *)paramValue);
@@ -663,8 +753,8 @@ int dd_set_parameters(DdManager *mgr, avl_tree *valueTable, FILE *file)
     else if (strcmp(paramName, "Cache hit threshold for resizing") == 0) {
       uvalue = (unsigned int) strtol(paramValue, &invalidChar, 10);
       if (*invalidChar || uvalue < 0) {
-		InvalidType(file, "Cache hit threshold for resizing",
-			    "unsigned integer");
+                InvalidType(file, "Cache hit threshold for resizing",
+                            "unsigned integer");
       }
       else {
         Cudd_SetMinHit(mgr, uvalue);
@@ -690,7 +780,7 @@ int dd_set_parameters(DdManager *mgr, avl_tree *valueTable, FILE *file)
         Cudd_SetLooseUpTo(mgr, uvalue);
       }
     }
-    else if (strcmp(paramName, "Maximum number of variables sifted per reordering") 
+    else if (strcmp(paramName, "Maximum number of variables sifted per reordering")
              == 0) {
       uvalue = (unsigned int) strtol(paramValue, &invalidChar, 10);
       if (*invalidChar || uvalue < 0) {
@@ -705,14 +795,14 @@ int dd_set_parameters(DdManager *mgr, avl_tree *valueTable, FILE *file)
              == 0) {
       uvalue = (unsigned int) strtol(paramValue, &invalidChar, 10);
       if (*invalidChar || uvalue < 0) {
-        InvalidType(file, "Maximum number of variable swaps per reordering", 
+        InvalidType(file, "Maximum number of variable swaps per reordering",
                     "unsigned integer");
       }
       else {
         Cudd_SetSiftMaxSwap(mgr, uvalue);
       }
     }
-    else if (strcmp(paramName, 
+    else if (strcmp(paramName,
                     "Maximum growth while sifting a variable") == 0) {
       double value;
 
@@ -891,7 +981,7 @@ int dd_set_parameters(DdManager *mgr, avl_tree *valueTable, FILE *file)
 ******************************************************************************/
 int dd_printminterm(
   DdManager * manager,
-  DdNode * node)
+  dd_ptr node)
 {
   return(Cudd_PrintMinterm(manager, node));
 }
@@ -900,9 +990,28 @@ int dd_printminterm(
 
   Synopsis           [Writes a dot file representing the argument DDs.]
 
-  Description        [Writes a dot file representing the argument
-  DDs. For a better description see the \"Cudd_DumpDot\" documentation
-  in the CUDD package.]
+  Description        [Writes a file representing the argument DDs in a format
+  suitable for the graph drawing program dot.
+
+  It returns 1 in case of success; 0 otherwise (e.g., out-of-memory,
+  file system full).
+
+  Cudd_DumpDot does not close the file: This is the caller
+  responsibility. Cudd_DumpDot uses a minimal unique subset of the
+  hexadecimal address of a node as name for it.
+
+  If the argument inames is non-null, it is assumed to hold the pointers
+  to the names of the inputs. Similarly for onames.
+  Cudd_DumpDot uses the following convention to draw arcs:
+    <ul>
+    <li> solid line: THEN arcs;
+    <li> dotted line: complement arcs;
+    <li> dashed line: regular ELSE arcs.
+    </ul>
+
+  The dot options are chosen so that the drawing fits on a letter-size
+  sheet.
+  ]
 
   SideEffects        []
 
@@ -911,12 +1020,13 @@ int dd_printminterm(
 int dd_dump_dot(
   DdManager * dd /* manager */,
   int  n /* number of output nodes to be dumped */,
-  bdd_ptr * f /* array of output nodes to be dumped */,
-  char ** inames /* array of input names (or NULL) */,
-  char ** onames /* array of output names (or NULL) */,
-  FILE * fp /* pointer to the dump file */) 
+  dd_ptr * f /* array of output nodes to be dumped */,
+  const char ** inames /* array of input names (or NULL) */,
+  const char ** onames /* array of output names (or NULL) */,
+  FILE * fp /* pointer to the dump file */)
 {
-  return(Cudd_DumpDot(dd, n, (DdNode **)f, inames, onames, fp));
+  return(Cudd_DumpDot(dd, n, (DdNode **)f, 
+		      (char**) inames, (char**) onames, fp));
 }
 
 /**Function********************************************************************
@@ -934,27 +1044,28 @@ int dd_dump_dot(
 int dd_dump_davinci(
   DdManager * dd /* manager */,
   int  n /* number of output nodes to be dumped */,
-  bdd_ptr * f /* array of output nodes to be dumped */,
-  char ** inames /* array of input names (or NULL) */,
-  char ** onames /* array of output names (or NULL) */,
-  FILE * fp /* pointer to the dump file */) 
+  dd_ptr * f /* array of output nodes to be dumped */,
+  const char ** inames /* array of input names (or NULL) */,
+  const char ** onames /* array of output names (or NULL) */,
+  FILE * fp /* pointer to the dump file */)
 {
-  return(Cudd_DumpDaVinci(dd, n, (DdNode **)f, inames, onames, fp));
+  return(Cudd_DumpDaVinci(dd, n, (DdNode **)f, 
+			  (char**) inames, (char**) onames, fp));
 }
 
 /**Function********************************************************************
 
-  Synopsis           [Reads the constant 1 ADD of the manager.]
+  Synopsis           [Reads the constant TRUE ADD of the manager.]
 
-  Description        [Reads the constant 1 ADD of the manager.]
+  Description        [Reads the constant TRUE ADD of the manager.]
 
   SideEffects        []
 
-  SeeAlso            [add_zero]
+  SeeAlso            [add_false]
 ******************************************************************************/
-add_ptr add_one(DdManager * dd)
+add_ptr add_true(DdManager * dd)
 {
-  DdNode * result = Cudd_ReadOne(dd);
+  DdNode * result = Cudd_ReadTrue(dd);
 
   Cudd_Ref(result);
   return((add_ptr)result);
@@ -1017,13 +1128,82 @@ add_ptr add_else(DdManager *dd, add_ptr f)
 
 /**Function********************************************************************
 
-  Synopsis           [Reads the constant 0 ADD of the manager.]
+  Synopsis           [Reads the constant FALSE ADD of the manager.]
 
-  Description        [Reads the constant 0 ADD of the manager.]
+  Description        [Reads the constant FALSE ADD of the manager.]
 
   SideEffects        []
 
-  SeeAlso            [add_one]
+  SeeAlso            [add_true]
+******************************************************************************/
+add_ptr add_false(DdManager * dd)
+{
+  DdNode * result = Cudd_ReadFalse(dd);
+
+  Cudd_Ref(result);
+  return((add_ptr)result);
+}
+
+/**Function********************************************************************
+
+  Synopsis           [Check if the ADD is true.]
+
+  Description        [Check if the ADD is true.]
+
+  SideEffects        []
+
+  SeeAlso            [add_true]
+
+******************************************************************************/
+int add_is_true(DdManager * dd, add_ptr f)
+{
+  return((DdNode *)f == Cudd_ReadTrue(dd));
+}
+
+/**Function********************************************************************
+
+  Synopsis           [Check if the ADD is false.]
+
+  Description        [Check if the ADD is false.]
+
+  SideEffects        []
+
+  SeeAlso            [add_false]
+
+******************************************************************************/
+int add_is_false(DdManager * dd, add_ptr f)
+{
+  return((DdNode *)f == Cudd_ReadFalse(dd));
+}
+
+/**Function********************************************************************
+
+  Synopsis           [Reads the constant one ADD of the manager.]
+
+  Description        [Reads the constant one ADD of the manager.]
+
+  SideEffects        []
+
+  SeeAlso            [add_false]
+******************************************************************************/
+add_ptr add_one(DdManager * dd)
+{
+  DdNode * result = Cudd_ReadOne(dd);
+
+  Cudd_Ref(result);
+  return((add_ptr)result);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Reads the constant zero ADD of the manager.]
+
+  Description        [Reads the constant zero ADD of the manager.]
+
+  SideEffects        []
+
+  SeeAlso            [add_true]
 ******************************************************************************/
 add_ptr add_zero(DdManager * dd)
 {
@@ -1041,7 +1221,7 @@ add_ptr add_zero(DdManager * dd)
 
   SideEffects        []
 
-  SeeAlso            [add_one]
+  SeeAlso            [add_true]
 
 ******************************************************************************/
 int add_is_one(DdManager * dd, add_ptr f)
@@ -1057,13 +1237,14 @@ int add_is_one(DdManager * dd, add_ptr f)
 
   SideEffects        []
 
-  SeeAlso            [add_zero]
+  SeeAlso            [add_false]
 
 ******************************************************************************/
 int add_is_zero(DdManager * dd, add_ptr f)
 {
   return((DdNode *)f == Cudd_ReadZero(dd));
 }
+
 /**Function********************************************************************
 
   Synopsis           [Reference an ADD node.]
@@ -1154,15 +1335,30 @@ add_ptr add_leaf(DdManager * dd, node_ptr leaf_node)
 
 /**Function********************************************************************
 
-  Synopsis           [Returns 1 if the node is a constant node.]
+  Synopsis           [Returns 1 if the ADD node is a constant node.]
 
-  Description        [Returns 1 if the node is a constant node (rather than an
+  Description        [Returns 1 if the ADD node is a constant node (rather than an
   internal node). All constant nodes have the same index (MAX_VAR_INDEX).]
 
   SideEffects        []
 
 ******************************************************************************/
 int add_isleaf(add_ptr dd_node)
+{
+  return(Cudd_IsConstant(dd_node));
+}
+
+/**Function********************************************************************
+
+  Synopsis           [Returns 1 if the BDD node is a constant node.]
+
+  Description        [Returns 1 if the BDD node is a constant node (rather than an
+  internal node). All constant nodes have the same index (MAX_VAR_INDEX).]
+
+  SideEffects        []
+
+******************************************************************************/
+int bdd_isleaf(bdd_ptr dd_node)
 {
   return(Cudd_IsConstant(dd_node));
 }
@@ -1185,6 +1381,7 @@ node_ptr add_get_leaf(DdManager * dd, add_ptr Leaf)
   }
   return((node_ptr)Cudd_V(Leaf));
 }
+
 /**Function********************************************************************
 
   Synopsis           [Checks the unique table of the DdManager for the
@@ -1205,12 +1402,12 @@ add_ptr add_build(DdManager * dd, int level, add_ptr t, add_ptr e)
   DdNode * result = NULL;
 
   if (t == e) return add_dup(t);
-  
+
   /* A reorder might take place. In this case, keey retrying */
   while (result == NULL) {
     result = (DdNode *)cuddUniqueInter(dd, level, (DdNode *)t, (DdNode *)e);
 
-    /* If result is null and no reorderind took place, 
+    /* If result is null and no reorderind took place,
        then something went wrong */
     nusmv_assert(result != NULL || dd->reordered);
   }
@@ -1238,6 +1435,11 @@ add_ptr add_build(DdManager * dd, int level, add_ptr t, add_ptr e)
 add_ptr add_new_var_with_index(DdManager * dd, int index)
 {
   add_ptr result;
+
+  if ((DdHalfWord)index >= (MAX_VAR_INDEX - 1)) {
+    rpterr("Unable to allocate a new BDD variable, max. number exceeded (%d)", index);
+    nusmv_exit(1);
+  }
 
   result = Cudd_addIthVar(dd, index);
   common_error(result, "add_new_var_with_index: result = NULL");
@@ -1274,22 +1476,21 @@ add_ptr add_new_var_at_level(DdManager * dd, int level)
 
   Synopsis    [Converts an ADD to a BDD.]
 
-  Description [Converts an ADD to a BDD by replacing all
-  discriminants greater than or equal to value with 1, and all other
-  discriminants with 0. Returns a pointer to the resulting BDD if
-  successful; a failure is generated otherwise.]
+  Description [Converts an ADD to a BDD. Only TRUE and FALSE leaves
+  are admitted. Returns a pointer to the resulting BDD if successful;
+  NULL otherwise.]
 
   SideEffects []
 
-  SeeAlso     [bdd_to_add]
+  SeeAlso     [bdd_to_add bdd_to_01_add]
 
 ******************************************************************************/
 bdd_ptr add_to_bdd(DdManager * dd, add_ptr fn)
 {
   DdNode * result;
   extern node_ptr zero_number;
-  
-  result = Cudd_addBddThreshold(dd,fn,zero_number);
+
+  result = Cudd_addBddBooleanMap(dd,fn);
   common_error(result, "add_to_bdd: result = NULL");
   Cudd_Ref(result);
   return((bdd_ptr)result);
@@ -1299,20 +1500,25 @@ bdd_ptr add_to_bdd(DdManager * dd, add_ptr fn)
 
   Synopsis    [Converts an ADD to a BDD according to a strict threshold]
 
-  Description [Converts an ADD to a BDD by replacing all
-  discriminants greater than value k with 1, and all other
-  discriminants with 0. Returns a pointer to the resulting BDD if
-  successful; a failure is generated otherwise.]
+  Description [Converts an ADD to a BDD by replacing all discriminants
+  greater than value k with TRUE, and all other discriminants with
+  FALSE. Returns a pointer to the resulting BDD if successful; a
+  failure is generated otherwise.]
 
   SideEffects []
 
-  SeeAlso     [add_to_bdd]
+  SeeAlso     [add_to_bdd_threshold add_to_bdd bdd_to_01_add]
 
 ******************************************************************************/
 bdd_ptr add_to_bdd_strict_threshold(DdManager * dd, add_ptr fn, int k)
 {
-  add_ptr add_k = add_leaf(dd, find_node(NUMBER,(node_ptr)k,Nil));
-  add_ptr tmp = add_gt(dd, fn, add_k);
+  /* Note for developers: 
+     Why not use cudd version?
+     [AMa] Because the Cudd version cannot handle NuSMV numbers.
+     [AMa] So we use the boolean version preparing the add using NuSMV node_gt
+  */
+  add_ptr add_k = add_leaf(dd, find_node(NUMBER, NODE_FROM_INT(k), Nil));
+  add_ptr tmp = add_apply(dd, node_gt, fn, add_k);
   bdd_ptr result = add_to_bdd(dd, tmp);
   add_free(dd, tmp);
   add_free(dd, add_k);
@@ -1321,14 +1527,14 @@ bdd_ptr add_to_bdd_strict_threshold(DdManager * dd, add_ptr fn, int k)
 
 /**Function********************************************************************
 
-  Synopsis    [Converts a BDD to a 0-1 ADD.]
+  Synopsis    [Converts a BDD to a FALSE-TRUE ADD.]
 
-  Description [Converts a BDD to a 0-1 ADD. Returns a pointer to the
+  Description [Converts a BDD to a FALSE-TRUE ADD. Returns a pointer to the
   resulting ADD if successful; a failure is generated otherwise.]
 
   SideEffects []
 
-  SeeAlso     [add_to_bdd]
+  SeeAlso     [add_to_bdd bdd_to_01_add]
 
 ******************************************************************************/
 add_ptr bdd_to_add(DdManager * dd, bdd_ptr fn)
@@ -1343,12 +1549,34 @@ add_ptr bdd_to_add(DdManager * dd, bdd_ptr fn)
 
 /**Function********************************************************************
 
+  Synopsis    [Converts a BDD to a 0-1 ADD.]
+
+  Description [Converts a BDD to a 0-1 ADD. Returns a pointer to the
+  resulting ADD if successful; a failure is generated otherwise.]
+
+  SideEffects []
+
+  SeeAlso     [bdd_to_add]
+
+******************************************************************************/
+add_ptr bdd_to_01_add(DdManager * dd, bdd_ptr fn)
+{
+  DdNode * result;
+
+  result = Cudd_BddTo01Add(dd, (DdNode *)fn);
+  common_error(result, "bdd_to_01_add: result = NULL");
+  Cudd_Ref(result);
+  return((add_ptr)result);
+}
+
+/**Function********************************************************************
+
   Synopsis    [Applies AND to the corresponding discriminants of f and g.]
 
   Description [Applies logical AND to the corresponding discriminants
-  of f and g. f and g must have only 0 or 1 as terminal nodes. Returns
-  a pointer to the result if successful; a failure is generated
-  otherwise.]
+  of f and g. f and g must have only FALSE or TRUE as terminal
+  nodes. Returns a pointer to the result if successful; a failure is
+  generated otherwise.]
 
   SideEffects []
 
@@ -1370,9 +1598,9 @@ add_ptr add_and(DdManager * dd, add_ptr a, add_ptr b)
   Synopsis    [Applies OR to the corresponding discriminants of f and g.]
 
   Description [Applies logical OR to the corresponding discriminants
-  of f and g. f and g must have only 0 or 1 as terminal nodes. Returns
-  a pointer to the result if successful; a failure is generated
-  otherwise.]
+  of f and g. f and g must have only FALSE or TRUE as terminal
+  nodes. Returns a pointer to the result if successful; a failure is
+  generated otherwise.]
 
   SideEffects []
 
@@ -1394,7 +1622,7 @@ add_ptr add_or(DdManager * dd, add_ptr a, add_ptr b)
   Synopsis    [Applies XOR to the corresponding discriminants of f and g.]
 
   Description [Applies logical XOR to the corresponding discriminants
-  of f and g. f and g must have only 0 or 1 as terminal nodes. Returns
+  of f and g. f and g must have only FALSE or TRUE as terminal nodes. Returns
   a pointer to the result if successful; a failure is generated
   otherwise.]
 
@@ -1413,13 +1641,44 @@ add_ptr add_xor(DdManager * dd, add_ptr a, add_ptr b)
   return((add_ptr)result);
 }
 
+
+/**Function********************************************************************
+
+  Synopsis    [Applies XNOR to the corresponding discriminants of f and g.]
+
+  Description [Applies logical XNOR to the corresponding discriminants
+  of f and g. f and g must have only FALSE or TRUE as terminal
+  nodes. Returns a pointer to the result if successful; a failure is
+  generated otherwise.]
+
+  SideEffects []
+
+  SeeAlso     [add_xor add_or add_and add_not add_imply]
+
+******************************************************************************/
+add_ptr add_xnor(DdManager * dd, add_ptr a, add_ptr b)
+{
+  DdNode * tmp;
+  DdNode * result;
+
+  tmp = Cudd_addNot(dd,(DdNode *)b);
+  common_error(tmp, "add_xnor: not(b) = NULL");
+  Cudd_Ref(tmp);
+
+  result = Cudd_addXor(dd, (DdNode *)a, (DdNode *)tmp);
+  common_error(result, "add_xor: result = NULL");
+  Cudd_Ref(result);
+  return((add_ptr)result);
+}
+
 /**Function********************************************************************
 
   Synopsis    [Applies NOT to the corresponding discriminant of f.]
 
-  Description [Applies logical NOT to the corresponding discriminant of f.
-  f must have only 0 or 1 as terminal nodes. Returns a pointer to the
-  result if successful; a failure is generated otherwise.]
+  Description [Applies logical NOT to the corresponding discriminant
+  of f.  f must have only FALSE or TRUE as terminal nodes. Returns a
+  pointer to the result if successful; a failure is generated
+  otherwise.]
 
   SideEffects []
 
@@ -1438,39 +1697,73 @@ add_ptr add_not(DdManager * dd, add_ptr a)
 
 /**Function********************************************************************
 
-  Synopsis    [Applies IMPLY to the corresponding discriminants of f.]
+  Synopsis    [Applies IMPLY to the corresponding discriminants of f and g.]
 
-  Description [Applies logical IMPLY to the corresponding discriminants of f.
-  f must have only 0 or 1 as terminal nodes. Returns a pointer to the
-  result if successful; a failure is generated otherwise.]
+  Description [Applies logical IMPLY to the corresponding
+  discriminants of f and g.  f and g must have only FALSE or TRUE as
+  terminal nodes. Returns a pointer to the result if successful; a
+  failure is generated otherwise.]
 
   SideEffects []
 
   SeeAlso     [add_and add_xor add_or add_not]
 
 ******************************************************************************/
-add_ptr add_imply(DdManager * dd, add_ptr a, add_ptr b)
+add_ptr add_implies(DdManager * dd, add_ptr a, add_ptr b)
 {
-  DdNode * tmp_1;
+  DdNode * tmp;
   DdNode * result;
 
-  tmp_1 = Cudd_addNot(dd,(DdNode *)a);
-  common_error(tmp_1, "add_imply: not(a) = NULL");
-  Cudd_Ref(tmp_1);
-  result = Cudd_addOr(dd, tmp_1, (DdNode *)b);
-  common_error2(dd, result, tmp_1, "add_imply: result = NULL");
+  tmp = Cudd_addNot(dd,(DdNode *)a);
+  common_error(tmp, "add_implies: not(a) = NULL");
+  Cudd_Ref(tmp);
+  result = Cudd_addOr(dd, tmp, (DdNode *)b);
+  common_error2(dd, result, tmp, "add_implies: result = NULL");
   Cudd_Ref(result);
-  Cudd_RecursiveDeref(dd, tmp_1);
+  Cudd_RecursiveDeref(dd, tmp);
   return((add_ptr)result);
 }
+
+
+/**Function********************************************************************
+
+  Synopsis    [Applies IFF to the corresponding discriminants of f and g.]
+
+  Description [Applies logical IFF to the corresponding discriminants
+  of f and g.  f and g must have only FALSE or TRUE as terminal
+  nodes. Returns a pointer to the result if successful; a failure is
+  generated otherwise.]
+
+  SideEffects []
+
+  SeeAlso     [add_and add_xor add_or add_not]
+
+******************************************************************************/
+add_ptr add_iff(DdManager * dd, add_ptr a, add_ptr b)
+{
+  DdNode * tmp;
+  DdNode * result;
+
+  tmp = Cudd_addXor(dd, (DdNode *)a, (DdNode *)b);
+  common_error(tmp, "add_iff: xor(a,b) = NULL");
+  Cudd_Ref(tmp);
+
+  result = Cudd_addNot(dd, tmp);
+  common_error2(dd, result, tmp, "add_iff: result = NULL");
+  Cudd_Ref(result);
+
+  Cudd_RecursiveDeref(dd, tmp);
+  return((add_ptr) result);
+}
+
 
 /**Function********************************************************************
 
   Synopsis    [Applies AND to the corresponding discriminants of f and g.]
 
   Description [Applies logical AND to the corresponding discriminants
-  of f and g and stores the result in f. f and g must have only 0 or 1
-  as terminal nodes.]
+  of f and g and stores the result in f. f and g must have only FALSE
+  or TRUE as terminal nodes.]
 
   SideEffects [The result is stored in the first operand.]
 
@@ -1480,7 +1773,7 @@ add_ptr add_imply(DdManager * dd, add_ptr a, add_ptr b)
 void add_and_accumulate(DdManager * dd, add_ptr *a, add_ptr b)
 {
   DdNode * result;
-  
+
   result = Cudd_addAnd(dd,(DdNode *) *a, (DdNode *)b);
   common_error(result, "add_and_accumulate: result = NULL");
   Cudd_Ref(result);
@@ -1493,8 +1786,8 @@ void add_and_accumulate(DdManager * dd, add_ptr *a, add_ptr b)
   Synopsis    [Applies OR to the corresponding discriminants of f and g.]
 
   Description [Applies logical OR to the corresponding discriminants
-  of f and g and stores the result in f. f and g must have only 0 or 1
-  as terminal nodes.]
+  of f and g and stores the result in f. f and g must have only FALSE
+  or TRUE as terminal nodes.]
 
   SideEffects [The result is stored in the first operand.]
 
@@ -1504,7 +1797,7 @@ void add_and_accumulate(DdManager * dd, add_ptr *a, add_ptr b)
 void add_or_accumulate(DdManager * dd, add_ptr *a, add_ptr b)
 {
   DdNode * result;
-  
+
   result = Cudd_addOr(dd,(DdNode *) *a, (DdNode *)b);
   common_error(result, "add_or_accumulate: result = NULL");
   Cudd_Ref(result);
@@ -1514,20 +1807,19 @@ void add_or_accumulate(DdManager * dd, add_ptr *a, add_ptr b)
 
 /**Function********************************************************************
 
-  Synopsis    [Applies op to the corresponding discriminants of f and g.]
+  Synopsis    [Applies binary op to the corresponding discriminants of f and g.]
 
-  Description [Applies op to the corresponding discriminants of f and g.
-  Returns a pointer to the result if successful; a failure is
+  Description [Returns a pointer to the result if successful; a failure is
   generated otherwise.]
 
   SideEffects []
 
 ******************************************************************************/
-add_ptr add_apply(DdManager * dd, NPFNN op, add_ptr a, add_ptr b)
+add_ptr add_apply(DdManager * dd, NPFNN op, add_ptr f, add_ptr g)
 {
   DdNode * result;
 
-  result = Cudd_addApply(dd, op, (DdNode *)a, (DdNode *)b);
+  result = Cudd_addApply(dd, op, (DdNode *)f, (DdNode *)g);
   common_error(result, "add_apply: result = NULL");
   Cudd_Ref(result);
   return((add_ptr)result);
@@ -1535,140 +1827,38 @@ add_ptr add_apply(DdManager * dd, NPFNN op, add_ptr a, add_ptr b)
 
 /**Function********************************************************************
 
-  Synopsis    [Applies Set Inclusion to the corresponding
-  discriminants of f and g.]
+  Synopsis    [Applies unary op to the corresponding discriminant of f]
 
-  Description [Applies logical Set Inclusion to the corresponding
-  discriminants of f and g. Returns a pointer to the result if
-  successful; a failure is generated otherwise.]
+  Description [Returns a pointer to the result if successful; a failure is
+  generated otherwise.
 
-  SideEffects [.]
+  NOTE: At the moment CUDD does not have unary 'apply', so you have
+  to provide a binary op, which is actually unary and applies to
+  the first operand only.]
 
-  SeeAlso     [add_apply]
-
-******************************************************************************/
-add_ptr add_setin(DdManager * dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd, node_setin, a, b)); }
-
-/**Function********************************************************************
-
-  Synopsis    [Applies equality to the corresponding discriminants of f and g.]
-
-  Description [Applies equality to the corresponding discriminants of
-  f and g. Returns a pointer to the result if successful; a failure is
-  generated otherwise.] 
-
-  SideEffects [.]
-
-  SeeAlso     [add_apply]
+  SideEffects []
 
 ******************************************************************************/
-add_ptr add_equal(DdManager * dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd, node_equal, a, b)); }
+add_ptr add_monadic_apply(DdManager * dd, NPFNN/*NPFCVT*/ op, add_ptr f)
+{
+  /* Function Cudd_addMonadicApply appears in later version of CUDD.
+     Here we try to mimic its behaviour */
+  add_ptr _true = add_true(dd);
+  DdNode * result;
 
-/**Function********************************************************************
+  result = Cudd_addApply(dd, op, (DdNode *)f, (DdNode *) _true);
+  common_error(result, "add_monadic_apply: result = NULL");
+  Cudd_Ref(result);
 
-  Synopsis           [Adds two integer ADDs]
-
-  Description        [Adds two integer ADDs.]
-
-  SideEffects        []
-
-******************************************************************************/
-add_ptr add_plus(DdManager* dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd,node_plus,a,b)); }
-
-/**Function********************************************************************
-
-  Synopsis           [Subtracts two integer ADDs]
-
-  Description        [Subtracts two integer ADDs.]
-
-  SideEffects        []
-
-******************************************************************************/
-add_ptr add_minus(DdManager* dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd,node_minus,a,b)); }
-
-/**Function********************************************************************
-
-  Synopsis           [Multiplies two integer ADDs]
-
-  Description        [Multiplies two integer ADDs]
-
-  SideEffects        []
-
-******************************************************************************/
-add_ptr add_times(DdManager* dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd,node_times,a,b)); }
-
-/**Function********************************************************************
-
-  Synopsis           [Divides two integer ADDs]
-
-  Description        [Divides two integer ADDs]
-
-  SideEffects        []
-
-******************************************************************************/
-add_ptr add_divide(DdManager* dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd,node_divide,a,b)); }
-
-/**Function********************************************************************
-
-  Synopsis           [Computes the modulo of the integer division of
-  two integer ADDs.]
-
-  Description        [Computes the modulo of the integer division of
-  two integer ADDs.]
-
-  SideEffects        []
-
-******************************************************************************/
-add_ptr add_mod(DdManager* dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd,node_mod,a,b)); }
-
-/**Function********************************************************************
-
-  Synopsis           [Checks if two integer ADDs are in the less then relation.]
-
-  Description        [Checks if two integer ADDs are in the less then relation.]
-
-  SideEffects        []
-
-******************************************************************************/
-add_ptr add_lt(DdManager* dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd,node_lt,a,b)); }
-
-/**Function********************************************************************
-
-  Synopsis           [Checks if two integer ADDs are in the less then relation.]
-
-  Description        [Checks if two integer ADDs are in the less then relation.]
-
-  SideEffects        []
-
-******************************************************************************/
-add_ptr add_gt(DdManager* dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd,node_gt,a,b)); }
-
-/**Function********************************************************************
-
-  Synopsis           [Computes the set union of two set ADDs.]
-
-  Description        [Computes the set union of two set ADDs.]
-
-  SideEffects        []
-
-******************************************************************************/
-add_ptr add_union(DdManager* dd, add_ptr a, add_ptr b)
-{ return(add_apply(dd,node_union,a,b)); }
+  add_free(dd, _true);
+  return((add_ptr)result);
+}
 
 /**Function********************************************************************
 
   Synopsis           [Abstracts away variables from an ADD.]
 
-  Description        [Abstracts away variables from an ADD, summing up the values 
+  Description        [Abstracts away variables from an ADD, summing up the values
                       of the merged branches.]
 
   SideEffects        []
@@ -1677,10 +1867,10 @@ add_ptr add_union(DdManager* dd, add_ptr a, add_ptr b)
 add_ptr add_exist_abstract(DdManager* dd, add_ptr a, bdd_ptr b)
 {
   DdNode * cube;
-  DdNode * result;
-  
+  DdNode * result = (DdNode*)NULL;
+
   cube = Cudd_BddToAdd(dd, (DdNode *)b);
-  common_error(result, "add_exist_abstract: cube = NULL");
+  common_error(cube, "add_exist_abstract: cube = NULL");
 
   result = Cudd_addAbstract(dd, node_plus, (DdNode *)a, (DdNode *)cube);
   common_error(result, "add_exist_abstract: result = NULL");
@@ -1694,8 +1884,8 @@ add_ptr add_exist_abstract(DdManager* dd, add_ptr a, bdd_ptr b)
   Synopsis    [Implements ITE(f,g,h).]
 
   Description [Implements ITE(f,g,h). This procedure assumes that f is
-  a 0-1 ADD.  Returns a pointer to the resulting ADD if successful; a
-  failure is generated otherwise.]
+  a FALSE-TRUE ADD.  Returns a pointer to the resulting ADD if
+  successful; a failure is generated otherwise.]
 
   SideEffects []
 
@@ -1753,7 +1943,7 @@ add_ptr add_cube_diff(DdManager * dd, add_ptr a, add_ptr b)
 add_ptr add_permute(DdManager * dd, add_ptr fn, int * permut)
 {
   DdNode *result;
-  
+
   result = Cudd_addPermute(dd, (DdNode *)fn, permut);
   common_error(result, "add_permute: result = NULL");
   Cudd_Ref(result);
@@ -1776,7 +1966,7 @@ add_ptr add_permute(DdManager * dd, add_ptr fn, int * permut)
 add_ptr add_support(DdManager * dd, add_ptr fn)
 {
   DdNode * tmp_1, * result;
-  
+
   tmp_1 = Cudd_Support(dd, (DdNode *)fn);
   common_error(tmp_1, "add_support: tmp_1 = NULL");
   Cudd_Ref(tmp_1);
@@ -1866,7 +2056,7 @@ double add_count_minterm(DdManager * dd, add_ptr fn, int nvars)
 node_ptr add_value(DdManager * dd, add_ptr fn)
 {
   node_ptr result;
- 
+
   result = Cudd_add_value((DdNode *)fn);
   return(result);
 }
@@ -1912,17 +2102,17 @@ void add_walkleaves(VPFCVT op, add_ptr f)
 
 /**Function********************************************************************
 
-  Synopsis           [Reads the constant 1 BDD of the manager.]
+  Synopsis           [Reads the constant TRUE BDD of the manager.]
 
-  Description        [Reads the constant 1 BDD of the manager.]
+  Description        [Reads the constant TRUE BDD of the manager.]
 
   SideEffects        []
 
-  SeeAlso            [bdd_zero]
+  SeeAlso            [bdd_false]
 ******************************************************************************/
-bdd_ptr bdd_one(DdManager * dd)
+bdd_ptr bdd_true(DdManager * dd)
 {
-  DdNode * result = Cudd_ReadOne(dd);
+  DdNode * result = Cudd_ReadTrue(dd);
 
   Cudd_Ref(result);
   return((bdd_ptr)result);
@@ -1930,17 +2120,17 @@ bdd_ptr bdd_one(DdManager * dd)
 
 /**Function********************************************************************
 
-  Synopsis           [Reads the constant 0 BDD of the manager.]
+  Synopsis           [Reads the constant FALSE BDD of the manager.]
 
-  Description        [Reads the constant 0 BDD of the manager.]
+  Description        [Reads the constant FALSE BDD of the manager.]
 
   SideEffects        []
 
-  SeeAlso            [bdd_one]
+  SeeAlso            [bdd_true]
 ******************************************************************************/
-bdd_ptr bdd_zero(DdManager * dd)
+bdd_ptr bdd_false(DdManager * dd)
 {
-  DdNode * result = Cudd_ReadLogicZero(dd);
+  DdNode * result = Cudd_ReadLogicFalse(dd);
 
   Cudd_Ref(result);
   return((bdd_ptr)result);
@@ -1948,63 +2138,63 @@ bdd_ptr bdd_zero(DdManager * dd)
 
 /**Function********************************************************************
 
-  Synopsis           [Check il the BDD is one.]
+  Synopsis           [Check if the BDD is TRUE.]
 
-  Description        [Check il the BDD is one.]
+  Description        [Check if the BDD is TRUE.]
 
   SideEffects        []
 
-  SeeAlso            [bdd_one]
+  SeeAlso            [bdd_true]
 ******************************************************************************/
-int bdd_is_one(DdManager * dd, bdd_ptr f)
+int bdd_is_true(DdManager * dd, bdd_ptr f)
 {
-  return((DdNode *)f == Cudd_ReadOne(dd));
+  return((DdNode *)f == Cudd_ReadTrue(dd));
 }
 
 
 /**Function********************************************************************
 
-  Synopsis           [Check il the BDD is not one.]
+  Synopsis           [Check if the BDD is not true.]
 
-  Description        [Check il the BDD is not one.]
+  Description        [Check if the BDD is not true.]
 
   SideEffects        []
 
-  SeeAlso            [bdd_one]
+  SeeAlso            [bdd_true]
 ******************************************************************************/
-int bdd_isnot_one(DdManager * dd, bdd_ptr f)
+int bdd_isnot_true(DdManager * dd, bdd_ptr f)
 {
-  return((DdNode *)f != Cudd_ReadOne(dd));
+  return((DdNode *)f != Cudd_ReadTrue(dd));
 }
 
 /**Function********************************************************************
 
-  Synopsis           [Check if the BDD is zero.]
+  Synopsis           [Check if the BDD is false.]
 
-  Description        [Check if the BDD is zero.]
+  Description        [Check if the BDD is false.]
 
   SideEffects        []
 
-  SeeAlso            [bdd_zero]
+  SeeAlso            [bdd_false]
 ******************************************************************************/
-int bdd_is_zero(DdManager * dd, bdd_ptr f)
+int bdd_is_false(DdManager * dd, bdd_ptr f)
 {
-  return((DdNode *)f == Cudd_ReadLogicZero(dd));
+  return((DdNode *)f == Cudd_ReadLogicFalse(dd));
 }
 
 /**Function********************************************************************
 
-  Synopsis           [Check if the BDD is not zero.]
+  Synopsis           [Check if the BDD is not false.]
 
-  Description        [Check if the BDD is not zero.]
+  Description        [Check if the BDD is not false.]
 
   SideEffects        []
 
-  SeeAlso            [bdd_zero]
+  SeeAlso            [bdd_false]
 ******************************************************************************/
-int bdd_isnot_zero(DdManager * dd, bdd_ptr f)
+int bdd_isnot_false(DdManager * dd, bdd_ptr f)
 {
-  return((DdNode *)f != Cudd_ReadLogicZero(dd));
+  return((DdNode *)f != Cudd_ReadLogicFalse(dd));
 }
 
 
@@ -2035,7 +2225,7 @@ void bdd_ref(bdd_ptr dd_node)
 ******************************************************************************/
 void bdd_deref(bdd_ptr dd_node)
 {
-  
+
   Cudd_Deref(dd_node);
 }
 
@@ -2053,7 +2243,7 @@ void bdd_deref(bdd_ptr dd_node)
 
   SeeAlso            []
 ******************************************************************************/
-void bdd_free(DdManager * dd, bdd_ptr dd_node) 
+void bdd_free(DdManager * dd, bdd_ptr dd_node)
 {
   common_error(dd_node, "bdd_free: dd_node = NULL");
 
@@ -2166,6 +2356,34 @@ bdd_ptr bdd_xor(DdManager * dd, bdd_ptr a, bdd_ptr b)
   result = Cudd_bddXor(dd, (DdNode *)a, (DdNode *)b);
   common_error(result, "bdd_xor: result = NULL");
   Cudd_Ref(result);
+  return((bdd_ptr)result);
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Applies IFF to the corresponding discriminants of f and g.]
+
+  Description [Applies logical IFF to the corresponding discriminants
+  of f and g. f and g must be BDDs. Returns a pointer to the result if
+  successful; a failure is generated otherwise.]
+
+  SideEffects []
+
+  SeeAlso     [bdd_or bdd_xor bdd_not]
+
+******************************************************************************/
+bdd_ptr bdd_iff(DdManager * dd, bdd_ptr a, bdd_ptr b)
+{
+  DdNode * tmp_1;
+  DdNode * result;
+
+  tmp_1 = Cudd_bddXor(dd, (DdNode *)a, (DdNode *)b);
+  common_error(tmp_1, "bdd_iff: bdd_xor(a,b) = NULL");
+  Cudd_Ref(tmp_1);
+  result = Cudd_Not(tmp_1);
+  common_error2(dd, result, tmp_1, "bdd_iff: result = NULL");
+  Cudd_Ref(result);
+  Cudd_RecursiveDeref(dd, tmp_1);
   return((bdd_ptr)result);
 }
 
@@ -2408,7 +2626,7 @@ bdd_ptr bdd_minimize(DdManager *dd, bdd_ptr fn, bdd_ptr c)
     <li> F @ F'= 0
     </ul>
   Returns a pointer to the result if successful; a failure is
-  generated otherwise.] 
+  generated otherwise.]
 
   SideEffects []
 
@@ -2446,7 +2664,7 @@ bdd_ptr bdd_between(DdManager *dd, bdd_ptr f_min, bdd_ptr f_max)
   /*
     The size of ret is never larger than the size of f_min. We need
     only to check ret against f_max.
-  */ 
+  */
   if (bdd_size(dd, f_max) <= bdd_size(dd, ret)) {
     bdd_free(dd, ret);
     return(bdd_dup(f_max));
@@ -2473,6 +2691,32 @@ int bdd_entailed(DdManager * dd, bdd_ptr f, bdd_ptr g)
 
   result = Cudd_bddLeq(dd, (DdNode *)f, (DdNode *)g);
   return(result);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Determines whether an intersection between
+  f and g is not empty]
+
+  Description        [Returns 1 if an intersection between
+  f and g is not empty; 0 otherwise.
+  No new nodes are created.]
+
+  SideEffects        [None]
+
+  SeeAlso            []
+
+******************************************************************************/
+int bdd_intersected(DdManager * dd, bdd_ptr f, bdd_ptr g)
+{
+  if (bdd_is_false(dd, f) || bdd_is_false(dd, g)) return 0;
+
+  DdNode* not_g = Cudd_Not((DdNode *)g);
+
+  int result = Cudd_bddLeq(dd, (DdNode *)f, (DdNode *)not_g);
+
+  return !result;
 }
 
 
@@ -2522,7 +2766,7 @@ bdd_ptr bdd_else(DdManager * dd, bdd_ptr f)
   bdd_ptr result;
 
   if (Cudd_IsConstant((DdNode *)f)) {
-    rpterr("bdd_then: called on a constant bdd.");
+    rpterr("bdd_else: called on a constant bdd.");
     result = (bdd_ptr)NULL;
     nusmv_exit(1);
   }
@@ -2610,7 +2854,7 @@ bdd_ptr bdd_ite(DdManager * dd, bdd_ptr i, bdd_ptr t, bdd_ptr e)
   Cudd_Ref(result);
   return((bdd_ptr)result);
 }
-  
+
 /**Function********************************************************************
 
   Synopsis    [Counts the number of BDD nodes in an BDD.]
@@ -2664,7 +2908,7 @@ double bdd_count_minterm(DdManager * dd, bdd_ptr fn, int nvars)
 bdd_ptr bdd_support(DdManager *dd, bdd_ptr fn)
 {
   DdNode * result;
-  
+
   result = Cudd_Support(dd, (DdNode *)fn);
   common_error(result, "bdd_support: result = NULL");
   Cudd_Ref(result);
@@ -2688,17 +2932,14 @@ bdd_ptr bdd_support(DdManager *dd, bdd_ptr fn)
 bdd_ptr bdd_pick_one_minterm(DdManager * dd, bdd_ptr fn, bdd_ptr * vars, int n)
 {
   DdNode * result;
-  bdd_ptr zero = bdd_zero(dd);
-  
-  if (fn == zero) {
+
+  if (bdd_is_false(dd, fn)) {
     Cudd_Ref(fn);
-    Cudd_Deref(zero);
     return(fn);
   }
   else {
     result = Cudd_bddPickOneMintermNR(dd, (DdNode *)fn, (DdNode **)vars, n);
     common_error(result, "bdd_pick_one_minterm: result = NULL");
-    Cudd_Deref(zero);
     Cudd_Ref(result);
     return((bdd_ptr)result);
   }
@@ -2720,17 +2961,14 @@ bdd_ptr bdd_pick_one_minterm(DdManager * dd, bdd_ptr fn, bdd_ptr * vars, int n)
 bdd_ptr bdd_pick_one_minterm_rand(DdManager * dd, bdd_ptr fn, bdd_ptr * vars, int n)
 {
   DdNode * result;
-  bdd_ptr zero = bdd_zero(dd);
-  
-  if (fn == zero) {
+
+  if (bdd_is_false(dd, fn)) {
     Cudd_Ref(fn);
-    Cudd_Deref(zero);
     return(fn);
   }
   else {
     result = Cudd_bddPickOneMinterm(dd, (DdNode *)fn, (DdNode **)vars, n);
     common_error(result, "bdd_pick_one_minterm_rand: result = NULL");
-    Cudd_Deref(zero);
     Cudd_Ref(result);
     return((bdd_ptr)result);
   }
@@ -2746,7 +2984,7 @@ bdd_ptr bdd_pick_one_minterm_rand(DdManager * dd, bdd_ptr fn, bdd_ptr * vars, in
   or equal the number of the minterms of the "minterm" function. The array
   contains referenced BDD so it is necessary to dereference them after their
   use. Calls Cudd_PickAllTerms avoiding to pass it a true picking-from set of
-	states.]
+        states.]
 
   SideEffects        []
 
@@ -2761,7 +2999,7 @@ int bdd_pick_all_terms(
   bdd_ptr   * result       /* The array used as return value */,
   int       result_dim     /* The size of the above array */)
 {
-  if (bdd_is_one(dd, pick_from_set)) {
+  if (bdd_is_true(dd, pick_from_set)) {
     bdd_ptr not_var0 = bdd_not(dd, vars[0]);
 
     if (Cudd_PickAllTerms(dd, vars[0], vars, vars_dim, result) == 1) {
@@ -2770,8 +3008,8 @@ int bdd_pick_all_terms(
       return 1;
     }
     nusmv_assert((result_dim % 2) == 0);
-    if ( Cudd_PickAllTerms(dd, not_var0, vars, vars_dim, 
-			  result + result_dim/2) == 1 ) {
+    if ( Cudd_PickAllTerms(dd, not_var0, vars, vars_dim,
+                          result + result_dim/2) == 1 ) {
       fprintf(nusmv_stderr, "Error from Cudd_PickAllTerms.\n");
       bdd_free(dd, not_var0);
       return 1;
@@ -2803,7 +3041,7 @@ int bdd_pick_all_terms(
 bdd_ptr bdd_new_var_with_index(DdManager * dd, int index)
 {
   DdNode * result;
-  
+
   result = Cudd_bddIthVar(dd, index);
   common_error(result, "bdd_new_var_with_index: result = NULL");
   /* bdd var does not require to be referenced when created */
@@ -2840,7 +3078,7 @@ bdd_ptr bdd_cube_diff(DdManager * dd, bdd_ptr a, bdd_ptr b)
   Synopsis    [Computes the union between two BDD cubes.]
 
   Description [Computes the union between two BDD cubes, i.e. the
-  cube of BDD variables belonging to cube a OR to cube b. 
+  cube of BDD variables belonging to cube a OR to cube b.
   Returns a pointer to the resulting cube; a failure is generated
   otherwise.]
 
@@ -2895,9 +3133,440 @@ bdd_ptr bdd_cube_intersection(DdManager * dd, bdd_ptr a, bdd_ptr b)
 int bdd_get_lowest_index(DdManager * dd, bdd_ptr a)
 {
   int result;
-  
+
   result = Cudd_BddGetLowestVar(dd, (DdNode *)a);
   return(result);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Finds a satisfying path in the BDD d.]
+
+  Description        [Finds a satisfying path in the BDD d. This path should
+  not include all variabales. It only need ot include the levels needed to
+  satify the BDD.]
+
+  SideEffects        []
+
+******************************************************************************/
+bdd_ptr bdd_get_one_sparse_sat(DdManager * dd, bdd_ptr d) {
+  bdd_ptr result, old, zero;
+  bdd_ptr T, E, node, vi, nvi;
+
+  int reord_status;
+  dd_reorderingtype rt;
+
+  /* temporary disables reordering */
+  reord_status = dd_reordering_status(dd, &rt);
+  if (reord_status == 1) { dd_autodyn_disable(dd); }
+
+  /* if it is a constant BDD (true or false), then return it */
+  if (bdd_is_true(dd, d)) return bdd_true(dd);
+  if (bdd_is_false(dd, d)) return bdd_false(dd);
+
+  node = d;
+  zero = bdd_false(dd);
+  old = bdd_true(dd);
+
+  while (true) {
+    /* no need to free them, reference is not incremented */
+    T = bdd_then(dd, node);
+    E = bdd_else(dd, node);
+
+    /* Take care of the fact that the node can be complemented */
+    if (bdd_iscomplement(dd, node)) {
+      T = bdd_not(dd, T);
+      bdd_deref(T);
+      E = bdd_not(dd, E);
+      bdd_deref(E);
+    }
+
+    /* Get the bdd variable at the given level */
+    vi = bdd_new_var_with_index(dd, bdd_index(dd, node));
+    /* reference it since bdd_new_var_with_index does not reference */
+    bdd_ref(vi);
+
+    /* If then is true, build assignment and stop */
+    if (bdd_is_true(dd, T)) {
+      result = bdd_ite(dd, old, vi, zero);
+      bdd_free(dd, vi);
+      bdd_free(dd, old);
+      break;
+    }
+
+    /* If else is true, build assignment and stop */
+    if (bdd_is_true(dd, E)) {
+      nvi = bdd_not(dd, vi);
+      result = bdd_ite(dd, old, nvi, zero);
+      bdd_free(dd, nvi);
+      bdd_free(dd, vi);
+      bdd_free(dd, old);
+      break;
+    }
+
+    /* If then is false, build assignment and recurse on the else */
+    if (bdd_is_false(dd, T)) {
+      nvi = bdd_not(dd, vi);
+      result = bdd_ite(dd, old, nvi, zero);
+      bdd_free(dd, nvi);
+      bdd_free(dd, old);
+      old = result;
+      node = E;
+    }
+    /* If else is false, build assignment and recurse on the then */
+    else if (bdd_is_false(dd, E)) {
+      result = bdd_ite(dd, old, vi, zero);
+      bdd_free(dd, old);
+      old = result;
+      node = T;
+    }
+    /* If neither then nor else are true/false, build assignment
+       considering the current variable positive, and recurse on the
+       then */
+    else {
+      result = bdd_ite(dd, old, vi, zero);
+      bdd_free(dd, old);
+      old = result;
+      node = T;
+    }
+    bdd_free(dd, vi);
+
+  } /* loop */
+
+  bdd_free(dd, zero);
+
+  /* re-enable reordering if it is required */
+  if (reord_status == 1) { dd_autodyn_enable(dd,rt); }
+
+  return result;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Expands cube to a prime implicant of f.]
+
+  Description [Expands cube to a prime implicant of f. Returns the prime
+  if successful; NULL otherwise.  In particular, NULL is returned if cube
+  is not a real cube or is not an implicant of f.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+bdd_ptr bdd_make_prime(DdManager *dd, bdd_ptr cube, bdd_ptr b) {
+  DdNode * result;
+
+  result = Cudd_bddMakePrime(dd, (DdNode *)cube, (DdNode *)b);
+  common_error(result, "bdd_make_prime: result = NULL");
+  Cudd_Ref(result);
+  return((bdd_ptr)result);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Finds a largest cube in a BDD.]
+
+  Description [Finds a largest cube in a BDD b, i.e. an implicant of BDD b.
+  Notice that, it is not guaranteed to be the largest implicant of b.]
+
+  SideEffects [The number of literals of the cube is returned in length.]
+
+  SeeAlso     []
+
+******************************************************************************/
+bdd_ptr bdd_largest_cube(DdManager *dd, bdd_ptr b, int *length) {
+  DdNode * result;
+
+  result = Cudd_LargestCube(dd, (DdNode *)b, length);
+  common_error(result, "bdd_largest_cube: result = NULL");
+  Cudd_Ref(result);
+  return((bdd_ptr)result);
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Finds a prime implicant for a BDD.]
+
+  Description [Finds the prime implicant of a BDD b based on the largest cube
+  in low where low implies b.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+bdd_ptr bdd_compute_prime_low(DdManager * dd, bdd_ptr b, bdd_ptr low) {
+  int length;
+  bdd_ptr result, implicant;
+
+  /* a minterm is an implicant */
+  implicant = bdd_largest_cube(dd, low, &length);
+  /* Expand the minterm to be a prime implicant */
+  result = bdd_make_prime(dd, implicant, b);
+  bdd_free(dd, implicant);
+
+  return result;
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Finds a set of prime implicants for a BDD.]
+
+  Description [Finds the set of prime implicants of a BDD b that are
+  implied by low where low implies b.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+array_t * bdd_compute_primes_low(DdManager * dd, bdd_ptr b, bdd_ptr low) {
+  array_t * result = array_alloc(bdd_ptr, 0);
+  bdd_ptr curr_low = bdd_dup(low);
+
+  while(bdd_isnot_false(dd, curr_low)) {
+    bdd_ptr prime, notprime;
+
+    prime = bdd_compute_prime_low(dd, b, curr_low);
+    array_insert_last(bdd_ptr, result, prime);
+    /* */
+    notprime = bdd_not(dd, prime);
+    bdd_and_accumulate(dd, &curr_low, notprime);
+    bdd_free(dd, notprime);
+  }
+  bdd_free(dd, curr_low);
+  return result;
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Finds a set of prime implicants for a BDD.]
+
+  Description [Finds the set of prime implicants of a BDD b.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+array_t * bdd_compute_primes(DdManager * dd, bdd_ptr b) {
+  array_t * result;
+  bdd_ptr low = bdd_dup(b);
+
+  result = bdd_compute_primes_low(dd, b, low);
+  bdd_free(dd, low);
+
+  return result;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Finds the essential variables of a DD.]
+
+  Description [Returns the cube of the essential variables. A positive
+  literal means that the variable must be set to 1 for the function to be
+  1. A negative literal means that the variable must be set to 0 for the
+  function to be 1. Returns a pointer to the cube BDD if successful;
+  NULL otherwise.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+bdd_ptr bdd_compute_essentials(DdManager *dd, bdd_ptr b) {
+  DdNode * result;
+
+  result = Cudd_FindEssential(dd, b);
+  common_error(result, "bdd_compute_essentials: result = NULL");
+  Cudd_Ref(result);
+  return((bdd_ptr)result);
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Determines whether f is less than or equal to g.]
+
+  Description [Returns 1 if f is less than or equal to g; 0 otherwise.
+  No new nodes are created.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+int bdd_leq(DdManager *dd, bdd_ptr f, bdd_ptr g) {
+  return(Cudd_bddLeq(dd, f, g));
+}
+
+/**Function********************************************************************
+
+  Synopsis [Swaps two sets of variables of the same size (x and y) in
+  the BDD f.]
+
+  Description [Swaps two sets of variables of the same size (x and y)
+  in the BDD f. The size is given by n. The two sets of variables are
+  assumed to be disjoint.  Returns a pointer to the resulting BDD if
+  successful; an error (which either results in a jump to the last CATCH-FAIL
+  block, or in a call to exit()) is triggered otherwise.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+bdd_ptr bdd_swap_variables(DdManager *dd, bdd_ptr f,
+                           bdd_ptr *x_varlist,
+                           bdd_ptr *y_varlist,
+                           int n) {
+
+  DdNode *result;
+
+  result = Cudd_bddSwapVariables(dd, f, x_varlist, y_varlist, n);
+  common_error(result, "bdd_swap_variables: result == NULL");
+  Cudd_Ref(result);
+  return((bdd_ptr)result);
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Writes a blif file representing the argument BDDs.]
+
+  Description [Writes a blif file representing the argument BDDs as a
+  network of multiplexers. One multiplexer is written for each BDD
+  node. It returns 1 in case of success; 0 otherwise (e.g.,
+  out-of-memory, file system full, or an ADD with constants different
+  from 0 and 1).  bdd_DumpBlif does not close the file: This is the
+  caller responsibility. bdd_DumpBlif uses a minimal unique subset of
+  the hexadecimal address of a node as name for it.  If the argument
+  inames is non-null, it is assumed to hold the pointers to the names
+  of the inputs. Similarly for onames.]
+
+  SideEffects [None]
+
+  SeeAlso     [bdd_DumpBlifBody dd_dump_dot]
+
+******************************************************************************/
+int bdd_DumpBlif(
+  DdManager* dd     /* manager */,
+  int n             /* number of output nodes to be dumped */,
+  bdd_ptr* f        /* array of output nodes to be dumped */,
+  char** inames     /* array of input names (or NULL) */,
+  char** onames     /* array of output names (or NULL) */,
+  char* mname       /* model name (or NULL) */,
+  FILE* fp          /* pointer to the dump file */)
+{
+  return(Cudd_DumpBlif(dd, n, f, inames, onames, mname, fp));
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Writes a blif body representing the argument BDDs.]
+
+  Description [Writes a blif body representing the argument BDDs as a
+  network of multiplexers.  No header (.model, .inputs, and .outputs) and
+  footer (.end) are produced by this function.  One multiplexer is written
+  for each BDD node. It returns 1 in case of success; 0 otherwise (e.g.,
+  out-of-memory, file system full, or an ADD with constants different
+  from 0 and 1).  bdd_DumpBlifBody does not close the file: This is the
+  caller responsibility. bdd_DumpBlifBody uses a minimal unique subset of
+  the hexadecimal address of a node as name for it.  If the argument
+  inames is non-null, it is assumed to hold the pointers to the names
+  of the inputs. Similarly for onames. This function prints out only
+  .names part.]
+
+  SideEffects [None]
+
+  SeeAlso     [bdd_DumpBlif dd_dump_dot]
+
+******************************************************************************/
+int bdd_DumpBlifBody(
+  DdManager* dd     /* manager */,
+  int  n            /* number of output nodes to be dumped */,
+  bdd_ptr* f        /* array of output nodes to be dumped */,
+  char** inames     /* array of input names (or NULL) */,
+  char** onames     /* array of output names (or NULL) */,
+  FILE* fp          /* pointer to the dump file */)
+{
+  return(Cudd_DumpBlifBody(dd, n, f, inames, onames, fp));
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Substitutes g for x_v in the BDD for f.]
+
+  Description [Substitutes g for x_v in the BDD for f. v is the index of the
+  variable to be substituted. bdd_compose passes the corresponding
+  projection function to the recursive procedure, so that the cache may
+  be used.  Returns the composed BDD if successful; an error (which either
+  results in a jump to the last CATCH-FAIL  block, or in a call to exit())
+  is triggered otherwise.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+bdd_ptr bdd_compose(DdManager *dd, bdd_ptr f, bdd_ptr g, int v) {
+
+  DdNode *result;
+
+  result = Cudd_bddCompose(dd, f, g, v);
+  common_error(result, "bdd_compose: result == NULL");
+  Cudd_Ref(result);
+  return((bdd_ptr)result);
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Returns the reference count of a node.]
+
+  Description [Returns the reference count of a node. The node pointer can be
+  either regular or complemented.]
+
+  SideEffects [None]
+
+  SeeAlso []
+
+******************************************************************************/
+int bdd_ref_count(bdd_ptr n)
+{
+  int result;
+  DdNode *N;
+
+  N = Cudd_Regular((DdNode*)n);
+  common_error(N, "Could not make node regular, while getting ref-count.");
+  result = N->ref;
+  return(result);
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Computes the value of a function with given variable values.]
+
+  Description [Computes the value (0 or 1) of the given function with the given
+  values for variables. The parameter "values" must be an array, at least as
+  long as the number of indices in the BDD.]
+
+  SideEffects [None]
+
+  SeeAlso     []
+
+******************************************************************************/
+int calculate_bdd_value(DdManager* mgr, bdd_ptr f, int* values)
+{
+  unsigned char invert = Cudd_IsComplement(f) ? 1u : 0u;
+  while (!Cudd_IsConstant(f)) {
+    if (values[(Cudd_Regular(f))->index]) f = Cudd_T(f);
+    else f = Cudd_E(f);
+    invert ^= (Cudd_IsComplement(f) ? 1u : 0u);
+  }
+  return(invert ? 0 : 1);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -2919,4 +3588,3 @@ static void InvalidType(FILE *file, char *field, char *expected)
     fprintf(file, "Illegal type detected. %s expected\n", expected);
 
 } /* end of InvalidType */
-

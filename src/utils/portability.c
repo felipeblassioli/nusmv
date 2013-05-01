@@ -19,7 +19,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 2005 by ITC-irst. 
+  Copyright (C) 2005 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -35,23 +35,24 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information of NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 
 #if HAVE_CONFIG_H
-#include "config.h"
+#include "nusmv-config.h"
 #endif
 
+#include "utils/portability.h"
 #include "utils/utils.h"
 
 
-static char rcsid[] UTIL_UNUSED = "$Id: portability.c,v 1.1.2.1 2005/11/16 14:38:51 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: portability.c,v 1.1.4.1.6.1 2010-02-22 09:11:38 nusmv Exp $";
 
 
 /*---------------------------------------------------------------------------*/
@@ -92,17 +93,7 @@ static char rcsid[] UTIL_UNUSED = "$Id: portability.c,v 1.1.2.1 2005/11/16 14:38
 /* Definition of exported functions                                          */
 /*---------------------------------------------------------------------------*/
 
-#if !HAVE_MALLOC 
-# undef malloc
-# if HAVE_MALLOC_H
-#  include <malloc.h>
-# elif HAVE_STDLIB_H
-#  include <stdlib.h>
-# endif
-
-# ifndef malloc
-void* malloc(size_t);
-# endif /* ifndef malloc */
+#if !NUSMV_HAVE_MALLOC 
 
 /**Function********************************************************************
 
@@ -121,20 +112,10 @@ void* rpl_malloc(size_t size)
   if (size == 0) size = 1;
   return malloc(size);
 }
-#endif /* if not HAVE_MALLOC */
+#endif /* if not NUSMV_HAVE_MALLOC */
 
 
-#if !HAVE_MALLOC 
-# undef realloc
-# if HAVE_MALLOC_H
-#  include <malloc.h>
-# elif HAVE_STDLIB_H
-#  include <stdlib.h>
-# endif
-
-# ifndef realloc
-void* realloc(void*, size_t);
-# endif /* ifndef realloc */
+#if !NUSMV_HAVE_MALLOC 
 
 /**Function********************************************************************
 
@@ -153,7 +134,7 @@ void* rpl_realloc(void* ptr, size_t size)
   if (size == 0) size = 1;
   return realloc(ptr, size);
 }
-#endif /* if not HAVE_MALLOC */
+#endif /* if not NUSMV_HAVE_MALLOC */
 
 
 /*---------------------------------------------------------------------------*/

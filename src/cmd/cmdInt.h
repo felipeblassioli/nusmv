@@ -10,7 +10,7 @@
 
   Copyright   [
   This file is part of the ``cmd'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -26,13 +26,13 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: cmdInt.h,v 1.3.4.1.2.2 2005/11/16 12:09:45 nusmv Exp $]
+  Revision    [$Id: cmdInt.h,v 1.3.4.1.2.1.2.3 2005-11-16 12:04:40 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -40,10 +40,10 @@
 #define _CMDINT
 
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
-#include "sm/sm.h"
+#include "cinit/cinit.h"
 #include "cmd.h"
 #include "opt/opt.h"
 #include "dd/dd.h"
@@ -52,12 +52,16 @@
 #include "utils/avl.h"
 
 
-#if STDC_HEADERS
+#if NUSMV_STDC_HEADERS
 #  include <string.h>
 #  include <stdlib.h>
 #else
-void free();
+ void free();
+# if NUSMV_HAVE_STRING_H
+#  include <string.h>
+# else
 char *strncpy();
+# endif
 #endif
 
 /*
@@ -71,24 +75,24 @@ char *strncpy();
 #  include <sys/ioctl.h>
 #  include <sys/termios.h>
 #else
-#  if HAVE_SYS_IOCTL_H
+#  if NUSMV_HAVE_SYS_IOCTL_H
 #    include <sys/ioctl.h>
 #  else
-#    if HAVE_SYS_TERMIOS_H
+#    if NUSMV_HAVE_SYS_TERMIOS_H
 #      include <sys/termios.h>
 #    endif
 #  endif
 #endif
 
 /* Linux and its wacky header files... */
-#if HAVE_BSD_SGTTY_H
+#if NUSMV_HAVE_BSD_SGTTY_H
 #  include <bsd/sgtty.h>
 #endif
 
-#if HAVE_SYS_SIGNAL_H
+#if NUSMV_HAVE_SYS_SIGNAL_H
 #  include <sys/signal.h>
 #endif
-#if HAVE_SIGNAL_H
+#if NUSMV_HAVE_SIGNAL_H
 #  include <signal.h>
 #endif
 
@@ -98,8 +102,8 @@ char *strncpy();
  * distribution, seems to handle most of the nonsense.
  */
 
-#if HAVE_DIRENT_H
-# if HAVE_SYS_TYPES_H
+#if NUSMV_HAVE_DIRENT_H
+# if NUSMV_HAVE_SYS_TYPES_H
 #  include <sys/types.h>
 # endif
 #  include <dirent.h>
@@ -107,13 +111,13 @@ char *strncpy();
 #else
 #  define dirent direct
 #  define NAMLEN(dirent) (dirent)->d_namlen
-#  if HAVE_SYS_NDIR_H
+#  if NUSMV_HAVE_SYS_NDIR_H
 #    include <sys/ndir.h>
 #  endif
-#  if HAVE_SYS_DIR_H
+#  if NUSMV_HAVE_SYS_DIR_H
 #    include <sys/dir.h>
 #  endif
-#  if HAVE_NDIR_H
+#  if NUSMV_HAVE_NDIR_H
 #    include <ndir.h>
 #  endif
 #endif
@@ -127,14 +131,19 @@ typedef struct CmdAliasDescrStruct {
   char **argv;
 } CmdAliasDescr_t;
 
+typedef struct CommandDescrStruct {
+  char *name;
+  PFI command_fp;
+  int changes_hmgr;
+  boolean reentrant;
+} CommandDescr_t;
+
 /*---------------------------------------------------------------------------*/
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
 extern avl_tree *cmdCommandTable;
-extern avl_tree *cmdFlagTable;
 extern avl_tree *cmdAliasTable;
 extern array_t  *cmdCommandHistoryArray;
-extern options_ptr options;
 
 /**AutomaticStart*************************************************************/
 
@@ -142,7 +151,10 @@ extern options_ptr options;
 /* Function prototypes                                                       */
 /*---------------------------------------------------------------------------*/
 
+EXTERN boolean Cmd_CommandDefined(const char* name);
+EXTERN CommandDescr_t *Cmd_CommandGet(const char* name);
 EXTERN void CmdCommandFree(char * value);
+EXTERN CommandDescr_t * CmdCommandCopy(CommandDescr_t * value);
 EXTERN char * CmdFgetsFilec(char * buf, int size, FILE * stream, char * prompt);
 EXTERN char * CmdFgetsFilec(char * buf, int size, FILE * stream, char * prompt);
 EXTERN char * CmdHistorySubstitution(char * line, int * changed);

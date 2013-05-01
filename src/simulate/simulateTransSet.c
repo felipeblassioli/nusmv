@@ -12,7 +12,7 @@
 
   Copyright   [
   This file is part of the ``simulate'' package of NuSMV version 2.
-  Copyright (C) 2004 by ITC-irst.
+  Copyright (C) 2004 by FBK-irst.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -28,11 +28,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -40,7 +40,11 @@
 #include "simulateTransSet.h"
 #include "simulateInt.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: simulateTransSet.c,v 1.1.2.8.2.3 2005/05/03 12:38:37 nusmv Exp $";
+#include "compile/symb_table/SymbTable.h"
+#include "utils/utils_io.h"
+#include "trace/pkg_trace.h"
+
+static char rcsid[] UTIL_UNUSED = "$Id: simulateTransSet.c,v 1.1.2.8.4.9.4.5 2009-09-17 11:49:52 nusmv Exp $";
 
 
 
@@ -55,16 +59,16 @@ static char rcsid[] UTIL_UNUSED = "$Id: simulateTransSet.c,v 1.1.2.8.2.3 2005/05
   associated inputs. This structure is privately used by the function
   that must take a choice about the next state/input pair during
   simulation]
-  
+
 ******************************************************************************/
 typedef struct SimulateTransSet_TAG {
-  Encoding_ptr senc;
+  SymbTable_ptr symb_table;
   BddEnc_ptr enc;
   DdManager* dd;
 
   bdd_ptr from_state;
-  
-  int next_states_num;    
+
+  int next_states_num;
   bdd_ptr* next_states_array;
 
   int* inputs_num_per_state;
@@ -86,10 +90,10 @@ typedef struct SimulateTransSet_TAG {
   SeeAlso           []
 
 ******************************************************************************/
-SimulateTransSet_ptr 
-SimulateTransSet_create(BddFsm_ptr fsm, BddEnc_ptr enc, 
-			bdd_ptr from_state, bdd_ptr next_states_set, 
-			double next_states_count)
+SimulateTransSet_ptr
+SimulateTransSet_create(BddFsm_ptr fsm, BddEnc_ptr enc,
+                        bdd_ptr from_state, bdd_ptr next_states_set,
+                        double next_states_count)
 {
   SimulateTransSet_ptr self;
   bdd_ptr inputs_mask = (bdd_ptr) NULL;
@@ -102,67 +106,101 @@ SimulateTransSet_create(BddFsm_ptr fsm, BddEnc_ptr enc,
 
   self->enc = enc;
   self->dd = BddEnc_get_dd_manager(enc);
-  self->senc = BddEnc_get_symbolic_encoding(enc);
+  self->symb_table = BaseEnc_get_symb_table(BASE_ENC(enc));
 
   self->next_states_num = (int) next_states_count;
   self->next_states_array = ALLOC(bdd_ptr, self->next_states_num);
   nusmv_assert(self->next_states_array != (bdd_ptr*) NULL);
 
-  /* next states set: */
-  if (Encoding_get_state_vars_num(self->senc) >= 1) {
-    res = BddEnc_pick_all_terms_states(enc, next_states_set, 
-				       self->next_states_array, 
-				       self->next_states_num);
-    nusmv_assert(!res); /* res is true if an error occurred */
-  } 
-  else {
-    /* there are no state variables at all */
-    self->next_states_array[0] = bdd_one(self->dd);
+
+  { /* counts the number of state variables only within the layers
+       that have been committed to the passed encoding */
+    NodeList_ptr layers;
+    ListIter_ptr iter;
+    boolean state_frozen_var_exist = false;
+
+    layers = BaseEnc_get_committed_layers(BASE_ENC(enc));
+    iter = NodeList_get_first_iter(layers);
+
+    while ((!ListIter_is_end(iter)) && (!state_frozen_var_exist)) {
+      SymbLayer_ptr layer = SYMB_LAYER(NodeList_get_elem_at(layers, iter));
+      state_frozen_var_exist = SymbLayer_get_state_vars_num(layer) > 0
+        || SymbLayer_get_frozen_vars_num(layer) > 0;
+      iter = ListIter_get_next(iter);
+    }
+
+    /* next states set: */
+    if (state_frozen_var_exist) {
+      res = BddEnc_pick_all_terms_states(enc, next_states_set,
+                                         self->next_states_array,
+                                         self->next_states_num);
+      nusmv_assert(!res); /* res is true if an error occurred */
+    }
+    else {
+      /* there are no state or frozen variables at all */
+      self->next_states_array[0] = bdd_true(self->dd);
+    }
   }
 
   if (from_state != (bdd_ptr) NULL) {
     int s;
+    int num_inputs;
 
     self->from_state = bdd_dup(from_state);
-    
-    /* inputs related fields are filled only if inputs are actually  used */
+
+    /* inputs related fields are filled only if inputs areactually  used */
     self->inputs_num_per_state = ALLOC(int, next_states_count);
     nusmv_assert(self->inputs_num_per_state != (int*) NULL);
-    
+
     self->inputs_per_state = ALLOC(bdd_ptr*, next_states_count);
     nusmv_assert(self->inputs_per_state != (bdd_ptr**) NULL);
-     
+
     inputs_mask = BddEnc_get_input_vars_mask_bdd(enc);
+
+    { /* calculates the number of input variables in the default
+         class */
+      array_t* layers;
+      char* name;
+      int i;
+
+      num_inputs = 0;
+      layers = SymbTable_get_class_layer_names(self->symb_table,
+                                               (const char*) NULL);
+      arrayForEachItem(char*, layers, i, name) {
+        num_inputs += SymbLayer_get_input_vars_num(
+                         SymbTable_get_layer(self->symb_table, name));
+      }
+    }
 
     /* calculates the set of inputs: */
     for (s=0; s < next_states_count; ++s) {
-      if (Encoding_get_model_input_vars_num(self->senc) > 0) {
-	bdd_ptr* array_of_inputs;
-	bdd_ptr inputs_per_state; 
+      if (num_inputs > 0) {
+        bdd_ptr* array_of_inputs;
+        bdd_ptr inputs_per_state;
 
-	inputs_per_state = 
-	  BddFsm_states_to_states_get_inputs(fsm, self->from_state, 
-					     self->next_states_array[s]);
+        inputs_per_state =
+          BddFsm_states_to_states_get_inputs(fsm, self->from_state,
+                                             self->next_states_array[s]);
 
-	bdd_and_accumulate(self->dd, &inputs_per_state, inputs_mask);
-      
-	self->inputs_num_per_state[s] = 
-	  BddEnc_count_inputs_of_bdd(enc, inputs_per_state);
+        bdd_and_accumulate(self->dd, &inputs_per_state, inputs_mask);
 
-	array_of_inputs = ALLOC(bdd_ptr, self->inputs_num_per_state[s]);
-	nusmv_assert(array_of_inputs != (bdd_ptr*) NULL);
+        self->inputs_num_per_state[s] =
+          BddEnc_count_inputs_of_bdd(enc, inputs_per_state);
 
-	res = BddEnc_pick_all_terms_inputs(enc, inputs_per_state, 
-					   array_of_inputs, 
-					   self->inputs_num_per_state[s]);
-	nusmv_assert(!res); /* res is true if an error occurred */
+        array_of_inputs = ALLOC(bdd_ptr, self->inputs_num_per_state[s]);
+        nusmv_assert(array_of_inputs != (bdd_ptr*) NULL);
 
-	self->inputs_per_state[s] = array_of_inputs;
+        res = BddEnc_pick_all_terms_inputs(enc, inputs_per_state,
+                                           array_of_inputs,
+                                           self->inputs_num_per_state[s]);
+        nusmv_assert(!res); /* res is true if an error occurred */
+
+        self->inputs_per_state[s] = array_of_inputs;
       }
       else {
-	/* there are no input variables at all */
-	self->inputs_num_per_state[s] = 0;
-	self->inputs_per_state[s] = (bdd_ptr*) NULL;
+        /* there are no input variables at all */
+        self->inputs_num_per_state[s] = 0;
+        self->inputs_per_state[s] = (bdd_ptr*) NULL;
       }
     }
 
@@ -173,10 +211,10 @@ SimulateTransSet_create(BddFsm_ptr fsm, BddEnc_ptr enc,
     self->inputs_num_per_state = (int*) NULL;
     self->inputs_per_state = (bdd_ptr**) NULL;
   }
-  
-  return self;  
+
+  return self;
 }
-			  
+
 
 /**Function********************************************************************
 
@@ -189,7 +227,7 @@ SimulateTransSet_create(BddFsm_ptr fsm, BddEnc_ptr enc,
   SeeAlso           []
 
 ******************************************************************************/
-void SimulateTransSet_destroy(SimulateTransSet_ptr self) 
+void SimulateTransSet_destroy(SimulateTransSet_ptr self)
 {
   int s;
 
@@ -208,12 +246,12 @@ void SimulateTransSet_destroy(SimulateTransSet_ptr self)
     for (s=0; s < self->next_states_num; ++s) {
       int i;
       for (i = 0; i < self->inputs_num_per_state[s]; ++i) {
-	if (self->inputs_per_state[s][i] != (bdd_ptr) NULL) {
-	  bdd_free(self->dd, self->inputs_per_state[s][i]);
-	}
+        if (self->inputs_per_state[s][i] != (bdd_ptr) NULL) {
+          bdd_free(self->dd, self->inputs_per_state[s][i]);
+        }
       }
       if (self->inputs_per_state != (bdd_ptr**) NULL) {
-	FREE(self->inputs_per_state[s]);
+        FREE(self->inputs_per_state[s]);
       }
     }
     FREE(self->inputs_num_per_state);
@@ -225,7 +263,7 @@ void SimulateTransSet_destroy(SimulateTransSet_ptr self)
 
   Synopsis [Getter for the state the transition set is originating from]
 
-  Description       [Returned BDD is referenced. NULL can be returned if 
+  Description       [Returned BDD is referenced. NULL can be returned if
   this transition set target states are the initial states set]
 
   SideEffects       []
@@ -233,7 +271,7 @@ void SimulateTransSet_destroy(SimulateTransSet_ptr self)
   SeeAlso           []
 
 ******************************************************************************/
-bdd_ptr SimulateTransSet_get_from_state(const SimulateTransSet_ptr self) 
+bdd_ptr SimulateTransSet_get_from_state(const SimulateTransSet_ptr self)
 {
   bdd_ptr res;
 
@@ -244,7 +282,7 @@ bdd_ptr SimulateTransSet_get_from_state(const SimulateTransSet_ptr self)
   }
   else res = (bdd_ptr) NULL;
 
-  return res;   
+  return res;
 }
 
 
@@ -259,7 +297,7 @@ bdd_ptr SimulateTransSet_get_from_state(const SimulateTransSet_ptr self)
   SeeAlso           []
 
 ******************************************************************************/
-int SimulateTransSet_get_next_state_num(const SimulateTransSet_ptr self) 
+int SimulateTransSet_get_next_state_num(const SimulateTransSet_ptr self)
 {
   SIMULATE_TRANS_SET_CHECK_INSTANCE(self);
 
@@ -278,8 +316,8 @@ int SimulateTransSet_get_next_state_num(const SimulateTransSet_ptr self)
   SeeAlso           []
 
 ******************************************************************************/
-bdd_ptr SimulateTransSet_get_next_state(const SimulateTransSet_ptr self, 
-					int state_index)
+bdd_ptr SimulateTransSet_get_next_state(const SimulateTransSet_ptr self,
+                                        int state_index)
 {
   SIMULATE_TRANS_SET_CHECK_INSTANCE(self);
   nusmv_assert((state_index >= 0) && (state_index < self->next_states_num));
@@ -290,7 +328,7 @@ bdd_ptr SimulateTransSet_get_next_state(const SimulateTransSet_ptr self,
 
 /**Function********************************************************************
 
-  Synopsis          [Returns the cardinality of the inputs set going to 
+  Synopsis          [Returns the cardinality of the inputs set going to
   a given state, represented by its index in the set of target states]
 
   Description       [Returned BDD is referenced. NULL can be returned
@@ -302,9 +340,9 @@ bdd_ptr SimulateTransSet_get_next_state(const SimulateTransSet_ptr self,
 
 ******************************************************************************/
 int SimulateTransSet_get_inputs_num_at_state(const SimulateTransSet_ptr self,
-					     int state_index)
+                                             int state_index)
 {
-  int res = 0; 
+  int res = 0;
 
   SIMULATE_TRANS_SET_CHECK_INSTANCE(self);
   nusmv_assert((state_index >= 0) && (state_index < self->next_states_num));
@@ -319,7 +357,7 @@ int SimulateTransSet_get_inputs_num_at_state(const SimulateTransSet_ptr self,
 
 /**Function********************************************************************
 
-  Synopsis          [Returns the Ith input from the set of inputs 
+  Synopsis          [Returns the Ith input from the set of inputs
   going to the Nth state in the set of target states]
 
   Description       []
@@ -329,16 +367,16 @@ int SimulateTransSet_get_inputs_num_at_state(const SimulateTransSet_ptr self,
   SeeAlso           []
 
 ******************************************************************************/
-bdd_ptr SimulateTransSet_get_input_at_state(const SimulateTransSet_ptr self, 
-					    int state_index, int input_index)
+bdd_ptr SimulateTransSet_get_input_at_state(const SimulateTransSet_ptr self,
+                                            int state_index, int input_index)
 {
   SIMULATE_TRANS_SET_CHECK_INSTANCE(self);
   nusmv_assert((state_index >= 0) && (state_index < self->next_states_num));
-  nusmv_assert( (input_index >= 0) && 
-		(input_index < 
-		 SimulateTransSet_get_inputs_num_at_state(self,
-							  state_index)) );
-  
+  nusmv_assert( (input_index >= 0) &&
+                (input_index <
+                 SimulateTransSet_get_inputs_num_at_state(self,
+                                                          state_index)) );
+
   return bdd_dup(self->inputs_per_state[state_index][input_index]);
 }
 
@@ -357,9 +395,9 @@ bdd_ptr SimulateTransSet_get_input_at_state(const SimulateTransSet_ptr self,
   SeeAlso           []
 
 ******************************************************************************/
-void SimulateTransSet_get_state_input_at(const SimulateTransSet_ptr self, 
-					 int index, 
-					 bdd_ptr* state, bdd_ptr* input)
+void SimulateTransSet_get_state_input_at(const SimulateTransSet_ptr self,
+                                         int index,
+                                         bdd_ptr* state, bdd_ptr* input)
 {
   int count;
   int s, states_num;
@@ -375,27 +413,27 @@ void SimulateTransSet_get_state_input_at(const SimulateTransSet_ptr self,
     int inputs_num;
 
     inputs_num = SimulateTransSet_get_inputs_num_at_state(self, s);
-    
+
     if (inputs_num > 0) {
       if (index < count + inputs_num) {
-	/* found the state and the input: */
-	*state = SimulateTransSet_get_next_state(self, s);
-	*input = SimulateTransSet_get_input_at_state(self, s, index - count);
-	break;
+        /* found the state and the input: */
+        *state = SimulateTransSet_get_next_state(self, s);
+        *input = SimulateTransSet_get_input_at_state(self, s, index - count);
+        break;
       }
       count += inputs_num;
     }
     else {
       if (index == count) {
-	*state = SimulateTransSet_get_next_state(self, s);
-	*input = (bdd_ptr) NULL;
-	break;
+        *state = SimulateTransSet_get_next_state(self, s);
+        *input = (bdd_ptr) NULL;
+        break;
       }
       count += 1;
     }
   } /* for each state */
 }
-				      
+
 
 /**Function********************************************************************
 
@@ -408,8 +446,8 @@ void SimulateTransSet_get_state_input_at(const SimulateTransSet_ptr self,
   SeeAlso           []
 
 ******************************************************************************/
-void SimulateTransSet_get_state_input_rand(const SimulateTransSet_ptr self, 
-					   bdd_ptr* state, bdd_ptr* input)
+void SimulateTransSet_get_state_input_rand(const SimulateTransSet_ptr self,
+                                           bdd_ptr* state, bdd_ptr* input)
 {
   int s;
 
@@ -422,11 +460,11 @@ void SimulateTransSet_get_state_input_rand(const SimulateTransSet_ptr self,
   *state = SimulateTransSet_get_next_state(self, s);
 
   if (SimulateTransSet_get_inputs_num_at_state(self, s) > 0) {
-    int i; 
+    int i;
     i = utils_random() % SimulateTransSet_get_inputs_num_at_state(self, s);
 
     *input = SimulateTransSet_get_input_at_state(self, s, i);
-  }  
+  }
 }
 
 
@@ -441,8 +479,8 @@ void SimulateTransSet_get_state_input_rand(const SimulateTransSet_ptr self,
   SeeAlso           []
 
 ******************************************************************************/
-void SimulateTransSet_get_state_input_det(const SimulateTransSet_ptr self, 
-					  bdd_ptr* state, bdd_ptr* input)
+void SimulateTransSet_get_state_input_det(const SimulateTransSet_ptr self,
+                                          bdd_ptr* state, bdd_ptr* input)
 {
   SIMULATE_TRANS_SET_CHECK_INSTANCE(self);
 
@@ -453,7 +491,7 @@ void SimulateTransSet_get_state_input_det(const SimulateTransSet_ptr self,
 
   if (SimulateTransSet_get_inputs_num_at_state(self, 0) > 0) {
     *input = SimulateTransSet_get_input_at_state(self, 0, 0);
-  }  
+  }
 }
 
 
@@ -461,7 +499,7 @@ void SimulateTransSet_get_state_input_det(const SimulateTransSet_ptr self,
 
   Synopsis          []
 
-  Description       [Returned value is the maximum index that can be chosen by 
+  Description       [Returned value is the maximum index that can be chosen by
   user in interactive mode]
 
   SideEffects       []
@@ -469,87 +507,101 @@ void SimulateTransSet_get_state_input_det(const SimulateTransSet_ptr self,
   SeeAlso           []
 
 ******************************************************************************/
-int SimulateTransSet_print(const SimulateTransSet_ptr self, 
-			   boolean show_changes_only, 
-			   FILE* output) 
+int SimulateTransSet_print(const SimulateTransSet_ptr self,
+                           boolean show_changes_only,
+                           FILE* output)
 {
-  int s;
   int states_num;
   int count;
-  Encoding_ptr senc;
 
   SIMULATE_TRANS_SET_CHECK_INSTANCE(self);
 
-  senc = BddEnc_get_symbolic_encoding(self->enc);
-
   states_num = SimulateTransSet_get_next_state_num(self);
-  
+
   if (states_num > 0) {
-    fprintf(output, 
-	    "\n***************  AVAILABLE STATES  *************\n");
+    fprintf(output,
+            "\n***************  AVAILABLE STATES  *************\n");
   }
   else {
-    fprintf(output, 
-	    "\n*******  THERE ARE NO AVAILABLE STATES  *******\n");
+    fprintf(output,
+            "\n*******  THERE ARE NO AVAILABLE STATES  *******\n");
   }
 
-
   inc_indent_size();
-  BddEnc_print_bdd_begin(self->enc, 
- 	 NodeList_to_node_ptr(Encoding_get_model_state_symbols_list(senc)), 
-   	 show_changes_only);
-  
-  count = 0;
-  for (s=0; s < states_num; ++s) {
-    int inputs_num;
-    bdd_ptr state;
 
-    inputs_num = SimulateTransSet_get_inputs_num_at_state(self, s);
+  {
+    array_t* ls = SymbTable_get_class_layer_names(self->symb_table,
+                                                  (const char*) NULL);
+    NodeList_ptr unfiltered_state_symbs =
+      SymbTable_get_layers_sf_symbols(self->symb_table, ls);
+    NodeList_ptr state_symbs =
+      TracePkg_get_filtered_symbols(unfiltered_state_symbs);
 
-    fprintf(output, "\n================= State =================\n");   
-    if (inputs_num == 0) {
-      fprintf(output, "%d) -------------------------\n", count); 
-    }
+    NodeList_ptr unfiltered_input_symbs =
+      SymbTable_get_layers_i_symbols(self->symb_table, ls);
+    NodeList_ptr input_symbs =
+      TracePkg_get_filtered_symbols(unfiltered_input_symbs);
 
-    state = SimulateTransSet_get_next_state(self, s);
+    int s;
 
-    BddEnc_print_bdd(self->enc, state, output);
-    bdd_free(self->dd, state);
+    /* these are no longer needed */
+    NodeList_destroy(unfiltered_input_symbs);
+    NodeList_destroy(unfiltered_state_symbs);
 
-    if (inputs_num > 0) {
-      int i;
+    BddEnc_print_bdd_begin(self->enc, state_symbs, show_changes_only);
 
-      inc_indent_size();      
-      BddEnc_print_bdd_begin(self->enc, 
-			     NodeList_to_node_ptr(
-  			  Encoding_get_model_input_symbols_list(senc)), 
-			     show_changes_only);
+    count = 0;
+    for (s=0; s < states_num; ++s) {
+      int inputs_num;
+      bdd_ptr state;
 
-      fprintf(output, "\nThis state is reachable through:"); 
+      inputs_num = SimulateTransSet_get_inputs_num_at_state(self, s);
 
-      for (i=0; i < inputs_num; ++i) {
-	bdd_ptr input; 
-      
-	input = SimulateTransSet_get_input_at_state(self, s, i);
+      fprintf(output, "\n================= State =================\n");
+      if (inputs_num == 0) {
+        fprintf(output, "%d) -------------------------\n", count);
+      }
 
-	fprintf(output, "\n%d) -------------------------\n", count);
+      state = SimulateTransSet_get_next_state(self, s);
 
-	BddEnc_print_bdd(self->enc, input, output);
-	bdd_free(self->dd, input);
+      BddEnc_print_bdd(self->enc, state, (VPFNNF) NULL, output);
+      bdd_free(self->dd, state);
 
-	if (i < inputs_num - 1) count += 1;
-      } /* for each input */
+      if (inputs_num > 0) {
+        int i;
 
-      BddEnc_print_bdd_end(self->enc);      
-      dec_indent_size();
-    }
+        inc_indent_size();
+        BddEnc_print_bdd_begin(self->enc, input_symbs, show_changes_only);
 
-    count += 1;      
-    fprintf(output, "\n");
-  } /* for each state */
+        fprintf(output, "\nThis state is reachable through:");
+
+        for (i=0; i < inputs_num; ++i) {
+          bdd_ptr input;
+
+          input = SimulateTransSet_get_input_at_state(self, s, i);
+
+          fprintf(output, "\n%d) -------------------------\n", count);
+
+          BddEnc_print_bdd(self->enc, input, (VPFNNF) NULL, output);
+          bdd_free(self->dd, input);
+
+          if (i < inputs_num - 1) count += 1;
+        } /* for each input */
+
+        BddEnc_print_bdd_end(self->enc);
+        dec_indent_size();
+      }
+
+      count += 1;
+      fprintf(output, "\n");
+    } /* for each state */
+
+    BddEnc_print_bdd_end(self->enc);
+
+    NodeList_destroy(input_symbs);
+    NodeList_destroy(state_symbs);
+  }
 
   dec_indent_size();
-  BddEnc_print_bdd_end(self->enc);
-
   return count - 1;
 }

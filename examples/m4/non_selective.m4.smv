@@ -83,8 +83,8 @@ DEFINE
 
   window_size := 
     case
-      ack_in_window : WE - receive_channel mod No_Id;
-      TRUE          : WE - WB mod No_Id;
+      ack_in_window : (WE - receive_channel) mod No_Id;
+      TRUE          : (WE - WB) mod No_Id;
     esac;
 
   new_transmission := window_size < MAX_WS; 
@@ -103,7 +103,7 @@ ASSIGN
 
   next(WE) := 
     case
-      new_transmission : WE + 1 mod No_Id; 
+      new_transmission : (WE + 1) mod No_Id; 
       -- the window is not of maximal size, we can send something.
       TRUE             : WE;
     esac;
@@ -149,7 +149,7 @@ ASSIGN
 
   next(expected_frame) := 
     case
-      receive  : expected_frame + 1 mod No_Id;
+      receive  : (expected_frame + 1) mod No_Id;
       TRUE     : expected_frame;
     esac;
 
@@ -157,7 +157,7 @@ ASSIGN
     -- We pospone the ack in order to simulate a delay
     -- between the sender and the receiver.
     case
-      receive & send_ack : expected_frame + 1 mod No_Id;
+      receive & send_ack : (expected_frame + 1) mod No_Id;
       -- ack for the receive now.
      !receive & send_ack : expected_frame; 
       -- ack for the last received frame.

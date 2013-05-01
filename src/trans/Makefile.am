@@ -26,28 +26,35 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.2 2003/08/07 15:43:32]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = trans.h transInt.h bdd/BddTrans.h bdd/Cluster.h bdd/ClusterList.h \
-	bdd/ClusterOptions.h bdd/bdd.h generic/GenericTrans.h \
-	generic/GenericTrans_private.h bdd/BddTrans.c bdd/Cluster.c \
-	bdd/ClusterList.c bdd/ClusterOptions.c generic/GenericTrans.c 
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
+
+
+PKG_H = trans.h  transInt.h
+PKG_C = 
+BDD_H = bdd/bdd.h  bdd/BddTrans.h  bdd/Cluster.h  bdd/ClusterList.h  bdd/ClusterOptions.h
+BDD_C = bdd/BddTrans.c  bdd/Cluster.c  bdd/ClusterList.c  bdd/ClusterOptions.c
+GENERIC_H = generic/GenericTrans.h  generic/GenericTrans_private.h
+GENERIC_C = generic/GenericTrans.c
+
+PKG_SOURCES = $(PKG_H) $(BDD_H) $(GENERIC_H) \
+							transInt.h \
+							$(PKG_C) $(BDD_C) $(GENERIC_C)
 
 transdir = $(includedir)/nusmv/trans
-nobase_trans_HEADERS = trans.h \
-	generic/GenericTrans.h \
-	bdd/bdd.h bdd/BddTrans.h bdd/Cluster.h bdd/ClusterList.h \
-	bdd/ClusterOptions.h
+nobase_trans_HEADERS = $(PKG_H) $(BDD_H) $(GENERIC_H)
 
 # -------------------------------------------------------
 

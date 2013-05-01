@@ -16,7 +16,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -32,14 +32,15 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
+#include "bmc.h"
 #include "bmcInt.h"
 #include "bmcTableau.h"
 #include "bmcUtils.h"
@@ -47,9 +48,12 @@
 
 #include "parser/symbols.h"
 #include "utils/error.h"
-#include "bmcWff.h"
+#include "utils/assoc.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: bmcTableau.c,v 1.6.4.5.2.2 2004/07/28 15:33:03 nusmv Exp $";
+#include "wff/wff.h"
+#include "wff/w2w/w2w.h"
+
+static char rcsid[] UTIL_UNUSED = "$Id: bmcTableau.c,v 1.6.4.5.2.2.2.2.6.2 2008-03-03 17:44:51 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -78,45 +82,48 @@ static char rcsid[] UTIL_UNUSED = "$Id: bmcTableau.c,v 1.6.4.5.2.2 2004/07/28 15
 /*---------------------------------------------------------------------------*/
 
 static be_ptr
-Bmc_Tableau_GetLoopCondition ARGS((const BmcVarsMgr_ptr vars_mgr,
+Bmc_Tableau_GetLoopCondition ARGS((const BeEnc_ptr be_enc,
                                    const int k, const int l));
 
 static be_ptr
-Bmc_Tableau_GetAllLoopsDisjunction ARGS((const BmcVarsMgr_ptr vars_mgr, const int k));
+Bmc_Tableau_GetAllLoopsDisjunction ARGS((const BeEnc_ptr be_enc, const int k));
 
 
 /* Tableaux for LTL: */
 static be_ptr
-Bmc_TableauLTL_GetNoLoop ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauLTL_GetNoLoop ARGS((const BeFsm_ptr be_fsm,
                                const node_ptr ltl_wff, const int k));
 static be_ptr
-Bmc_TableauLTL_GetSingleLoop ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauLTL_GetSingleLoop ARGS((const BeFsm_ptr be_fsm,
                                    const node_ptr ltl_wff,
                                    const int k, const int l));
 static be_ptr
-Bmc_TableauLTL_GetAllLoops ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauLTL_GetAllLoops ARGS((const BeFsm_ptr be_fsm,
                                  const node_ptr ltl_wff,
                                  const int k, const int l));
 static be_ptr
-Bmc_TableauLTL_GetAllLoopsDepth1 ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauLTL_GetAllLoopsDepth1 ARGS((const BeFsm_ptr be_fsm,
                                        const node_ptr ltl_wff, const int k));
 
 
 /* Tableaux for PLTL: */
 static be_ptr
-Bmc_TableauPLTL_GetNoLoop ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauPLTL_GetNoLoop ARGS((const BeFsm_ptr be_fsm,
                                 const node_ptr ltl_wff, const int k));
 static be_ptr
-Bmc_TableauPLTL_GetSingleLoop ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauPLTL_GetSingleLoop ARGS((const BeFsm_ptr be_fsm,
                                     const node_ptr ltl_wff,
 				    const int k, const int l));
 static be_ptr
-Bmc_TableauPLTL_GetAllLoops ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauPLTL_GetAllLoops ARGS((const BeFsm_ptr be_fsm,
                                   const node_ptr ltl_wff, 
 				  const int k, const int l));
 static be_ptr
-Bmc_TableauPLTL_GetAllLoopsDepth1 ARGS((const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauPLTL_GetAllLoopsDepth1 ARGS((const BeFsm_ptr be_fsm,
                                         const node_ptr ltl_wff, const int k));
+
+static boolean 
+isPureFuture_aux ARGS((const node_ptr pltl_wff, hash_ptr memoiz));
 
 
 /**AutomaticEnd***************************************************************/
@@ -140,10 +147,10 @@ Bmc_TableauPLTL_GetAllLoopsDepth1 ARGS((const Bmc_Fsm_ptr be_fsm,
   SeeAlso            []
 
 ******************************************************************************/
-be_ptr Bmc_Tableau_GetNoLoop(const Bmc_Fsm_ptr be_fsm,
+be_ptr Bmc_Tableau_GetNoLoop(const BeFsm_ptr be_fsm,
 			     const node_ptr ltl_wff, const int k)
 {
-  return (isPureFuture(ltl_wff) && !opt_bmc_force_pltl_tableau(options)) ?
+  return (isPureFuture(ltl_wff) && !opt_bmc_force_pltl_tableau(OptsHandler_get_instance())) ?
         Bmc_TableauLTL_GetNoLoop (be_fsm, ltl_wff, k) :
         Bmc_TableauPLTL_GetNoLoop(be_fsm, ltl_wff, k) ;
 }
@@ -163,10 +170,10 @@ be_ptr Bmc_Tableau_GetNoLoop(const Bmc_Fsm_ptr be_fsm,
   SeeAlso            []
 
 ******************************************************************************/
-be_ptr Bmc_Tableau_GetSingleLoop (const Bmc_Fsm_ptr be_fsm,
+be_ptr Bmc_Tableau_GetSingleLoop (const BeFsm_ptr be_fsm,
 				  const node_ptr ltl_wff, const int k, const int l)
 {
-  return (isPureFuture(ltl_wff) && !opt_bmc_force_pltl_tableau(options)) ?
+  return (isPureFuture(ltl_wff) && !opt_bmc_force_pltl_tableau(OptsHandler_get_instance())) ?
         Bmc_TableauLTL_GetSingleLoop  (be_fsm,ltl_wff,k,l) :
         Bmc_TableauPLTL_GetSingleLoop (be_fsm,ltl_wff,k,l) ;
 }
@@ -185,10 +192,10 @@ be_ptr Bmc_Tableau_GetSingleLoop (const Bmc_Fsm_ptr be_fsm,
   SeeAlso            []
 
 ******************************************************************************/
-be_ptr Bmc_Tableau_GetAllLoops(const Bmc_Fsm_ptr be_fsm,
+be_ptr Bmc_Tableau_GetAllLoops(const BeFsm_ptr be_fsm,
 			       const node_ptr ltl_wff, const int k, const int l)
 {
-  return (isPureFuture(ltl_wff) && !opt_bmc_force_pltl_tableau(options)) ?
+  return (isPureFuture(ltl_wff) && !opt_bmc_force_pltl_tableau(OptsHandler_get_instance())) ?
         Bmc_TableauLTL_GetAllLoops (be_fsm, ltl_wff, k, l) :
         Bmc_TableauPLTL_GetAllLoops(be_fsm, ltl_wff, k, l) ;
 }
@@ -208,10 +215,10 @@ be_ptr Bmc_Tableau_GetAllLoops(const Bmc_Fsm_ptr be_fsm,
   SeeAlso            []
 
 ******************************************************************************/
-be_ptr Bmc_Tableau_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
+be_ptr Bmc_Tableau_GetAllLoopsDepth1(const BeFsm_ptr be_fsm,
 				     const node_ptr ltl_wff, const int k)
 {
-  return (isPureFuture(ltl_wff) && !opt_bmc_force_pltl_tableau(options)) ?
+  return (isPureFuture(ltl_wff) && !opt_bmc_force_pltl_tableau(OptsHandler_get_instance())) ?
         Bmc_TableauLTL_GetAllLoopsDepth1 (be_fsm, ltl_wff, k) :
         Bmc_TableauPLTL_GetAllLoopsDepth1(be_fsm, ltl_wff, k) ;
 }
@@ -228,11 +235,11 @@ be_ptr Bmc_Tableau_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
   SeeAlso            []
 
 ******************************************************************************/
-be_ptr Bmc_Tableau_GetLtlTableau ARGS((const Bmc_Fsm_ptr be_fsm,
-				       const node_ptr ltl_wff,
-				       const int k, const int l))
+be_ptr Bmc_Tableau_GetLtlTableau(const BeFsm_ptr be_fsm, 
+                                 const node_ptr ltl_wff,
+                                 const int k, const int l)
 {
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(Bmc_Fsm_GetVarsManager(be_fsm));
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(BeFsm_get_be_encoding(be_fsm));
   be_ptr res = NULL;
 
   if (Bmc_Utils_IsAllLoopbacks(l)) {
@@ -243,19 +250,19 @@ be_ptr Bmc_Tableau_GetLtlTableau ARGS((const Bmc_Fsm_ptr be_fsm,
     if (k==0) {
       tableau_loops = Be_Falsity(be_mgr);
     }
-    else if (opt_bmc_optimized_tableau(options)) {
+    else if (opt_bmc_optimized_tableau(OptsHandler_get_instance())) {
       /* use depth1 optimization: */
-      node_ptr fairness = Bmc_Fsm_GetListOfFairness(be_fsm);
-      int depth =  Bmc_Wff_GetDepth(ltl_wff);
+      node_ptr fairness = BeFsm_get_fairness_list(be_fsm);
+      int depth =  Wff_get_depth(ltl_wff);
       
       if ( (fairness == NULL) && (depth == 0) ) {
-	tableau_loops = Be_Falsity(be_mgr);
+        tableau_loops = Be_Falsity(be_mgr);
       }
       else if ( (fairness == NULL) && (depth == 1) ) {
-	tableau_loops = Bmc_Tableau_GetAllLoopsDepth1(be_fsm, ltl_wff, k);
+        tableau_loops = Bmc_Tableau_GetAllLoopsDepth1(be_fsm, ltl_wff, k);
       }
       else {
-	tableau_loops = Bmc_Tableau_GetAllLoops(be_fsm, ltl_wff, k, 0);
+        tableau_loops = Bmc_Tableau_GetAllLoops(be_fsm, ltl_wff, k, 0);
       }
     }
     else {
@@ -304,15 +311,15 @@ be_ptr Bmc_Tableau_GetLtlTableau ARGS((const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauLTL_GetSingleLoopWithFairness(const Bmc_Fsm_ptr be_fsm,
-					 const node_ptr ltl_wff,
-					 const int k, const int l)
+Bmc_TableauLTL_GetSingleLoopWithFairness(const BeFsm_ptr be_fsm,
+                                         const node_ptr ltl_wff,
+                                         const int k, const int l)
 {
   be_ptr fairness = Bmc_Model_GetFairness(be_fsm, k, l);
-  be_ptr tableau = BmcInt_Tableau_GetAtTime(Bmc_Fsm_GetVarsManager(be_fsm),
-					    ltl_wff, 0, k, l);
-  return Be_And(BmcVarsMgr_GetBeMgr(Bmc_Fsm_GetVarsManager(be_fsm)),
-		tableau, fairness);
+  be_ptr tableau = BmcInt_Tableau_GetAtTime(BeFsm_get_be_encoding(be_fsm),
+                                            ltl_wff, 0, k, l);
+  return Be_And(BeEnc_get_be_manager(BeFsm_get_be_encoding(be_fsm)),
+                tableau, fairness);
 }
 
 
@@ -329,17 +336,17 @@ Bmc_TableauLTL_GetSingleLoopWithFairness(const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauLTL_GetSingleLoop (const Bmc_Fsm_ptr be_fsm,
-			      const node_ptr ltl_wff, const int k, const int l)
+Bmc_TableauLTL_GetSingleLoop (const BeFsm_ptr be_fsm,
+                              const node_ptr ltl_wff, const int k, const int l)
 {
-  be_ptr loopback = Bmc_Tableau_GetLoopCondition(Bmc_Fsm_GetVarsManager(be_fsm), 
-						 k, l);
+  be_ptr loopback = Bmc_Tableau_GetLoopCondition(BeFsm_get_be_encoding(be_fsm), 
+                                                 k, l);
 
   be_ptr tableau  = Bmc_TableauLTL_GetSingleLoopWithFairness(be_fsm, ltl_wff, 
-							     k, l);
+                                                             k, l);
 
-  return Be_And(BmcVarsMgr_GetBeMgr(Bmc_Fsm_GetVarsManager(be_fsm)), 
-		loopback, tableau);
+  return Be_And(BeEnc_get_be_manager(BeFsm_get_be_encoding(be_fsm)), 
+                loopback, tableau);
 }
 
 
@@ -357,20 +364,21 @@ Bmc_TableauLTL_GetSingleLoop (const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauLTL_GetNoLoop(const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauLTL_GetNoLoop(const BeFsm_ptr be_fsm,
                          const node_ptr ltl_wff, const int k)
 {
-  BmcVarsMgr_ptr vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
-  be_ptr fairness_k = Bmc_Model_GetFairness(be_fsm, k, Bmc_Utils_GetNoLoopback());
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  be_ptr fairness_k = Bmc_Model_GetFairness(be_fsm, k, 
+                                            Bmc_Utils_GetNoLoopback());
 
   /* lazy evaluation: */
-  if ( Be_IsFalse(BmcVarsMgr_GetBeMgr(vars_mgr), fairness_k) ) {
+  if ( Be_IsFalse(BeEnc_get_be_manager(be_enc), fairness_k) ) {
     return fairness_k;
   }
   else {
-    be_ptr tableau_k = BmcInt_Tableau_GetAtTime(vars_mgr, ltl_wff, 0, k,
-						Bmc_Utils_GetNoLoopback());
-    return Be_And(BmcVarsMgr_GetBeMgr(vars_mgr), fairness_k, tableau_k);
+    be_ptr tableau_k = BmcInt_Tableau_GetAtTime(be_enc, ltl_wff, 0, k,
+                                                Bmc_Utils_GetNoLoopback());
+    return Be_And(BeEnc_get_be_manager(be_enc), fairness_k, tableau_k);
   }
 }
 
@@ -389,11 +397,11 @@ Bmc_TableauLTL_GetNoLoop(const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauLTL_GetAllLoops(const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauLTL_GetAllLoops(const BeFsm_ptr be_fsm,
 			   const node_ptr ltl_wff, const int k, const int l)
 {
-  BmcVarsMgr_ptr vars_mgr  = Bmc_Fsm_GetVarsManager(be_fsm);
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
+  BeEnc_ptr be_enc  = BeFsm_get_be_encoding(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
   be_ptr result = Be_Falsity(be_mgr);
   int j;
 
@@ -404,7 +412,7 @@ Bmc_TableauLTL_GetAllLoops(const Bmc_Fsm_ptr be_fsm,
   for (j = l; j < k; ++j) {
     be_ptr tableau_k_j = 
       Bmc_TableauLTL_GetSingleLoopWithFairness(be_fsm, ltl_wff, k, j);
-    be_ptr loop_k_j = Bmc_Tableau_GetLoopCondition(vars_mgr, k, j);
+    be_ptr loop_k_j = Bmc_Tableau_GetLoopCondition(be_enc, k, j);
 
     /* tableau + loopback + fairness at step k with loop at j = k */
     be_ptr tableau_LP_k_j = Be_And(be_mgr, tableau_k_j, loop_k_j);
@@ -434,35 +442,35 @@ Bmc_TableauLTL_GetAllLoops(const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
-				 const node_ptr ltl_wff, const int k)
+Bmc_TableauLTL_GetAllLoopsDepth1(const BeFsm_ptr be_fsm,
+                                 const node_ptr ltl_wff, const int k)
 {
   be_ptr result=NULL;
 
-  BmcVarsMgr_ptr vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
 
   switch (node_get_type(ltl_wff)) {
   case OP_FUTURE:
   case UNTIL:
-    result = Be_Falsity(BmcVarsMgr_GetBeMgr(vars_mgr));
+    result = Be_Falsity(BeEnc_get_be_manager(be_enc));
     break;
 
   case OP_NEXT:
     if (k==0) {
       result = 
-	Be_And( BmcVarsMgr_GetBeMgr(vars_mgr),
-		Bmc_TableauLTL_GetSingleLoopWithFairness(be_fsm, car(ltl_wff), 
-							 k, 0),
-		Bmc_Tableau_GetLoopCondition(vars_mgr, k, 0) );
+        Be_And( BeEnc_get_be_manager(be_enc),
+                Bmc_TableauLTL_GetSingleLoopWithFairness(be_fsm, 
+                                                         car(ltl_wff), k, 0),
+                Bmc_Tableau_GetLoopCondition(be_enc, k, 0) );
     }
-    else result = Be_Falsity(BmcVarsMgr_GetBeMgr(vars_mgr));
+    else result = Be_Falsity(BeEnc_get_be_manager(be_enc));
     break;
 
   case RELEASES:                        /* RELEASES     */
-    result = Be_And( BmcVarsMgr_GetBeMgr(vars_mgr),
-		     Bmc_Tableau_GetAllLoopsDisjunction(vars_mgr, k),
-		     bmc_tableauGetGloballyAtTime(vars_mgr,
-						  cdr(ltl_wff), 0, k, 0) );
+    result = Be_And( BeEnc_get_be_manager(be_enc),
+                     Bmc_Tableau_GetAllLoopsDisjunction(be_enc, k),
+                     bmc_tableauGetGloballyAtTime(be_enc,
+                                                  cdr(ltl_wff), 0, k, 0) );
     break;
 
   case TRUEEXP:
@@ -474,9 +482,9 @@ Bmc_TableauLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
     internal_error("Unexpected formula with depth zero had been found.\n");
 
   default:
-    result = Be_And( BmcVarsMgr_GetBeMgr(vars_mgr),
-		     Bmc_Tableau_GetAllLoopsDisjunction(vars_mgr, k),
-		     BmcInt_Tableau_GetAtTime(vars_mgr, ltl_wff, 0, k, 0) );
+    result = Be_And( BeEnc_get_be_manager(be_enc),
+                     Bmc_Tableau_GetAllLoopsDisjunction(be_enc, k),
+                     BmcInt_Tableau_GetAtTime(be_enc, ltl_wff, 0, k, 0) );
   }
 
   nusmv_assert(result != NULL); /* result must exist */
@@ -502,20 +510,16 @@ Bmc_TableauLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauPLTL_GetNoLoop(const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauPLTL_GetNoLoop(const BeFsm_ptr be_fsm,
                           const node_ptr ltl_wff, const int k)
 {
- int noLoopBack         = Bmc_Utils_GetNoLoopback();
-
- BmcVarsMgr_ptr vars_mgr   = Bmc_Fsm_GetVarsManager(be_fsm);
-
- Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
-
- be_ptr   fairness_k   = Bmc_Model_GetFairness(be_fsm, k, noLoopBack);
-
- be_ptr    tableau_k   = Be_IsFalse(be_mgr, fairness_k) ?
+ int noLoopBack = Bmc_Utils_GetNoLoopback();
+ BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+ Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
+ be_ptr fairness_k = Bmc_Model_GetFairness(be_fsm, k, noLoopBack);
+ be_ptr tableau_k = Be_IsFalse(be_mgr, fairness_k) ?
    Be_Falsity(be_mgr) :
-   Bmc_TableauPLTL_GetTableau(vars_mgr, ltl_wff, k, noLoopBack);
+   Bmc_TableauPLTL_GetTableau(be_enc, ltl_wff, k, noLoopBack);
 
  return tableau_k;
 }
@@ -535,16 +539,16 @@ Bmc_TableauPLTL_GetNoLoop(const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauPLTL_GetSingleLoop (const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauPLTL_GetSingleLoop (const BeFsm_ptr be_fsm,
                                const node_ptr ltl_wff, 
 			       const int k, const int l)
 {
-  BmcVarsMgr_ptr   vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
 
-  be_ptr loopback = Bmc_Tableau_GetLoopCondition(vars_mgr, k, l);
+  be_ptr loopback = Bmc_Tableau_GetLoopCondition(be_enc, k, l);
   be_ptr fairness = Bmc_Model_GetFairness(be_fsm, k, l);
-  be_ptr  tableau = Bmc_TableauPLTL_GetTableau(vars_mgr, ltl_wff, k, l);
+  be_ptr  tableau = Bmc_TableauPLTL_GetTableau(be_enc, ltl_wff, k, l);
 
   return Be_And(be_mgr, loopback, Be_And(be_mgr,fairness,tableau));
 }
@@ -565,16 +569,14 @@ Bmc_TableauPLTL_GetSingleLoop (const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauPLTL_GetAllLoops(const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauPLTL_GetAllLoops(const BeFsm_ptr be_fsm,
                             const node_ptr ltl_wff,
                             const int k, const int startFromL)
 {
-  int l;
-
-  BmcVarsMgr_ptr   vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
+  BeEnc_ptr   be_enc = BeFsm_get_be_encoding(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
   be_ptr result = Be_Falsity(be_mgr);
-
+  int l;
 
   for (l=startFromL; l<k; l++) {
     be_ptr tableau_k_l = Bmc_TableauPLTL_GetSingleLoop(be_fsm, ltl_wff, k, l);
@@ -603,12 +605,12 @@ Bmc_TableauPLTL_GetAllLoops(const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_TableauPLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
+Bmc_TableauPLTL_GetAllLoopsDepth1(const BeFsm_ptr be_fsm,
                                   const node_ptr pltl_wff, const int k)
 {
    be_ptr result;
-   BmcVarsMgr_ptr   vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
-   Be_Manager_ptr  beMgr = BmcVarsMgr_GetBeMgr(vars_mgr);
+   BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+   Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
    int nodeType  = node_get_type(pltl_wff);
 
    switch (nodeType) {
@@ -622,7 +624,7 @@ Bmc_TableauPLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
       loop path.                                                             */
    case    UNTIL:
    case OP_FUTURE:
-     result = Be_Falsity(beMgr);
+     result = Be_Falsity(be_mgr);
      break;
 
    /* A formula "Xg" with depth one is such that g is a purely propositional
@@ -633,7 +635,7 @@ Bmc_TableauPLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
       we can immediately conclude that every k-loop with k>1 generates an
       unsatisfiable formula as well. */
    case OP_NEXT:
-     result = (k>1)? Be_Falsity(beMgr) : 
+     result = (k>1)? Be_Falsity(be_mgr) : 
        Bmc_TableauPLTL_GetSingleLoop(be_fsm,pltl_wff,k,0);
      break;
 
@@ -644,9 +646,9 @@ Bmc_TableauPLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
 
    case RELEASES:
      result = 
-       Be_And(beMgr,
-	      Bmc_Tableau_GetAllLoopsDisjunction(vars_mgr, k),
-	      Bmc_TableauPLTL_GetAllTimeTableau(vars_mgr, cdr(pltl_wff), k));
+       Be_And(be_mgr,
+	      Bmc_Tableau_GetAllLoopsDisjunction(be_enc, k),
+	      Bmc_TableauPLTL_GetAllTimeTableau(be_enc, cdr(pltl_wff), k));
 
    /* It can be proved that any depth-one PLTL formula is such that its
       tableau on (k-l)-loops does not depend on the value of l. So, the tableau
@@ -656,9 +658,9 @@ Bmc_TableauPLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
       tableau once, and then put it together with the disjunction of all the
       loop conditions on k-loops.                                            */
    default:
-     result = Be_And(beMgr,
-		     Bmc_Tableau_GetAllLoopsDisjunction(vars_mgr, k),
-		     Bmc_TableauPLTL_GetTableau(vars_mgr,pltl_wff, k, 0));
+     result = Be_And(be_mgr,
+		     Bmc_Tableau_GetAllLoopsDisjunction(be_enc, k),
+		     Bmc_TableauPLTL_GetTableau(be_enc,pltl_wff, k, 0));
    }
    nusmv_assert(result != NULL);
 
@@ -675,7 +677,9 @@ Bmc_TableauPLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
   Description        [State l and state k are forced to represent the same
                       state by conjuncting the if-and-only-if conditions
                       {Vil<->Vik} between Vil (variable i at time l) and Vik
-                      (variable i at time k) for each variable Vi.]
+                      (variable i at time k) for each state variable Vi.
+                      Note:frozen vars do not participate in this conjunct,
+                      since they are implicitly keep their valus over all states]
 
   SideEffects        []
 
@@ -683,22 +687,27 @@ Bmc_TableauPLTL_GetAllLoopsDepth1(const Bmc_Fsm_ptr be_fsm,
 
 ******************************************************************************/
 static be_ptr
-Bmc_Tableau_GetLoopCondition(const BmcVarsMgr_ptr vars_mgr, const int k, const int l)
+Bmc_Tableau_GetLoopCondition(const BeEnc_ptr be_enc, const int k, const int l)
 {
- be_ptr tableau_iff_constraints = Be_Truth(BmcVarsMgr_GetBeMgr(vars_mgr));
+  Be_Manager_ptr be_mgr; 
+  be_ptr tableau_iff_constraints; 
+  int iter; 
 
- int v;
- int numVariables = BmcVarsMgr_GetStateVarsNum(vars_mgr);
+  nusmv_assert(l < k);
 
- nusmv_assert(l < k);
+  be_mgr = BeEnc_get_be_manager(be_enc);
+  tableau_iff_constraints = Be_Truth(BeEnc_get_be_manager(be_enc));
 
- for (v=0; v < numVariables; v++) {
-   tableau_iff_constraints =
-     Be_And( BmcVarsMgr_GetBeMgr(vars_mgr), tableau_iff_constraints,
-	     Be_Iff(BmcVarsMgr_GetBeMgr(vars_mgr),
-		    BmcVarsMgr_VarIndex2Timed(vars_mgr, v, l, k),
-		    BmcVarsMgr_VarIndex2Timed(vars_mgr, v, k, k)) );
- }
+  iter = BeEnc_get_first_untimed_var_index(be_enc, BE_VAR_TYPE_CURR);
+  while (BeEnc_is_var_index_valid(be_enc, iter)) {
+    tableau_iff_constraints =
+      Be_And(be_mgr, tableau_iff_constraints,
+	     Be_Iff(be_mgr, 
+		    BeEnc_index_to_timed(be_enc, iter, l), 
+		    BeEnc_index_to_timed(be_enc, iter, k)));
+
+    iter = BeEnc_get_next_var_index(be_enc, iter, BE_VAR_TYPE_CURR);
+  }
 
  return tableau_iff_constraints;
 }
@@ -718,14 +727,15 @@ Bmc_Tableau_GetLoopCondition(const BmcVarsMgr_ptr vars_mgr, const int k, const i
 
 ******************************************************************************/
 static be_ptr
-Bmc_Tableau_GetAllLoopsDisjunction(const BmcVarsMgr_ptr vars_mgr, const int k)
+Bmc_Tableau_GetAllLoopsDisjunction(const BeEnc_ptr be_enc, const int k)
 {
-  be_ptr result = Be_Falsity(BmcVarsMgr_GetBeMgr(vars_mgr));
-
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
+  be_ptr result = Be_Falsity(be_mgr);
   int l;
+
   for (l=0; l<k; l++) {
-    result = Be_Or(BmcVarsMgr_GetBeMgr(vars_mgr),
-		   Bmc_Tableau_GetLoopCondition(vars_mgr, k, l),
+    result = Be_Or(be_mgr,
+		   Bmc_Tableau_GetLoopCondition(be_enc, k, l),
 		   result);
   }
 
@@ -745,12 +755,45 @@ Bmc_Tableau_GetAllLoopsDisjunction(const BmcVarsMgr_ptr vars_mgr, const int k)
 ******************************************************************************/
 boolean isPureFuture(const node_ptr pltl_wff)
 {
- int nodeType = node_get_type(pltl_wff);
+  boolean res;
+  hash_ptr memoiz = new_assoc();
+  nusmv_assert(memoiz != (hash_ptr) NULL);
 
- if (isVariable(nodeType) || isConstantExpr(nodeType))  return true;
- else if (isPastOp(nodeType))  return false;
- else if (isBinaryOp(nodeType)) {
-   return isPureFuture(car(pltl_wff)) && isPureFuture(cdr(pltl_wff));
- }
- else  return isPureFuture(car(pltl_wff));
+  res = isPureFuture_aux(pltl_wff, memoiz);
+  free_assoc(memoiz);
+  return res;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Memoized private service of isPureFuture]
+
+  Description        []
+
+  SideEffects        []
+
+  SeeAlso            []
+******************************************************************************/
+static boolean isPureFuture_aux(const node_ptr pltl_wff, hash_ptr memoiz)
+{
+  boolean res;
+  int nodeType = node_get_type(pltl_wff);
+
+  int mval = PTR_TO_INT(find_assoc(memoiz, pltl_wff));
+  if (mval == 1) return false;
+  else if (mval == 2) return true;
+
+  /* not memoized */
+  if (isVariable(nodeType) || isConstantExpr(nodeType))  return true;
+  
+  if (isPastOp(nodeType)) res = false;
+  else if (isBinaryOp(nodeType)) {
+    res = isPureFuture_aux(car(pltl_wff), memoiz) && 
+      isPureFuture_aux(cdr(pltl_wff), memoiz);
+  }
+  else res = isPureFuture_aux(car(pltl_wff), memoiz);
+
+  insert_assoc(memoiz, pltl_wff, PTR_FROM_INT(node_ptr, res ? 2:1));
+  return res;
 }

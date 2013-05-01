@@ -24,20 +24,21 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[Makefile.am,v 1.1.2.3 2004/03/18 16:17:35 nusmv Exp]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
 html_files = $(shell find . -name '*.html' -print) 
-dirs = $(shell find . -depth -type d -print | grep -v CVS | grep ./)
+dirs = $(shell find . -depth -type d -print | grep -v -E "CVS|\.svn" | grep ./)
 htmldatadir = $(datadir)/nusmv/doc/html
-nobase_htmldata_DATA = $(dirs) $(html_files) 
+
+nobase_htmldata_DATA = $(html_files) 
 txt_files = $(shell find $(top_builddir)/share/help -name '*.txt' -print) 
 
 MOSTLYCLEANFILES = $(html_files) $(txt_files)
@@ -46,7 +47,7 @@ MOSTLYCLEANFILES = $(html_files) $(txt_files)
 docs: helpfiles
 
 helpfiles: 
-	cd $(top_builddir) && $(SHELL) helpers/extract_doc .
+	$(SHELL) $(top_builddir)/helpers/extract_doc `pwd`/$(top_builddir) `pwd`/$(top_srcdir)
 
 install: docs install-am
 

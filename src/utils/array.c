@@ -10,7 +10,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -26,11 +26,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -38,13 +38,15 @@
 #include "util.h"
 #include "utils/array.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: array.c,v 1.2.6.1 2003/07/22 15:25:03 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: array.c,v 1.2.6.1.4.2.6.2 2008-04-23 14:46:35 nusmv Exp $";
 
 #define INIT_SIZE	3
 
 unsigned int array_global_index;
 int array_global_insert;
 
+
+/* Allocate an array of 'number' elements,each of which require 'size' bytes */
 array_t *
 array_do_alloc(size, number)
 int size;
@@ -203,9 +205,23 @@ int new_size;
     (void) memset(pos, 0, (array->n_size - old_size)*array->obj_size);
     return 1;
 }
-
-void
-array_sort(array, compare)
+
+
+/**Function********************************************************************
+
+Synopsis           [Sorts the array content according to the given 
+comparison function]
+
+Description [IMPORTANT!  compare has argument int (void* pa, void* pb)
+pa and pb must be dereferenced to access the corresponding values into
+the array ]
+
+SideEffects        []
+
+SeeAlso            []
+
+******************************************************************************/
+void array_sort(array, compare)
 array_t *array;
 int (*compare)();
 {
@@ -247,7 +263,7 @@ void (*free_func)();
 
 int			/* would like to be void, except for macro's */
 array_abort(a,i)
-array_t *a;
+const array_t *a;
 int i;
 {
     fputs("array: ",stderr);

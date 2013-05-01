@@ -4,7 +4,8 @@
 
   PackageName [enc.bdd]
 
-  Synopsis    [The BddEncCache class implementation]
+  Synopsis    [The BddEncCache class implementation. This class is
+  intended to be used exclusively by the class BddEnc.]
 
   Description []
 
@@ -14,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``enc.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst.
+  Copyright (C) 2003 by FBK-irst.
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,22 +31,24 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
-#include "bddInt.h"
 #include "BddEncCache.h"
 #include "BddEnc_private.h"
+#include "bddInt.h"
 
 #include "utils/error.h"
 #include "parser/symbols.h"
+#include "compile/compile.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: BddEncCache.c,v 1.1.2.12 2004/05/31 09:07:33 nusmv Exp $";
+
+static char rcsid[] UTIL_UNUSED = "$Id: BddEncCache.c,v 1.1.2.12.4.6.6.10 2009-03-18 19:07:02 nusmv Exp $";
 
 
 /*---------------------------------------------------------------------------*/
@@ -62,37 +65,24 @@ static char rcsid[] UTIL_UNUSED = "$Id: BddEncCache.c,v 1.1.2.12 2004/05/31 09:0
 ******************************************************************************/
 typedef struct BddEncCache_TAG
 {
-  /* corresponding bdd encoding */
-  BddEnc_ptr enc;
+  SymbTable_ptr symb_table;
+  DdManager* dd;
 
   /* This hash associates to an atom the corresponding ADD leaf if
   defined. Suppose to have a declaration of this kind: 
      VAR state : {idle, stopped} 
   then in the constant hash for the atom idle there is the
   corresponding leaf ADD, i.e. the ADD whose value is the symbol
-  idle. This hash is used by the evaluator */
+  idle. This hash is used by the evaluator. 
+  Also, this keeps track of reference counting of multiple times 
+  declared constants. */
   hash_ptr constant_hash;
 
   /* associates var names with corresponding ADDs */
   hash_ptr vars_hash;
 
-  /* This hash is used by eval to cache the result of sexp
-     evaluation. */
-  hash_ptr eval_hash;
-
-  /* this is used only by method BddEnc_get_definition, to keep track
-     of evaluation of definitions, */
-  hash_ptr definition_hash;
-
-  /* for tricky code: status save and restore */
-  struct {
-    hash_ptr constant_hash;
-    hash_ptr vars_hash;
-    hash_ptr eval_hash;
-    hash_ptr definition_hash;
-  } saved_hash;
-
-  boolean saved; 
+  /* hash table used by the evaluator */
+  hash_ptr eval_hash;  
 
 } BddEncCache;
 
@@ -110,14 +100,21 @@ typedef struct BddEncCache_TAG
 /*---------------------------------------------------------------------------*/
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
-static void bdd_enc_cache_init ARGS((BddEncCache_ptr self, BddEnc_ptr enc));
-				     
+static void 
+bdd_enc_cache_init ARGS((BddEncCache_ptr self, SymbTable_ptr symb_table, 
+                         DdManager* dd));
+                                     
 static void bdd_enc_cache_deinit ARGS((BddEncCache_ptr self));
 
-static assoc_retval hash_dup_add ARGS((char* key, char* add, char* ddmgr));
+static assoc_retval 
+hash_free_add ARGS((char* key, char* data, char* arg));
 
 static assoc_retval 
-hash_free_add_evaluating ARGS((char* key, char* data, char* arg));
+hash_free_add_array ARGS((char* key, char* data, char* arg));
+
+static assoc_retval 
+hash_free_add_counted ARGS((char* key, char* data, char* arg));
+
 
 /*---------------------------------------------------------------------------*/
 /* Definition of exported functions                                          */
@@ -126,7 +123,7 @@ hash_free_add_evaluating ARGS((char* key, char* data, char* arg));
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis           [Class constructor]
 
   Description        []
 
@@ -135,20 +132,20 @@ hash_free_add_evaluating ARGS((char* key, char* data, char* arg));
   SeeAlso            []
 
 ******************************************************************************/
-BddEncCache_ptr BddEncCache_create(BddEnc_ptr enc)
+BddEncCache_ptr BddEncCache_create(SymbTable_ptr symb_table, DdManager* dd)
 {
   BddEncCache_ptr self = ALLOC(BddEncCache, 1);
 
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
 
-  bdd_enc_cache_init(self, enc); 
+  bdd_enc_cache_init(self, symb_table, dd); 
   return self;  
 }
 
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis           [Class destructor]
 
   Description        []
 
@@ -166,102 +163,13 @@ void BddEncCache_destroy(BddEncCache_ptr self)
 }
 
 
-/**Macro***********************************************************************
-
-  Synopsis           [Saves and reset the given hash member]
-
-  Description        [Used only by method BddEncCache_push_status_and_reset]
-
-  SideEffects        []
-
-******************************************************************************/
-#define BDD_ENC_CACHE_SAVE_RESET_CACHE(x, dd_mgr)           \
-{                                                           \
-  self->saved_hash.x = self->x;                             \
-  self->x = copy_assoc(self->x);                            \
-  st_foreach(self->x, &hash_dup_add, (char*) dd_mgr);       \
-}
-
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis           [Call to associate given constant to the relative add]
 
-  Description        []
-
-  SideEffects        []
-
-  SeeAlso            []
-
-******************************************************************************/
-void BddEncCache_push_status_and_reset(BddEncCache_ptr self)
-{
-  DdManager* dd;
-  
-  BDD_ENC_CACHE_CHECK_INSTANCE(self);
-  nusmv_assert(!self->saved); /* not already saved */
-
-  dd = BddEnc_get_dd_manager(self->enc);
-
-  BDD_ENC_CACHE_SAVE_RESET_CACHE(constant_hash, dd);
-  BDD_ENC_CACHE_SAVE_RESET_CACHE(vars_hash, dd);
-  BDD_ENC_CACHE_SAVE_RESET_CACHE(eval_hash, dd);
-  BDD_ENC_CACHE_SAVE_RESET_CACHE(definition_hash, dd);
-
-  self->saved = true;
-}
-
-
-/**Macro***********************************************************************
-
-  Synopsis           [Saves and reset the given hash member]
-
-  Description        [Used only by method BddEncCache_push_status_and_reset]
-
-  SideEffects        []
-
-******************************************************************************/
-#define BDD_ENC_CACHE_POP_CACHE(x, dd_mgr)                         \
-{                                                                  \
-  st_foreach(self->x, &hash_free_add_evaluating, (char*) dd_mgr);  \
-  free_assoc(self->x);                                             \
-  self->x = self->saved_hash.x;                                    \
-  self->saved_hash.x = (hash_ptr) NULL;                            \
-}
-
-/**Function********************************************************************
-
-  Synopsis           []
-
-  Description        []
-
-  SideEffects        []
-
-  SeeAlso            []
-
-******************************************************************************/
-void BddEncCache_pop_status(BddEncCache_ptr self)
-{
-  DdManager* dd;
-
-  BDD_ENC_CACHE_CHECK_INSTANCE(self);
-  nusmv_assert(self->saved); /* previously saved */
-
-  dd = BddEnc_get_dd_manager(self->enc);
-
-  BDD_ENC_CACHE_POP_CACHE(constant_hash, dd);
-  BDD_ENC_CACHE_POP_CACHE(vars_hash, dd);
-  BDD_ENC_CACHE_POP_CACHE(eval_hash, dd);
-  BDD_ENC_CACHE_POP_CACHE(definition_hash, dd);
-
-  self->saved = false;
-}
-
-
-/**Function********************************************************************
-
-  Synopsis           []
-
-  Description        []
+  Description        [This methods adds the given constant only if it 
+  does not exist already, otherwise it only increments a reference counter, 
+  to be used when the constant is removed later.]
 
   SideEffects        []
 
@@ -269,28 +177,38 @@ void BddEncCache_pop_status(BddEncCache_ptr self)
 
 ******************************************************************************/
 void BddEncCache_new_constant(BddEncCache_ptr self, node_ptr constant, 
-			      add_ptr constant_add)
+                              add_ptr constant_add)
 {
+  node_ptr data;
+
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
 
-  /* we don't store number constants into the symb cache, so we are
+  /* we don't store number constants into the symb table, so we are
      lazy in that case */
-  nusmv_assert(
-      Encoding_is_symbol_constant(BddEnc_get_symbolic_encoding(self->enc), 
-				  constant) 
-      || (node_get_type(constant) == NUMBER));
+  nusmv_assert(SymbTable_is_symbol_constant(self->symb_table, constant)
+               || (node_get_type(constant) == NUMBER));
 
   /* Not already defined. We reuse already defined leaf */
-  if (! BddEncCache_is_constant_defined(self, constant)) {
-    add_ref(constant_add);
-    insert_assoc(self->constant_hash, constant, (node_ptr) constant_add);
+  if (! BddEncCache_is_constant_encoded(self, constant)) {
+    data = new_node(CONS, NODE_FROM_INT(1), (node_ptr) add_dup(constant_add));
+    insert_assoc(self->constant_hash, constant, data);
   }
-} 
+  else { /* increments the ref counter: */
+    data = find_assoc(self->constant_hash, constant);
+
+    nusmv_assert(data != NODE_PTR(NULL));
+    /* ADD for a constant cannot change over time */
+    nusmv_assert(constant_add == (add_ptr)cdr(data));
+
+    setcar(data, NODE_FROM_INT(NODE_TO_INT(car(data)) + 1));
+  }
+
+}
 
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis           [Removes the given constant from the internal hash]
 
   Description        []
 
@@ -299,41 +217,87 @@ void BddEncCache_new_constant(BddEncCache_ptr self, node_ptr constant,
   SeeAlso            []
 
 ******************************************************************************/
-boolean BddEncCache_is_constant_defined(BddEncCache_ptr self, 
-					node_ptr constant)
+void BddEncCache_remove_constant(BddEncCache_ptr self, node_ptr constant)
 {
+  node_ptr data;
+  int num;
+
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
-  return (find_assoc(self->constant_hash, constant) != (node_ptr) NULL);
+
+  data = find_assoc(self->constant_hash, constant);
+  nusmv_assert(data != (node_ptr) NULL);
+  num = NODE_TO_INT(car(data));
+  
+  if (num <= 1) {
+    add_free(self->dd, (add_ptr) cdr(data));
+    free_node(data);
+    remove_assoc(self->constant_hash, constant);
+  }
+  else {
+    setcar(data, NODE_FROM_INT(num - 1));
+  }
 }
+
+
+/**Function********************************************************************
+
+  Synopsis           [Returns true whether the given constant has been encoded]
+
+  Description        []
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+boolean BddEncCache_is_constant_encoded(const BddEncCache_ptr self, 
+                                        node_ptr constant)
+{
+  node_ptr data; 
+
+  BDD_ENC_CACHE_CHECK_INSTANCE(self);
+
+  data = find_assoc(self->constant_hash, constant);
+  
+  return ((data != (node_ptr) NULL) && (NODE_TO_INT(car(data)) > 0));
+}
+
 
 /**Function********************************************************************
 
   Synopsis      [Returns the ADD corresponding to the given constant, or 
   NULL if not defined]
 
-  Description   [Returned ADD is referenced]
+  Description   [Returned ADD is referenced, NULL is returned if the given 
+  constant is not currently encoded]
   
   Notes         []
 
-  SideEffects        []
+  SideEffects   []
 
 ******************************************************************************/
-add_ptr BddEncCache_lookup_constant(BddEncCache_ptr self, node_ptr constant)
+add_ptr BddEncCache_lookup_constant(const BddEncCache_ptr self, 
+                                    node_ptr constant)
 {
-  add_ptr res;
+  node_ptr data;
+  add_ptr res = (add_ptr) NULL;
 
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
-
-  res = (add_ptr) find_assoc(self->constant_hash, constant);
-  if (res != (add_ptr) NULL) { add_ref(res); }
   
-  return res;  
+  data = find_assoc(self->constant_hash, constant);
+  if ((data != (node_ptr) NULL) &&  (NODE_TO_INT(car(data)) > 0)) {
+    res = (add_ptr) cdr(data);
+    if (res != (add_ptr) NULL) { add_ref(res); }    
+  }
+
+  return res; 
 }
 
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis           [Call this to insert the encoding for a given boolean
+  variable]
 
   Description        []
 
@@ -342,35 +306,32 @@ add_ptr BddEncCache_lookup_constant(BddEncCache_ptr self, node_ptr constant)
   SeeAlso            []
 
 ******************************************************************************/
-void BddEncCache_new_var(BddEncCache_ptr self, node_ptr var_name,
-			 add_ptr var_add)
+void BddEncCache_new_boolean_var(BddEncCache_ptr self, node_ptr var_name,
+                                 add_ptr var_add)
 {
-  Encoding_ptr senc;
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
   
-  senc = BddEnc_get_symbolic_encoding(self->enc);
-
-  /* must be a variable declared inside the symbolic encoding... */
-  if (! Encoding_is_symbol_var(senc, var_name)) {
-    /* is it a non registered NEXT variable? */
-    if (node_get_type(var_name) == NEXT) {
-      if (! Encoding_is_symbol_var(senc, car(var_name))) {
-	internal_error("BddEncCache_new_var: trying to create a new var not previously registered\n");
-      }
-    }
+  /* only variables declared inside the symbolic table
+     and optionally wrapped in NEXT are allowed here */
+  if (SymbTable_is_symbol_var(self->symb_table, var_name) ||
+      (node_get_type(var_name) == NEXT && 
+       SymbTable_is_symbol_var(self->symb_table, car(var_name)))) {
+    /* not already encoded */
+    nusmv_assert(! BddEncCache_is_boolean_var_encoded(self, var_name)); 
+    
+    add_ref(var_add);
+    insert_assoc(self->vars_hash, var_name, (node_ptr) var_add);
   }
-
-  /* not already defined */
-  nusmv_assert(! BddEncCache_is_var_defined(self, var_name)); 
-  
-  add_ref(var_add);
-  insert_assoc(self->vars_hash, var_name, (node_ptr) var_add);
-} 
+  else {
+    internal_error("BddEncCache: trying to encode a new var not "   \
+                   "previously declared\n");
+  }
+}
 
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis           [Removes the given variable from the internal hash]
 
   Description        []
 
@@ -379,7 +340,33 @@ void BddEncCache_new_var(BddEncCache_ptr self, node_ptr var_name,
   SeeAlso            []
 
 ******************************************************************************/
-boolean BddEncCache_is_var_defined(BddEncCache_ptr self, node_ptr var_name)
+void BddEncCache_remove_boolean_var(BddEncCache_ptr self, node_ptr var_name)
+{
+  add_ptr add;
+
+  BDD_ENC_CACHE_CHECK_INSTANCE(self);
+
+  add = (add_ptr) remove_assoc(self->vars_hash, var_name);
+  nusmv_assert(add != (add_ptr) NULL);
+  
+  add_free(self->dd, add);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Returns true whether the given boolean variable has 
+  been encoded]
+
+  Description        []
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+boolean BddEncCache_is_boolean_var_encoded(const BddEncCache_ptr self, 
+                                           node_ptr var_name)
 {
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
   return (find_assoc(self->vars_hash, var_name) != (node_ptr) NULL);
@@ -388,16 +375,19 @@ boolean BddEncCache_is_var_defined(BddEncCache_ptr self, node_ptr var_name)
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis           [Retrieves the add associated with the given boolean 
+  variable, if previously encoded. ]
 
-  Description        []
+  Description        [Returned add is referenced. NULL is returned if the 
+  variable is not encoded.]
 
   SideEffects        []
 
   SeeAlso            []
 
 ******************************************************************************/
-add_ptr BddEncCache_lookup_var(BddEncCache_ptr self, node_ptr var_name)
+add_ptr BddEncCache_lookup_boolean_var(const BddEncCache_ptr self,
+                                       node_ptr var_name)
 {
   add_ptr res;
 
@@ -412,94 +402,163 @@ add_ptr BddEncCache_lookup_var(BddEncCache_ptr self, node_ptr var_name)
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis    [This method is used to remember the result of evaluation,
+  i.e. to keep the association between the expression in node_ptr form
+  and its ADD representation.]
 
-  Description        []
+  Description [The provided array of ADD will belong to "self"
+  and will be freed during destruction of the class or setting a new 
+  value for the same node_ptr.
 
-  SideEffects        []
+  NOTE: if NuSMV option "enable_sexp2bdd_caching" is unset to 0 then no
+  result is kept and the provided add_array is immediately freed]
 
-  SeeAlso            []
+  SideEffects []
+
+  SeeAlso     []
 
 ******************************************************************************/
-void BddEncCache_set_definition(BddEncCache_ptr self, node_ptr name,
-				add_ptr def)
+void BddEncCache_set_evaluation(BddEncCache_ptr self, node_ptr expr,
+                                AddArray_ptr add_array)
 {
+  AddArray_ptr old_array;
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
 
-  if ((def != EVALUATING) && (def != (add_ptr) NULL)) { add_ref(def); }
-  insert_assoc(self->definition_hash, name, (node_ptr) def); 
+  if (!opt_enable_sexp2bdd_caching(OptsHandler_get_instance())) { /* caching is disabled */
+    if (add_array != BDD_ENC_EVALUATING && add_array != ADD_ARRAY(NULL)) {
+      AddArray_destroy(self->dd, add_array);
+    }
+    return;
+  }
+
+  old_array = ADD_ARRAY(find_assoc(self->eval_hash, expr));
+  if ((old_array != BDD_ENC_EVALUATING) && (old_array != ADD_ARRAY(NULL))){
+    nusmv_assert(old_array != add_array);
+    AddArray_destroy(self->dd, old_array);
+  }
+  insert_assoc(self->eval_hash, expr, (node_ptr) add_array); 
 }
 
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis    [This method is used to remove the result of evaluation
+  of an expression]
 
-  Description        []
+  Description [If a given node_ptr is associated already with
+  some AddArray then the array is freed. Otherwise nothing happens]
 
-  SideEffects        []
+  SideEffects []
 
-  SeeAlso            []
+  SeeAlso     []
 
 ******************************************************************************/
-add_ptr BddEncCache_get_definition(BddEncCache_ptr self, node_ptr name)
+void BddEncCache_remove_evaluation(BddEncCache_ptr self, node_ptr expr)
 {
-  add_ptr res;
-  
+  AddArray_ptr old_array;
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
 
-  res = (add_ptr) find_assoc(self->definition_hash, name);
-  if ((res != EVALUATING) && (res != (add_ptr) NULL)) { add_ref(res); }
-
-  return res;
+  old_array = ADD_ARRAY(remove_assoc(self->eval_hash, expr));
+  if ((old_array != BDD_ENC_EVALUATING) && (old_array != ADD_ARRAY(NULL))){
+    AddArray_destroy(self->dd, old_array);
+  }
 }
 
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis           [Retrieve the evaluation of a given symbol, 
+  as an array of ADD]
 
-  Description        []
+  Description        [ If given symbol has not been evaluated, NULL is returned.
+  If the evaluation is in the process, BDD_ENC_EVALUATING is returned.
+  Otherwise an array of ADD is returned.
+
+  The returned array must be destroyed by the invoker!
+
+  NB: For all expressions except of the Word type the returned 
+  array can contain only one element.
+  NB: If NuSMV option enable_sexp2bdd_caching is unset to 0 then the hash
+  may be empty.]
 
   SideEffects        []
 
   SeeAlso            []
 
 ******************************************************************************/
-void BddEncCache_set_evaluation(BddEncCache_ptr self, node_ptr name,
-				add_ptr add)
+AddArray_ptr BddEncCache_get_evaluation(BddEncCache_ptr self, node_ptr expr)
 {
+  AddArray_ptr res;
   BDD_ENC_CACHE_CHECK_INSTANCE(self);
-
-  if ((add != EVALUATING) && (add != (add_ptr) NULL)) { add_ref(add); }
-  insert_assoc(self->eval_hash, name, (node_ptr) add); 
+  res = ADD_ARRAY(find_assoc(self->eval_hash, expr));
+  /* create a duplicate, if it is possible */
+  if (ADD_ARRAY(NULL) == res || BDD_ENC_EVALUATING == res) return res;
+  return AddArray_duplicate(res);
 }
 
 
 /**Function********************************************************************
 
-  Synopsis           []
+  Synopsis [Cleans those hashed entries that are about a symbol that
+  is being removed]
 
-  Description        []
+  Description [This is called by the BddEnc class when a layer is
+  begin removed and the cache has to be cleaned up]
 
   SideEffects        []
 
   SeeAlso            []
 
 ******************************************************************************/
-add_ptr BddEncCache_get_evaluation(BddEncCache_ptr self, node_ptr name)
+void BddEncCache_clean_evaluation_about(BddEncCache_ptr self, 
+                                        NodeList_ptr symbs)
 {
-  add_ptr res;
-  
-  BDD_ENC_CACHE_CHECK_INSTANCE(self);
+  node_ptr expr;
+  assoc_iter iter;
 
-  res = (add_ptr) find_assoc(self->eval_hash, name);
-  if ((res != EVALUATING) && (res != (add_ptr) NULL)) { add_ref(res); }
+  ASSOC_FOREACH(self->eval_hash, iter, &expr, NULL) {
+    Set_t deps =  Formula_GetDependencies(self->symb_table, expr, Nil);
+    int to_be_removed = false;
 
-  return res;
+    if (Set_IsEmpty(deps)) {
+      if (NodeList_belongs_to(symbs, expr)) to_be_removed = true;
+    }
+    else {
+      ListIter_ptr var_iter;
+
+      NODE_LIST_FOREACH(symbs, var_iter) {
+        node_ptr name = NodeList_get_elem_at(symbs, var_iter);
+        if (Set_IsMember(deps, (Set_Element_t) name)) {
+          to_be_removed = true;
+          break;
+        }
+      }
+    }
+
+    if (to_be_removed) BddEncCache_remove_evaluation(self, expr);
+
+    Set_ReleaseSet(deps);
+  }
 }
 
 
+/**Function********************************************************************
+
+  Synopsis    [Cleans up the cache from all the evaluated expressions]
+
+  Description [Note that hashed encoding of boolean variables and constants
+  (added by BddEncCache_new_boolean_var and BddEncCache_new_constant, resp.)
+  remains intact.]
+
+  SideEffects []
+
+  SeeAlso     []
+
+******************************************************************************/
+void BddEncCache_clean_evaluation(BddEncCache_ptr self)
+{
+  st_foreach(self->eval_hash, &hash_free_add_array, (char*) self->dd);
+}
 
 
 /*---------------------------------------------------------------------------*/
@@ -517,23 +576,20 @@ add_ptr BddEncCache_get_evaluation(BddEncCache_ptr self, node_ptr name)
   SeeAlso            [bdd_enc_cache_deinit]
 
 ******************************************************************************/
-static void bdd_enc_cache_init(BddEncCache_ptr self, BddEnc_ptr enc)
+static void bdd_enc_cache_init(BddEncCache_ptr self, 
+                               SymbTable_ptr symb_table, DdManager* dd) 
 {
-  self->enc = enc;
+  self->symb_table = symb_table;
+  self->dd = dd;
 
   self->constant_hash = new_assoc();
   nusmv_assert(self->constant_hash != (hash_ptr) NULL);
 
   self->vars_hash = new_assoc();
   nusmv_assert(self->vars_hash != (hash_ptr) NULL);
-  
+
   self->eval_hash = new_assoc();
   nusmv_assert(self->eval_hash != (hash_ptr) NULL);
-
-  self->definition_hash = new_assoc();
-  nusmv_assert(self->definition_hash != (hash_ptr) NULL);
-
-  self->saved = false;
 }
 
 
@@ -551,20 +607,15 @@ static void bdd_enc_cache_init(BddEncCache_ptr self, BddEnc_ptr enc)
 ******************************************************************************/
 static void bdd_enc_cache_deinit(BddEncCache_ptr self)
 {
-  DdManager* dd = BddEnc_get_dd_manager(self->enc);
-
-  st_foreach(self->constant_hash, &hash_free_add_evaluating, (char*) dd);
+  st_foreach(self->constant_hash, &hash_free_add_counted, 
+             (char*) self->dd);
   free_assoc(self->constant_hash);  
 
-  st_foreach(self->vars_hash, &hash_free_add_evaluating, (char*) dd);
+  st_foreach(self->vars_hash, &hash_free_add, (char*) self->dd);
   free_assoc(self->vars_hash);  
 
-  st_foreach(self->eval_hash, &hash_free_add_evaluating, (char*) dd);
-  free_assoc(self->eval_hash); 
-
-  st_foreach(self->definition_hash, &hash_free_add_evaluating, (char*) dd);
-  free_assoc(self->definition_hash); 
-
+  st_foreach(self->eval_hash, &hash_free_add_array, (char*) self->dd);
+  free_assoc(self->eval_hash);  
 }
 
 
@@ -582,32 +633,60 @@ static void bdd_enc_cache_deinit(BddEncCache_ptr self)
 
 ******************************************************************************/
 static assoc_retval 
-hash_free_add_evaluating(char* key, char* data, char* arg) 
+hash_free_add(char* key, char* data, char* arg) 
 {
-  if ((data != (char*) NULL) && ((add_ptr) data != EVALUATING)) {
+  if ((data != (char*) NULL)){
     add_free((DdManager*) arg, (add_ptr) data);
   }
   return ASSOC_DELETE;
 }
 
-
-
 /**Function********************************************************************
 
-  Synopsis           [Private micro function used when copying caches of adds]
+  Synopsis           [Private micro function used when destroying caches of
+  adds]
 
-  Description        [Called when pushing the status]
+  Description        [Called when pushing the status, and during
+  deinitialization]
 
   SideEffects        []
 
   SeeAlso            []
 
 ******************************************************************************/
-static assoc_retval hash_dup_add(char* key, char* add, char* ddmgr) 
+static assoc_retval 
+hash_free_add_array(char* key, char* data, char* arg) 
 {
-  if ((add != (char*) NULL) && ((add_ptr) add != EVALUATING) ) {
-    add_ref((add_ptr) add);
+  if ((data != (char*) NULL) && (ADD_ARRAY(data) != BDD_ENC_EVALUATING)) {
+    AddArray_destroy((DdManager*) arg, ADD_ARRAY(data));
+  }
+  return ASSOC_DELETE;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Private micro function used when destroying caches of
+  adds]
+
+  Description        [Called when pushing the status, and during
+  deinitialization. The kind of nodes that must be removed here is 
+  CONS(integer, add). Of course it is the add that must be freed.]
+
+  SideEffects        []
+
+  SeeAlso            []
+
+******************************************************************************/
+static assoc_retval 
+hash_free_add_counted(char* key, char* data, char* arg) 
+{
+  node_ptr cons = (node_ptr) data;
+  if ((cons != (node_ptr)NULL)) {
+    nusmv_assert(node_get_type(cons) == CONS);
+    add_free((DdManager*) arg, (add_ptr) cdr(cons));
+    free_node(cons);
   }
 
-  return ASSOC_CONTINUE;
+  return ASSOC_DELETE;
 }

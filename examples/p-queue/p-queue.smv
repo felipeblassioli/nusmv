@@ -35,7 +35,7 @@ ASSIGN
    init(out_l[1]) := 0;
    init(out_l[2]) := 0;
    init(out_l[3]) := 0;
-   init(sort_OK) := 1;
+   init(sort_OK) := TRUE;
 
 SPEC
   EF(in_f[2]=2)
@@ -53,18 +53,19 @@ ASSIGN
    next(state) := 
        case
          state=initial & in_f[1]=0 : ins_val ;
-         state=initial & !in_f[1]=0 : initial;
+         state=initial & in_f[1]!=0 : initial;
          state=ins_val : initial;
-         1: state;
+         TRUE: state;
        esac;
    next(in_f[1]) :=
        case 
          state=ins_val: {1,2,3,4,5,6,7,8};
-         1: in_f[1];
+         TRUE: in_f[1];
        esac;
    next(sort_req) :=
        case
-         state=ins_val: 1;
+         state=ins_val: TRUE;
+	 TRUE : TRUE;
        esac;
 
 FAIRNESS
@@ -76,15 +77,15 @@ VAR
 ASSIGN
  next(state) :=
     case
-      state=initial & !out_l[1]=0: cons;
+      state=initial & out_l[1]!=0: cons;
       state=cons & out_l[1]=0 : initial;
-      1: state;
+      TRUE: state;
     esac;
 
  next(out_l[1]) :=
     case
-      state=cons & sort_OK=1 : 0;
-      1: out_l[1];
+      state=cons & sort_OK=TRUE : 0;
+      TRUE: out_l[1];
     esac;
 
 MODULE sort(in_f,out_l,sort_OK,sort_req)
@@ -98,7 +99,7 @@ ASSIGN
   init(reg) := 0;
   next(state) :=
     case
-     state=initial & !in_f[1]=0: cell1;
+     state=initial & in_f[1]!=0: cell1;
      state=cell1: cell1_p;
      state=cell1_p: cell1_m;
      state=cell1_m: cell2;
@@ -108,13 +109,13 @@ ASSIGN
      state=cell3: cell3_p;
      state=cell3_p: cell3_m;
      state=cell3_m: ready;
-     1: state;
+     TRUE : state;
     esac;
   next(sort_OK) :=
     case
-      state=cell1 : 0;
-      state=ready : 1;
-      1: sort_OK;
+      state=cell1 : FALSE;
+      state=ready : TRUE;
+      TRUE : sort_OK;
     esac;
   next(reg) :=
     case
@@ -125,38 +126,38 @@ ASSIGN
       state=cell2 & out_l[2]<=in_f[3] & in_f[3]<=in_f[2] & in_f[3]<=out_l[3]:2;
       state=cell2 & out_l[2]<=out_l[3] & out_l[3]<=in_f[2] & out_l[3]<= in_f[3]:3;
       state=cell3 & out_l[3]<=in_f[3]: 1;
-      1: 0;
+      TRUE : 0;
     esac;
   next(tmp) :=
     case
       state=cell1_p: out_l[1];
       state=cell2_p: out_l[2];
       state=cell3_p: out_l[3];
-      1: tmp;
+      TRUE: tmp;
     esac;
   next(out_l[1]) :=
     case
       state=cell1_m & reg=1: in_f[1];
       state=cell1_m & reg=2: in_f[2];
       state=cell1_m & reg=3: out_l[2];
-      1: out_l[1];
+      TRUE : out_l[1];
     esac;
   next(in_f[1]) :=
     case
      state=cell1_m & reg=1: tmp;
-     1: in_f[1];
+     TRUE : in_f[1];
     esac;
   next(in_f[2]) := 
     case
      state=cell1_m & reg=2: tmp;
      state=cell2_m & reg=1: tmp;
-     1: in_f[2];     
+     TRUE : in_f[2];     
     esac;
   next(in_f[3]) := 
     case
      state=cell2_m & reg=2: tmp;
      state=cell3_m & reg=1: tmp;
-     1:in_f[3];
+     TRUE :in_f[3];
     esac;
   next(out_l[2]) := 
     case
@@ -164,15 +165,15 @@ ASSIGN
      state=cell2_m & reg=1: in_f[2];
      state=cell2_m & reg=2: in_f[3];
      state=cell2_m & reg=3: out_l[3];
-     1: out_l[2]; 
+     TRUE : out_l[2]; 
     esac;
   next(out_l[3]) :=
     case
      state=cell3_m & reg=1: in_f[3];
-     1: out_l[3] ;     
+     TRUE : out_l[3] ;     
     esac;  
   next(sort_req) :=
     case
-     state=ready: 0;
-     1: sort_req;
+     state=ready: FALSE;
+     TRUE : sort_req;
     esac;

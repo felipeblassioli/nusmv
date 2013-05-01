@@ -20,7 +20,7 @@
 
 #include "util.h"
 #include "utils/list.h"		/* Self declaration        */
-
+#include "utils/defs.h"
 
 /*
  * The list identifier is in reality a pointer to the following list
@@ -74,9 +74,10 @@ lsList lsCreate()
  * by all other list manipulation routines and should not be discarded.
  */
 {
-    lsDesc *newList;
+    lsDesc *newList; 
 
     newList = ALLOC(lsDesc, 1);
+    nusmv_assert(newList != (lsDesc*) NULL);
     newList->topPtr = newList->botPtr = NIL(lsElem);
     newList->length = 0;
     return( (lsList) newList );
@@ -97,7 +98,9 @@ lsHandle *itemHandle;         /* Handle to data (returned) */
     lsElem *newElem;
 
     newList = ALLOC(lsDesc, 1);
+    nusmv_assert(newList != (lsDesc*) NULL);
     newElem = ALLOC(lsElem, 1);
+    nusmv_assert(newElem != (lsElem*) NULL);
     newElem->userData = data;
     newElem->nextPtr = newElem->prevPtr = NIL(lsElem);
     newElem->mainList = newList;
@@ -106,7 +109,7 @@ lsHandle *itemHandle;         /* Handle to data (returned) */
     if (itemHandle) *itemHandle = (lsHandle) newElem;
 
     return( (lsList) newList );
-};
+}
 
 static inline void lsDestroyNN(list)
 lsList list;                  /* List to destroy              */
@@ -334,6 +337,8 @@ lsHandle *itemHandle;		/* Handle to data (returned) */
     lsElem *newElem;
 
     newElem = ALLOC(lsElem, 1);
+    nusmv_assert(newElem != (lsElem*) NULL);
+
     newElem->userData = data;
     newElem->nextPtr = realList->topPtr;
     newElem->prevPtr = NIL(lsElem);
@@ -365,6 +370,8 @@ lsHandle *itemHandle;		/* Handle to data (returned) */
     lsElem *newElem;
 
     newElem = ALLOC(lsElem, 1);
+    nusmv_assert(newElem != (lsElem*) NULL);
+
     newElem->userData = data;
     newElem->prevPtr = realList->botPtr;
     newElem->nextPtr = NIL(lsElem);
@@ -546,6 +553,7 @@ lsList list;			/* List to generate items from */
     assert(list);
 
     newGen = ALLOC(lsGenInternal, 1);
+    nusmv_assert(newGen != (lsGenInternal*) NULL);
     newGen->mainList = realList;
     newGen->beforeSpot = NIL(lsElem);
     newGen->afterSpot = realList->topPtr;
@@ -566,6 +574,7 @@ lsList list;			/* List to generate items from */
     assert(list);
 
     newGen = ALLOC(lsGenInternal, 1);
+    nusmv_assert(newGen != (lsGenInternal*) NULL);
     newGen->mainList = realList;
     newGen->beforeSpot = realList->botPtr;
     newGen->afterSpot = NIL(lsElem);
@@ -590,6 +599,7 @@ int option;			/* LS_BEFORE or LS_AFTER     */
     lsGenInternal *newGen;
 
     newGen = ALLOC(lsGenInternal, 1);
+    nusmv_assert(newGen != (lsGenInternal*) NULL);
     newGen->mainList = realItem->mainList;
     *data = realItem->userData;
     if (option & LS_BEFORE) {
@@ -698,6 +708,7 @@ lsHandle *itemHandle;		/* Handle to item (return) */
     } else {
 	/* Item added in the middle of the list */
 	newElem = ALLOC(lsElem, 1);
+  nusmv_assert(newElem != (lsElem*) NULL);
 	newElem->mainList = realGen->mainList;
 	newElem->prevPtr = realGen->beforeSpot;
 	newElem->nextPtr = realGen->afterSpot;
@@ -739,6 +750,7 @@ lsHandle *itemHandle;		/* Handle to item (return)   */
     } else {
 	/* Item added in the middle of the list */
 	newElem = ALLOC(lsElem, 1);
+  nusmv_assert(newElem != (lsElem*) NULL);
 	newElem->mainList = realGen->mainList;
 	newElem->prevPtr = realGen->beforeSpot;
 	newElem->nextPtr = realGen->afterSpot;

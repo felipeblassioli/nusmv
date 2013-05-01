@@ -10,9 +10,9 @@
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
 
+extern DdManager* dd_manager;
 extern FILE* nusmv_stderr;
 extern FILE* nusmv_stdout;
-extern options_ptr options;
 extern cmp_struct_ptr cmps;
 
 /*---------------------------------------------------------------------------*/
@@ -27,10 +27,26 @@ static void psl_init()
   nusmv_stderr     = stderr;
 
   init_string();
-  node_init(); 
-  options = init_options();
+  init_options();
+  node_pkg_init(); 
 
-  cmps = cmp_struct_init();  
+  dd_manager = init_dd_package();
+  init_the_node();
+
+  Compile_init();
+}
+
+
+static void psl_quit()
+{
+
+  Compile_quit();
+  quit_dd_package(dd_manager);  
+  node_pkg_quit();
+  quit_string();
+
+  if (nusmv_stdout != stdout) fclose(nusmv_stdout);  
+  if (nusmv_stderr != stderr) fclose(nusmv_stderr);
 }
 
 extern PslNode_ptr psl_parsed_tree;
@@ -49,7 +65,7 @@ int main()
 
     fprintf(nusmv_stdout, "Parsed expression\n");
 
-    PslNode_print(nusmv_stdout, psl_parsed_tree);
+    print_node(nusmv_stdout, psl_parsed_tree);
     
     fprintf(nusmv_stdout, "\n");
 
@@ -57,8 +73,8 @@ int main()
       printf("Parsed an OBE (CTL) expression\n");
 #if DOEXPAN
       printf("The expanded OBE expression is\n");
-      PslNode_print(nusmv_stdout, 
-		    PslNode_pslobe2ctl(psl_parsed_tree, PSL2PSL));
+      print_node(nusmv_stdout, 
+		 PslNode_pslobe2ctl(psl_parsed_tree, PSL2PSL));
       printf("\n\n");    
 #endif
 
@@ -81,16 +97,16 @@ int main()
 	expr=m;
 
 	printf("The translated SERE expression is\n");
-	PslNode_print(nusmv_stdout, expr);
+	print_node(nusmv_stdout, expr);
 	printf("\n\n");
 
       }
 #endif
-      fprintf(nusmv_stdout, "Parsed an LTL expression\n");
+      fprintf(nusmv_stdout, "Parsed a LTL expression\n");
 #if DOEXPAN
       printf("The expanded LTL expression is\n");
-      PslNode_print(nusmv_stdout, 
-		    PslNode_pslltl2ltl(expr, PSL2PSL));
+      print_node(nusmv_stdout, 
+		 PslNode_pslltl2ltl(expr, PSL2PSL));
       printf("\n\n");
 #endif
       
@@ -111,5 +127,6 @@ int main()
 
   printf("\n");
   
+  psl_quit();
   return res;
 }

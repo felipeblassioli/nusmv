@@ -7,49 +7,49 @@
   Synopsis    [RBC manager main routines.]
 
   Description [External procedures included in this module:
-		<ul>
-		<li> <b>Rbc_ManagerAlloc()</b>    allocates the manager;
-		<li> <b>Rbc_ManagerReserve()</b>  makes room for more variables
-		<li> <b>Rbc_ManagerCapacity()</b> returns available variables
-		<li> <b>Rbc_ManagerFree()</b>     deallocates the manager;
-		<li> <b>Rbc_ManagerGC()</b>       forces internal garbage coll.
-		</ul>]
-		
+                <ul>
+                <li> <b>Rbc_ManagerAlloc()</b>    allocates the manager;
+                <li> <b>Rbc_ManagerReserve()</b>  makes room for more variables
+                <li> <b>Rbc_ManagerCapacity()</b> returns available variables
+                <li> <b>Rbc_ManagerFree()</b>     deallocates the manager;
+                <li> <b>Rbc_ManagerGC()</b>       forces internal garbage coll.
+                </ul>]
+
   SeeAlso     []
 
   Author      [Armando Tacchella]
 
   Copyright   [
-  This file is part of the ``rbc'' package of NuSMV version 2. 
-  Copyright (C) 2000-2001 by University of Genova. 
+  This file is part of the ``rbc'' package of NuSMV version 2.
+  Copyright (C) 2000-2001 by University of Genova.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
-
-  Revision    [v. 1.0]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "rbc/rbcInt.h"
 
 #include "utils/assoc.h"
+
+static char rcsid[] UTIL_UNUSED = "$Id: rbcManager.c,v 1.4.6.1.2.2.2.1.6.4 2010-02-18 10:00:03 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -97,11 +97,11 @@
 
   Description [Creates a new RBC manager:
                <ul>
-	       <li> <i>varCapacity</i> how big is the variable index
-	            (this number must be strictly greater than 0) 
-	       </ul>
-	       Returns the allocated manager if varCapacity is greater than 0,
-	       and NIL(Rbc_Manager_t) otherwise.]
+               <li> <i>varCapacity</i> how big is the variable index
+                    (this number must be strictly greater than 0) 
+               </ul>
+               Returns the allocated manager if varCapacity is greater than 0,
+               and NIL(Rbc_Manager_t) otherwise.]
 
   SideEffects [none]
 
@@ -124,16 +124,22 @@ Rbc_ManagerAlloc(
 
   /* Allocate the manager. */
   rbcManager = ALLOC(Rbc_Manager_t, 1);
+  nusmv_assert(rbcManager != (Rbc_Manager_t*) NULL);
 
   /* Allocate the vertex manager (dagManager) and 
      the variable index (varTable). */
   rbcManager -> dagManager = Dag_ManagerAlloc();
   rbcManager -> varTable = ALLOC(Rbc_t*, varCapacity);
+  nusmv_assert(rbcManager->varTable != (Rbc_t**) NULL);
   rbcManager -> varCapacity = varCapacity;
 
   /* sets all things associated with CNF convertion */
-  rbcManager -> rbcNode2cnfVar = new_assoc();
-  rbcManager -> cnfVar2rbcNode =  new_assoc();
+  rbcManager -> rbcNode2cnfVar_model = new_assoc();
+  rbcManager -> rbcNode2cnfVar_cnf = new_assoc();
+
+  rbcManager -> cnfVar2rbcNode_model =  new_assoc();
+  rbcManager -> cnfVar2rbcNode_cnf =  new_assoc();
+
   rbcManager -> maxUnchangedRbcVariable = 0;
   rbcManager -> maxCnfVariable = 0;
 
@@ -148,9 +154,11 @@ Rbc_ManagerAlloc(
   }
 
   /* Create 0 and 1 (permanent) logical constants. */
-  rbcManager -> one = 
-    Dag_VertexInsert(rbcManager -> dagManager, RBCTOP, 
-		     NIL(char), (lsList)NULL);
+  rbcManager -> one = Dag_VertexInsert(rbcManager -> dagManager,
+                                       RBCTOP,
+                                       NIL(char),
+                                       (Dag_Vertex_t**)NULL,
+                                       0);
   Dag_VertexMark(rbcManager -> one);
   /* 0 is simply the complement of 1. */
   rbcManager -> zero = RbcId(rbcManager -> one, RBC_FALSE);
@@ -164,7 +172,7 @@ Rbc_ManagerAlloc(
 
   Synopsis    [Reserves more space for new variables.]
 
-  Description [If the requested space is bigger than the current one 
+  Description [If the requested space is bigger than the current one
                makes room for more variables in the varTable.]
 
   SideEffects [none]
@@ -174,7 +182,7 @@ Rbc_ManagerAlloc(
 ******************************************************************************/
 void
 Rbc_ManagerReserve(
-  Rbc_Manager_t * rbcManager,		 
+  Rbc_Manager_t * rbcManager,
   int             newVarCapacity
 )
 {
@@ -213,7 +221,7 @@ Rbc_ManagerReserve(
 ******************************************************************************/
 int
 Rbc_ManagerCapacity(
-  Rbc_Manager_t * rbcManager		 
+  Rbc_Manager_t * rbcManager             
 )
 {
 
@@ -247,15 +255,53 @@ Rbc_ManagerFree(
   /* Free the variable index and the dag manager. */
   FREE(rbcManager -> varTable);
   Dag_ManagerFree(rbcManager -> dagManager, 
-		  (Dag_ProcPtr_t) NULL,
-		  (Dag_ProcPtr_t) NULL);
+                  (Dag_ProcPtr_t) NULL,
+                  (Dag_ProcPtr_t) NULL);
   
   /* Free the hash tables used in CNF convertions */
-  free_assoc(rbcManager -> rbcNode2cnfVar);
-  free_assoc(rbcManager -> cnfVar2rbcNode);
+  free_assoc(rbcManager -> rbcNode2cnfVar_model);
+  free_assoc(rbcManager -> rbcNode2cnfVar_cnf);
+
+  free_assoc(rbcManager -> cnfVar2rbcNode_model);
+  free_assoc(rbcManager -> cnfVar2rbcNode_cnf);
 
   /* Free the rbc itself.  */
   FREE(rbcManager);
+
+  return;
+
+} /* End of Rbc_ManagerFree. */
+
+
+/**Function********************************************************************
+
+  Synopsis    [Resets RBC manager]
+
+  Description []
+
+  SideEffects [none]
+
+  SeeAlso     []
+
+******************************************************************************/
+void
+Rbc_ManagerReset(
+  Rbc_Manager_t * rbcManager
+)
+{
+
+  /* Cannot deallocate an empty rbc. */
+  if (rbcManager == NIL(Rbc_Manager_t)) {
+    return;
+  }
+
+  /* Free the hash tables used in CNF conversion (cnf only) */
+  if ((hash_ptr)(NULL) != rbcManager -> rbcNode2cnfVar_cnf) {
+    clear_assoc(rbcManager -> rbcNode2cnfVar_cnf); 
+  }
+  if ((hash_ptr)(NULL) != rbcManager -> cnfVar2rbcNode_cnf) {
+    clear_assoc(rbcManager -> cnfVar2rbcNode_cnf);
+  }
 
   return;
 
@@ -286,8 +332,8 @@ Rbc_ManagerGC(
 
   /* Call DAG garbage collector. */
   Dag_ManagerGC(rbcManager -> dagManager, 
-		(Dag_ProcPtr_t) NULL,
-		(Dag_ProcPtr_t) NULL);
+                (Dag_ProcPtr_t) NULL,
+                (Dag_ProcPtr_t) NULL);
 
   return;
 

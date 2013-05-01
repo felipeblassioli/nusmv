@@ -26,26 +26,34 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.2 2003/08/07 15:43:32]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = rbc.h rbcInt.h rbcCnf.c rbcFormula.c rbcManager.c \
-	rbcOutput.c rbcStat.c rbcSubst.c 
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
+
+PKG_H = rbc.h rbcInt.h ConjSet.h InlineResult.h clg/clg.h
+
+PKG_C = rbcCnf.c rbcCnfCompact.c rbcCnfSimple.c rbcFormula.c \
+				rbcManager.c  rbcOutput.c rbcStat.c rbcSubst.c \
+				rbcUtils.c  rbcInline.c ConjSet.c  InlineResult.c \
+			  clg/clgClg.c 
+
+PKG_SOURCES = $(PKG_H) rbcInt.h clg/clgInt.h $(PKG_C)
 
 rbcdir = $(includedir)/nusmv/rbc
-rbc_HEADERS =  rbc.h
+nobase_rbc_HEADERS =  $(PKG_H)
 
 # -------------------------------------------------------
 
 noinst_LTLIBRARIES = librbc.la
 librbc_la_SOURCES = $(PKG_SOURCES)
-

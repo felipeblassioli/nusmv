@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,11 +30,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -43,11 +43,10 @@
 
 #include <stdio.h>
 
-#include "bmcVarsMgr.h"
-
+#include "enc/be/BeEnc.h"
 
 #include "utils/utils.h"
-#include "prop/prop.h"
+#include "prop/Prop.h"
 
 
 /*---------------------------------------------------------------------------*/
@@ -94,34 +93,34 @@ typedef enum {
 /*---------------------------------------------------------------------------*/
 
 EXTERN void 
-Bmc_Dump_WriteProblem ARGS((const BmcVarsMgr_ptr vars_mgr, 
+Bmc_Dump_WriteProblem ARGS((const BeEnc_ptr be_enc, 
 			    const Be_Cnf_ptr cnf, 
 			    Prop_ptr prop, 
 			    const int k, const int loop, 
 			    const Bmc_DumpType dump_type,
 			    const char* dump_fname_template)); 
 
-EXTERN int Bmc_Dump_DimacsInvarProblemFilename 
-ARGS((const BmcVarsMgr_ptr vars_mgr, 
-      const Be_Cnf_ptr cnf, 
-      const char* filename));
+EXTERN int 
+Bmc_Dump_DimacsInvarProblemFilename ARGS((const BeEnc_ptr be_enc, 
+					  const Be_Cnf_ptr cnf, 
+					  const char* filename));
 
-EXTERN int Bmc_Dump_DimacsProblemFilename 
-ARGS((const BmcVarsMgr_ptr vars_mgr, 
-      const Be_Cnf_ptr cnf,
-      const char* filename,  
-      const int k));
+EXTERN int 
+Bmc_Dump_DimacsProblemFilename ARGS((const BeEnc_ptr be_enc, 
+				     const Be_Cnf_ptr cnf,
+				     const char* filename,  
+				     const int k));
 
 
-EXTERN void Bmc_Dump_DimacsInvarProblem 
-ARGS((const BmcVarsMgr_ptr vars_mgr, 
-      const Be_Cnf_ptr cnf,
-      FILE* dimacsfile)); 
+EXTERN void 
+Bmc_Dump_DimacsInvarProblem ARGS((const BeEnc_ptr be_enc, 
+				  const Be_Cnf_ptr cnf,
+				  FILE* dimacsfile)); 
 
-EXTERN void Bmc_Dump_DimacsProblem 
-ARGS((const BmcVarsMgr_ptr vars_mgr, 
-      const Be_Cnf_ptr cnf,
-      const int k, FILE* dimacsfile)); 
+EXTERN void 
+Bmc_Dump_DimacsProblem ARGS((const BeEnc_ptr be_enc, 
+			     const Be_Cnf_ptr cnf,
+			     const int k, FILE* dimacsfile)); 
 
 /**AutomaticEnd***************************************************************/
 

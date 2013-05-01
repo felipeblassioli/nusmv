@@ -1,6 +1,7 @@
+% -*-latex-*-
 \begin{nusmvCommand} {simulate} {Performs a simulation from the current selected state}
 
-\cmdLine{simulate [-h] [-p | -v] [-r | -i [-a]] [-c "constraints"] steps}
+\cmdLine{simulate [-h] [-p | -v] [-r | -i [-a]] [-c "constraints" | -t "constraints"] [-k steps]}
 
 Generates a sequence of at most  \code{steps} states (representing a
 possible execution of the model), starting from the \command{current
@@ -24,7 +25,7 @@ states.\\
 value changed from the previous state).}
 
 \opt{-v}{ Verbosely prints current generated trace (changed and
-unchanged state variables).}
+unchanged state and frozen variables).}
 
 \opt{-r}{ Picks a state from a set of possible future states in a
 random way.}
@@ -38,26 +39,44 @@ opposite way with respect to those constraints eventually entered with
 the \command{pick\_state} command, or during an interactive simulation session
 (when the number of future states to be displayed is too high), that
 are \emph{local} only to a single step of the simulation and are
-\emph{forgotten} in the next one.}
+\emph{forgotten} in the next one.
 
-\opt{-a}{ Displays all the state variables (changed and unchanged)
+To improve readability of the list of the states which the user must
+pick one from, each state is presented in terms of difference with
+respect of the previous one.}
+
+\opt{-a}{ Displays all the state and frozen variables (changed and unchanged)
 during every step of an interactive session. This option works only if
 the \commandopt{i} option has been specified.}
 
-\opt{-c \parameter{"constraints"}}{ Performs a simulation in which computation is
-restricted to states satisfying those  \code{constraints}. The desired
-sequence of states could not exist if such constraints were too strong
-or it may happen that at some point of the simulation a future state
-satisfying those constraints doesn't exist: in that case a trace with
-a number of states less than  \code{steps} trace is obtained.  Note:
-\code{constraints} must be enclosed between double quotes \code{" "}.
-}
+\opt{-c \parameter{"constraints"}}{Performs a simulation in which
+  computation is restricted to states satisfying those
+  \code{constraints}. The desired sequence of states could not exist
+  if such constraints were too strong or it may happen that at some
+  point of the simulation a future state satisfying those constraints
+  doesn't exist: in that case a trace with a number of states less
+  than \code{steps} trace is obtained.  Note: \code{constraints} must
+  be enclosed between double quotes \code{" "}.  The expression cannot
+  contain \code{next} operators, and is automatically shifted by one
+  state in order to constraint only the next steps}
 
-\opt{\natnum{steps}}{ Maximum length of the path according to the constraints.
-The length of a trace could contain less than  \code{steps} states:
-this is the case in which simulation stops in an intermediate step
-because it may not exist any future state satisfying those
-constraints.}
+\opt{-t \parameter{"constraints"}}{ Performs a simulation in which
+  computation is restricted to states satisfying those
+  \code{constraints}. The desired sequence of states could not exist
+  if such constraints were too strong or it may happen that at some
+  point of the simulation a future state satisfying those constraints
+  doesn't exist: in that case a trace with a number of states less
+  than \code{steps} trace is obtained.  Note: \code{constraints} must
+  be enclosed between double quotes \code{" "}.  The expression can
+  contain \code{next} operators, and is NOT automatically shifted by
+  one state as done with option \code{-c}}
+
+\opt{\natnum{-k steps}}{ Maximum length of the path according to the
+  constraints.  The length of a trace could contain less than
+  \code{steps} states: this is the case in which simulation stops in
+  an intermediate step because it may not exist any future state
+  satisfying those constraints. The default value is determined by the
+  \varName{default\_simulation\_steps} environment variable}
 
 \end{cmdOpt}
 

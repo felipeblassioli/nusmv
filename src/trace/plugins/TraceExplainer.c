@@ -6,47 +6,49 @@
 
   Synopsis    [Routines related to TraceExplainer object.]
 
-  Description [ This file contains the definition of \"TraceExplainer\" 
+  Description [ This file contains the definition of \"TraceExplainer\"
   class. TraceExplainer plugin simply prints the trace.]
-		
+
   SeeAlso     []
 
-  Author      [Ashutosh Trivedi]
+  Author      [Ashutosh Trivedi, Marco Pensallorto]
 
   Copyright   [
-  This file is part of the ``trace.plugins'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst.
+  This file is part of the ``trace.plugins'' package of NuSMV version 2.
+  Copyright (C) 2003 by FBK-irst.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "TraceExplainer_private.h"
 #include "TraceExplainer.h"
 #include "TracePlugin.h"
-#include "trace/TraceNode.h"
+#include "trace/Trace.h"
 #include "trace/pkg_traceInt.h"
-#include "fsm/bdd/BddFsm.h"
+#include "utils/assoc.h"
+#include "utils/utils_io.h"
+#include "parser/symbols.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: TraceExplainer.c,v 1.1.2.31 2004/05/31 13:58:13 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: TraceExplainer.c,v 1.1.2.31.4.5.6.11 2010-02-12 16:25:48 nusmv Exp $";
 /*---------------------------------------------------------------------------*/
 /* Macro declarations                                                        */
 /*---------------------------------------------------------------------------*/
@@ -62,7 +64,7 @@ static char rcsid[] UTIL_UNUSED = "$Id: TraceExplainer.c,v 1.1.2.31 2004/05/31 1
 /*---------------------------------------------------------------------------*/
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
-static void trace_explainer_finalize ARGS((Object_ptr object, void* dummy)); 
+static void trace_explainer_finalize ARGS((Object_ptr object, void* dummy));
 
 /*---------------------------------------------------------------------------*/
 /* Definition of external functions                                          */
@@ -94,6 +96,7 @@ TraceExplainer_ptr TraceExplainer_create(boolean changes_only)
 /* ---------------------------------------------------------------------- */
 /*     Private Methods                                                    */
 /* ---------------------------------------------------------------------- */
+
 /**Function********************************************************************
 
   Synopsis    [Initializes trace explain object.]
@@ -105,15 +108,15 @@ TraceExplainer_ptr TraceExplainer_create(boolean changes_only)
   SeeAlso     []
 
 ******************************************************************************/
-void trace_explainer_init(TraceExplainer_ptr self, boolean changes_only) 
+void trace_explainer_init(TraceExplainer_ptr self, boolean changes_only)
 {
   if (changes_only) {
     trace_plugin_init(TRACE_PLUGIN(self),
-		      "BASIC TRACE EXPLAINER - shows changes only");
+                      "BASIC TRACE EXPLAINER - shows changes only");
   }
   else {
     trace_plugin_init(TRACE_PLUGIN(self),
-		      "BASIC TRACE EXPLAINER - shows all variables");
+                      "BASIC TRACE EXPLAINER - shows all variables");
   }
 
   OVERRIDE(Object, finalize) = trace_explainer_finalize;
@@ -143,7 +146,7 @@ void trace_explainer_deinit(TraceExplainer_ptr self)
   Synopsis    [Action method associated with TraceExplainer class.]
 
   Description [ The action associated with TraceExplainer is to print the trace
-  on the nusmv_stdout. If <tt>changes_only</tt> is 1, than only state variables
+  on the TraceOpt_output_stream(self->opt). If <tt>changes_only</tt> is 1, than only state variables
   which assume a different value from the previous printed one are printed
   out.]
 
@@ -152,100 +155,123 @@ void trace_explainer_deinit(TraceExplainer_ptr self)
   SeeAlso     []
 
 ******************************************************************************/
-int trace_explainer_action(const TracePlugin_ptr plugin, Trace_ptr trace,
-                           void* opt)
+int trace_explainer_action(const TracePlugin_ptr self)
 {
-  TraceExplainer_ptr self = TRACE_EXPLAINER(plugin);
-  BddStates last_state;
-  node_ptr states_inputs_list;
-  boolean print_flag = false;
-  TraceIterator_ptr start_iter = TRACE_ITERATOR(opt);
-  TraceIterator_ptr iter;
-  DdManager* dd = BddEnc_get_dd_manager(Trace_get_enc(trace));
-  TraceNode_ptr last_node = Trace_get_last_node(trace);
-  BddEnc_ptr enc = Trace_get_enc(trace);
-  Encoding_ptr senc = BddEnc_get_symbolic_encoding(enc);
+  const Trace_ptr trace = self->trace;
+  TRACE_CHECK_INSTANCE(trace);
+
+  TraceIter start_iter;
+  TraceIter stop_iter;
+  TraceIter step;
+  TraceIteratorType input_iter_type;
+  TraceIteratorType state_iter_type;
+  TraceIteratorType combo_iter_type;
+  hash_ptr changed_states;
   int i;
 
+  FILE* out = TraceOpt_output_stream(self->opt);
 
-  self->state_vars_list = 
-    NodeList_to_node_ptr(Encoding_get_model_state_symbols_list(senc));
-  self->input_vars_list = 
-    NodeList_to_node_ptr(Encoding_get_model_input_symbols_list(senc));
+  start_iter = (0 != TraceOpt_from_here(self->opt))
+    ? trace_ith_iter(trace, TraceOpt_from_here(self->opt))
+    : trace_first_iter(trace);
 
-  states_inputs_list = NodeList_to_node_ptr(
-                 Encoding_get_model_state_input_symbols_list(senc));
+  stop_iter = (0 != TraceOpt_to_here(self->opt))
+    ? trace_ith_iter(trace, 1 + TraceOpt_to_here(self->opt))
+    : TRACE_END_ITER;
 
-  fprintf(nusmv_stdout, "Trace Description: %s \n", Trace_get_desc(trace));
-  fprintf(nusmv_stdout, "Trace Type: %s \n",
-          TraceType_to_string(Trace_get_type(trace)));
+  input_iter_type = TraceOpt_show_defines(self->opt)
+    ? TRACE_ITER_I_SYMBOLS : TRACE_ITER_I_VARS;
 
-  last_state = TraceNode_get_state(last_node);
-  nusmv_assert(start_iter != NULL);
+  state_iter_type = TraceOpt_show_defines(self->opt)
+    ? TRACE_ITER_SF_SYMBOLS : TRACE_ITER_SF_VARS;
 
+  combo_iter_type = TraceOpt_show_defines(self->opt)
+    ? (TraceOpt_show_defines_with_next(self->opt)
+       ? TRACE_ITER_COMBINATORIAL
+       : TRACE_ITER_SI_DEFINES)
+    : TRACE_ITER_NONE;
+
+  fprintf(out, "Trace Description: %s \n", Trace_get_desc(trace));
+  fprintf(out, "Trace Type: %s \n", TraceType_to_string(Trace_get_type(trace)));
+
+  /* indent */
   inc_indent_size();
-  BddEnc_print_bdd_begin(enc, self->state_vars_list, self->changes_only);
 
-  i = 0;
-  iter = Trace_begin(trace);
-  if (!print_flag && iter == start_iter) print_flag = true;
-  while (!TraceIterator_is_end(iter)) {
+  changed_states = new_assoc();
+  nusmv_assert(changed_states != (hash_ptr)NULL);
 
-    if (print_flag) {
-      BddStates curr_state = TraceNode_get_state(iter);
-      BddInputs curr_input = TraceNode_get_input(iter);
+  i = MAX(1, TraceOpt_from_here(self->opt)); step = start_iter;
+  while (stop_iter != step) {
+    TraceStepIter iter;
+    node_ptr symb;
+    node_ptr val;
 
-      if (last_state == curr_state && 
-                      (Trace_get_node(trace, iter) != last_node)) {
-        fprintf(nusmv_stdout, "-- Loop starts here\n");
-      }
-      fprintf(nusmv_stdout, "-> State: %d.%d <-\n", 
-	      Trace_get_id(trace), i + 1);
-      i = i + 1;
+    boolean input_header = false;
 
-      BddEnc_print_bdd(enc, curr_state, nusmv_stdout);
-
-      /* Combinatorial and Input if needed: */
-      if ((curr_input != BDD_INPUTS(NULL)) && 
-	  (Encoding_get_model_input_vars_num(senc) > 0)) {
-
-	/* Combinatorial if needed: */
-	if (states_inputs_list != (node_ptr) NULL) {
-	  bdd_ptr comb; 
-	  
-	  BddEnc_print_bdd_begin(enc, states_inputs_list, 
-				 self->changes_only);
-	  
-	  comb = bdd_and(dd, curr_state, curr_input);
-	  BddEnc_print_bdd(enc, comb, nusmv_stdout);
-	  bdd_free(dd, comb);
-	  
-	  BddEnc_print_bdd_end(enc);
-	}
-
-	/* input: */
-        fprintf(nusmv_stdout, "-> Input: %d.%d <-\n", 
-		Trace_get_id(trace), i + 1);
-        
-        BddEnc_print_bdd_begin(enc, self->input_vars_list, 
-			       self->changes_only);
-        BddEnc_print_bdd(enc, curr_input, nusmv_stdout);
-        BddEnc_print_bdd_end(enc);
-      }
-
-      if (curr_state != BDD_STATES(NULL)) bdd_free(dd, curr_state);
-      if (curr_input != BDD_INPUTS(NULL)) bdd_free(dd, curr_input);
+    /* lazy defines evaluation */
+    if (TraceOpt_show_defines(self->opt)) {
+      trace_step_evaluate_defines(trace, step);
     }
-    else i = i + 1;
 
-    iter = TraceIterator_get_next(iter);
-    if (!print_flag && iter == start_iter) print_flag = true;
-  } /* while loop */
+    /* COMBINATORIAL SECTION (optional) */
+    TRACE_STEP_FOREACH(trace, step, combo_iter_type, iter, symb, val) {
+      /* skip non-visible symbols */
+      if (!trace_plugin_is_visible_symbol(self, symb)) continue;
 
-  BddEnc_print_bdd_end(enc);
+      /* if required, print only symbols with changed values */
+      if (TRACE_EXPLAINER(self)->changes_only) {
+        if (val == find_assoc(changed_states, symb)) { continue; }
+        insert_assoc(changed_states, symb, val);
+      }
+
+      TracePlugin_print_assignment(self, symb, val);
+    } /* foreach SI_DEFINES */
+
+    /* INPUT SECTION (optional) */
+    TRACE_STEP_FOREACH(trace, step, input_iter_type, iter, symb, val) {
+      if (false == input_header) {
+        fprintf(out, "-> Input: %d.%d <-\n", Trace_get_id(trace), i);
+        input_header = true;
+      }
+      /* skip non-visible symbols */
+      if (!trace_plugin_is_visible_symbol(self, symb)) continue;
+
+      /* if required, print only symbols with changed values */
+      if (TRACE_EXPLAINER(self)->changes_only) {
+        if (val == find_assoc(changed_states, symb)) { continue; }
+        insert_assoc(changed_states, symb, val);
+      }
+
+      TracePlugin_print_assignment(self, symb, val);
+    } /* foreach I_SYMBOLS */
+
+    if (Trace_step_is_loopback(trace, step)) {
+      fprintf(out, "-- Loop starts here\n");
+    }
+
+    /* STATE SECTION (mandatory) */
+    fprintf(out, "-> State: %d.%d <-\n", Trace_get_id(trace), i);
+    TRACE_STEP_FOREACH(trace, step, state_iter_type, iter, symb, val) {
+      /* skip non-visible symbols */
+      if (!trace_plugin_is_visible_symbol(self, symb)) continue;
+
+      /* if required, print only symbols with changed values */
+      if (TRACE_EXPLAINER(self)->changes_only) {
+        if (val == find_assoc(changed_states, symb)) { continue; }
+        insert_assoc(changed_states, symb, val);
+      }
+
+      TracePlugin_print_assignment(self, symb, val);
+    } /* foreach SF_SYMBOLS */
+
+    ++ i; step = TraceIter_get_next(step);
+  } /* while */
+
+  free_assoc(changed_states);
+
+  /* deindent */
   dec_indent_size();
 
-  if (last_state != BDD_STATES(NULL)) bdd_free(dd, last_state);
   return 0;
 }
 
@@ -264,7 +290,7 @@ int trace_explainer_action(const TracePlugin_ptr plugin, Trace_ptr trace,
   SeeAlso     []
 
 ******************************************************************************/
-static void trace_explainer_finalize(Object_ptr object, void* dummy) 
+static void trace_explainer_finalize(Object_ptr object, void* dummy)
 {
   TraceExplainer_ptr self = TRACE_EXPLAINER(object);
 

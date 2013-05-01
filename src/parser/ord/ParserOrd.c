@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``parser.ord'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst.
+  Copyright (C) 2003 by FBK-irst.
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,11 +30,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -48,7 +48,7 @@
 
 #include "parser/symbols.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: ParserOrd.c,v 1.1.2.7 2004/05/25 14:57:57 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: ParserOrd.c,v 1.1.2.7.4.2.6.2 2009-06-03 19:52:29 nusmv Exp $";
 
 
 /*---------------------------------------------------------------------------*/
@@ -58,7 +58,6 @@ static char rcsid[] UTIL_UNUSED = "$Id: ParserOrd.c,v 1.1.2.7 2004/05/25 14:57:5
 typedef struct ParserOrd_TAG 
 {
   NodeList_ptr vars_list;
-  
 } ParserOrd;  
 
 
@@ -175,6 +174,7 @@ void ParserOrd_parse_from_string(ParserOrd_ptr self, const char* str)
   parser_ord_set_global_parser(self);
 
   buf = parser_ord__scan_string(str);
+  parser_ord_parse();
   parser_ord__delete_buffer(buf);
 
   parser_ord_reset_global_parser(self);
@@ -298,7 +298,7 @@ node_ptr parser_ord_mk_array(ParserOrd_ptr self, node_ptr left, node_ptr right)
 node_ptr parser_ord_mk_bit(ParserOrd_ptr self, node_ptr left, int suffix)
 {
   PARSER_ORD_CHECK_INSTANCE(self);
-  return find_node(BIT, left, (node_ptr) suffix);
+  return find_node(BIT, left, NODE_FROM_INT(suffix));
 }
 
 /**Function********************************************************************
@@ -336,7 +336,7 @@ node_ptr parser_ord_mk_atom(ParserOrd_ptr self, const char* name)
 node_ptr parser_ord_mk_num(ParserOrd_ptr self, const int num) 
 {
   PARSER_ORD_CHECK_INSTANCE(self);
-  return find_node(NUMBER, (node_ptr) num, Nil);
+  return find_node(NUMBER, NODE_FROM_INT(num), Nil);
 }
 
 
@@ -376,17 +376,4 @@ static void parser_ord_deinit(ParserOrd_ptr self)
 {
   NodeList_destroy(self->vars_list);
 }
-
-
-/**Function********************************************************************
-
-  Synopsis           []
-
-  Description        []
-
-  SideEffects        []
-
-  SeeAlso            []
-
-******************************************************************************/
 

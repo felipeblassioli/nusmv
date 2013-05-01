@@ -26,22 +26,26 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.2 2003/08/07 15:43:32]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = prop.h propInt.h propCmd.c propDb.c propProp.c 
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
+
+PKG_SOURCES = propPkg.h propInt.h Prop.h Prop_private.h PropDb.h PropDb_private.h \
+	propCmd.c Prop.c  PropDb.c propPkg.c 
 
 propdir = $(includedir)/nusmv/prop
-prop_HEADERS =  prop.h
+prop_HEADERS =  Prop.h Prop_private.h PropDb.h PropDb_private.h propPkg.h
 
 # -------------------------------------------------------
 

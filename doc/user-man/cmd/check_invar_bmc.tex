@@ -1,8 +1,9 @@
+% -*-latex-*-
 \begin{nusmvCommand}{check\_invar\_bmc}{\label{checkInvarBmcCommand}
 Generates and solves the given invariant, or all invariants if no
  formula is given}
  
-\cmdLine{check\_invar\_bmc [-h | -n idx | -p "formula" [IN context]] [-a alg] 
+\cmdLine{check\_invar\_bmc [-h | -n idx | -p "formula" [IN context] | -P "name"] [-a alg] [-e] [-k bmc\_bound]
 [-o filename]}
 
 In Bounded Model Checking, invariants are proved using induction. For
@@ -15,6 +16,11 @@ we call ``een-sorensson'' \cite{een04temporal}, can build the base and
 induction steps on many states and transitions. As a result, the
 second algorithm is more powerful.
 
+Also, notice that during checking of invariants all the fairness
+conditions associated with the model are ignored.
+
+See variable \varName{use\_coi\_size\_sorting} for changing properties
+verification order.
 \begin{cmdOpt}
 
 \opt{-n \parameter{\natnum{\it index}}} { {\it index} is the numeric
@@ -25,12 +31,18 @@ by the system.}
 \opt{-p \parameter{"\anyexpr [IN context]"}}{ Checks the \anyexpr specified
 on the command-line. \code{context} is the module instance name which
 the variables in \anyexpr must be evaluated in.}
+
+\opt{-P \parameter{\natnum{name}}}{Checks the INVAR property named \natnum{name} in
+the property database.} 
             
 \opt{-k \parameter{\natnum{\it max\_length}}}{\natnum{\it max\_length}
 is the maximum problem bound that can be reached. Only natural numbers
 are valid values for this option. Use this option only if the
 ``een-sorensson'' algorithm is selected. If no value is given the
 environment variable \envvar{\it bmc\_length} is considered instead.}
+
+\opt{-e}{Performs an extra induction step for finding a proof. Can be
+  used only with the ``een-sorensson'' algorithm}
 
 \opt{-a \parameter{\natnum{\it alg}}}{\natnum{\it alg} specifies the
 algorithm.  The value can be \code{classic} or

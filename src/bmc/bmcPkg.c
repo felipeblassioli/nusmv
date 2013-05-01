@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,31 +30,31 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information on NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
 #include "bmcPkg.h"
 #include "bmcInt.h" /* for 'options' */
+#include "bmcCmd.h"
+
+#include "bmc/sbmc/sbmcPkg.h"
 
 #include "be/be.h"
 #include "sat/sat.h"
 
-#include "bmcVarsMgr.h"
-#include "bmcFsm.h"
-#include "bmcCmd.h"
-
-#include "prop/prop.h"
+#include "prop/Prop.h"
 #include "cmd/cmd.h"
 #include "enc/enc.h"
+#include "fsm/be/BeFsm.h"
 
 #ifdef BENCHMARKING
   #include <time.h>
@@ -62,7 +62,7 @@
 #endif
 
 
-static char rcsid[] UTIL_UNUSED = "$Id: bmcPkg.c,v 1.3.2.9.2.6 2005/11/16 12:09:45 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: bmcPkg.c,v 1.3.2.9.2.4.2.10.4.9 2010-02-12 17:14:49 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -83,15 +83,6 @@ static char rcsid[] UTIL_UNUSED = "$Id: bmcPkg.c,v 1.3.2.9.2.6 2005/11/16 12:09:
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
 
-/**Variable********************************************************************
-
-  Synopsis    [This is the singleton instance of the variables manager]
-  Description [This instance is currently shared between all be-based fsm.]
-  SeeAlso     []
-
-******************************************************************************/
-BmcVarsMgr_ptr gl_vars_mgr = NULL;
-
 /*---------------------------------------------------------------------------*/
 /* Macro declarations                                                        */
 /*---------------------------------------------------------------------------*/
@@ -111,13 +102,13 @@ BmcVarsMgr_ptr gl_vars_mgr = NULL;
 /* Definition of exported functions                                          */
 /*---------------------------------------------------------------------------*/
 
+
 /**Function********************************************************************
 
-  Synopsis           [Initializes the BMC model manager structure]
+  Synopsis           [Initializes the BMC structure]
 
-  Description        [It builds the vars manager, and then creates the BE fsm
-  from the Sexpr FSM. Currently the vars manager is a singleton global private variable
-  which is shared between all the BE FSMs.]
+  Description [It builds the vars manager, initializes the package and
+  all sub packages, but only if not previously called.]
 
   SideEffects        []
 
@@ -125,57 +116,56 @@ BmcVarsMgr_ptr gl_vars_mgr = NULL;
 ******************************************************************************/
 void Bmc_Init()
 {
-  Bmc_Fsm_ptr fsm_be = NULL;
-  Encoding_ptr senc;
+  BeEnc_ptr be_enc;
+
+  /* does not initialize the package if previously initialized */
+  if (cmp_struct_get_bmc_init(cmps)) return;
 
   #ifdef BENCHMARKING
     fprintf(nusmv_stdout,":START:benchmarking Bmc_Init\n");
     start_time = clock();
   #endif
 
-  if (opt_verbose_level_gt(options, 0)) {
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
     fprintf(nusmv_stderr, "Initializing the BMC package... \n");
   }
-
-  senc = Enc_get_symb_encoding();
-
-  /* sets up Conv module: */
-  Bmc_Conv_init_cache();
-
-  /* sets up an hash in the wff module: */
-  bmc_init_wff2nnf_hash();
-
-  /* builds the variables manager: */
-  if (opt_verbose_level_gt(options, 0)) {
-    fprintf(nusmv_stderr, "Building the BMC Variables Manager... \n");
-  }
-  nusmv_assert(gl_vars_mgr == NULL);
-  gl_vars_mgr = BmcVarsMgr_Create(senc);
-
-  /* builds the master bmc fsm: */
-  if (opt_verbose_level_gt(options, 0)) {
-    fprintf(nusmv_stderr, "Building the BMC FSM... \n");
-  }
-  /* :WARNING: The FSM is currently destroyed by the package 'prop', but it is
-     built here! */
-  fsm_be  = Bmc_Fsm_CreateFromSexprFSM(gl_vars_mgr, 
-				       Prop_master_get_bool_sexp_fsm());
-  Prop_master_set_be_fsm(fsm_be);
 
   /* Initializes the be generic interface layer: */
   Be_Init();
 
-  if (opt_verbose_level_gt(options, 0)) {
-    fprintf(nusmv_stderr, "Done \n");
+  /* Initializes bmc internal data */
+  Bmc_InitData();
+
+  /* builds the variables manager: */
+  Enc_init_be_encoding();
+  be_enc = Enc_get_be_encoding();
+
+  { /* commits all default layers */
+    const char* name; int i;
+    arrayForEachItem(const char*,
+                     SymbTable_get_class_layer_names(
+                         BaseEnc_get_symb_table(BASE_ENC(be_enc)), NULL),
+                     i, name) {
+      BaseEnc_commit_layer(BASE_ENC(be_enc), name);
+    }
   }
-  
+
+  /* the determinization layer will be committed by the command
+     bmc_setup (see bmc_build_master_be_fsm) */
+
 #ifdef BENCHMARKING
   fprintf(nusmv_stdout,":UTIME = %.4f secs.\n",((double)(clock()-start_time))/CLOCKS_PER_SEC);
   fprintf(nusmv_stdout,":STOP:benchmarking Bmc_Init\n");
 #endif
-  
-  cmp_struct_set_bmc_setup(cmps);
+
+  /* Initialize the SBMC sub-package */
+  SBmc_Init();
+
+  cmp_struct_set_bmc_init(cmps);
+
+  bmc_simulate_set_curr_sim_trace(TRACE(NULL), -1);
 }
+
 
 /**Function********************************************************************
 
@@ -190,25 +180,71 @@ void Bmc_Init()
 ******************************************************************************/
 void Bmc_Quit()
 {
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
+    fprintf(nusmv_stderr, "Quitting the BMC package... \n");
+  }
+
+  bmc_simulate_set_curr_sim_trace(TRACE(NULL), -1);
+
   /* Shuts down the Be layer: */
   Be_Quit();
 
+  /* shuts down bmc data */
+  Bmc_QuitData();
+
+  /* Quits the SBMC sub-package */
+  SBmc_Quit();
+
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
+    fprintf(nusmv_stderr, "Done \n");
+  }
+
+  cmp_struct_unset_bmc_init(cmps);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis [Initializes the BMC internal structures, but not all
+  dependencies. Call Bmc_Init to initialize everything it is is what
+  you need instead.]
+
+  Description []
+
+  SideEffects        []
+
+  SeeAlso            []
+******************************************************************************/
+void Bmc_InitData()
+{
+  /* sets up Conv module: */
+  Bmc_Conv_init_cache();
+}
+
+
+/**Function********************************************************************
+
+  Synopsis [De0Initializes the BMC internal structures, but not all
+  dependencies. Call Bmc_Quit to deinitialize everything it is is what
+  you need instead.]
+
+  Description []
+
+  SideEffects        []
+
+  SeeAlso            []
+******************************************************************************/
+void Bmc_QuitData()
+{
   /* Resets the _bmc_test_tableau command private data: */
   Bmc_TestReset();
-
-  /* quits an hash table in the wff module: */
-  bmc_quit_wff2nnf_hash();
 
   /* quits Conv module */
   Bmc_Conv_quit_cache();
 
-  /* Destroyes the variables manager: */
-  if (gl_vars_mgr != (BmcVarsMgr_ptr) NULL) {
-    BmcVarsMgr_Delete(&gl_vars_mgr);
-  }
+  /* tableaus memoization */
+  bmc_quit_tableau_memoization();
 }
-
-
 
 
 /**Function********************************************************************
@@ -219,30 +255,40 @@ void Bmc_Quit()
 
   SideEffects        []
 
-  SeeAlso            [SmInit]
+  SeeAlso            [CInit_Init]
 
 ******************************************************************************/
 void Bmc_AddCmd()
 {
-  Cmd_CommandAdd("bmc_setup",         Bmc_CommandBmcSetup, 0);
-  Cmd_CommandAdd("bmc_simulate",      Bmc_CommandBmcSimulate, 0);
+  Cmd_CommandAdd("bmc_setup", Bmc_CommandBmcSetup, 0, false);
+  Cmd_CommandAdd("bmc_simulate", Bmc_CommandBmcSimulate, 0, true);
+  Cmd_CommandAdd("bmc_inc_simulate", Bmc_CommandBmcIncSimulate, 0, true);
+  Cmd_CommandAdd("bmc_pick_state", Bmc_CommandBmcPickState, 0, true);
+  Cmd_CommandAdd("bmc_simulate_check_feasible_constraints",
+                 Bmc_CommandBmcSimulateCheckFeasibleConstraints, 0, true);
+
   Cmd_CommandAdd("gen_ltlspec_bmc",
-                 Bmc_CommandGenLtlSpecBmc, 0);
+                 Bmc_CommandGenLtlSpecBmc, 0, true);
   Cmd_CommandAdd("gen_ltlspec_bmc_onepb",
-                 Bmc_CommandGenLtlSpecBmcOnePb, 0);
-  Cmd_CommandAdd("check_ltlspec_bmc", Bmc_CommandCheckLtlSpecBmc, 0);
+                 Bmc_CommandGenLtlSpecBmcOnePb, 0, true);
+  Cmd_CommandAdd("check_ltlspec_bmc", Bmc_CommandCheckLtlSpecBmc, 0, true);
   Cmd_CommandAdd("check_ltlspec_bmc_onepb",
-		 Bmc_CommandCheckLtlSpecBmcOnePb, 0);
-#if HAVE_INCREMENTAL_SAT
-  Cmd_CommandAdd("check_ltlspec_bmc_inc", Bmc_CommandCheckLtlSpecBmcInc, 0);
+                 Bmc_CommandCheckLtlSpecBmcOnePb, 0, true);
+#if NUSMV_HAVE_INCREMENTAL_SAT
+  Cmd_CommandAdd("check_ltlspec_bmc_inc", Bmc_CommandCheckLtlSpecBmcInc,
+                 0, true);
 #endif
 
-  Cmd_CommandAdd("gen_invar_bmc",     Bmc_CommandGenInvarBmc, 0);
-  Cmd_CommandAdd("check_invar_bmc",   Bmc_CommandCheckInvarBmc, 0);
-#if HAVE_INCREMENTAL_SAT
-  Cmd_CommandAdd("check_invar_bmc_inc",   Bmc_CommandCheckInvarBmcInc, 0);
+  Cmd_CommandAdd("gen_invar_bmc",     Bmc_CommandGenInvarBmc, 0, true);
+  Cmd_CommandAdd("check_invar_bmc",   Bmc_CommandCheckInvarBmc, 0, true);
+#if NUSMV_HAVE_INCREMENTAL_SAT
+  Cmd_CommandAdd("check_invar_bmc_inc",   Bmc_CommandCheckInvarBmcInc,
+                 0, true);
 #endif
-  Cmd_CommandAdd("_bmc_test_tableau", Bmc_TestTableau, 0);
+  Cmd_CommandAdd("_bmc_test_tableau", Bmc_TestTableau, 0, true);
+
+  /* Add the SBMC sub-package commands */
+  SBmc_AddCmd();
 }
 
 

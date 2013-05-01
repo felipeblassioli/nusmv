@@ -10,7 +10,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -26,13 +26,13 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: array.h,v 1.2 2001/11/05 10:57:05 none Exp $]
+  Revision    [$Id: array.h,v 1.2.16.2.6.1 2007-06-18 15:23:45 nusmv Exp $]
 
 ******************************************************************************/
 #ifndef ARRAY_H
@@ -57,13 +57,14 @@ EXTERN void array_free ARGS((array_t *));
 EXTERN int array_append ARGS((array_t *, array_t *));
 EXTERN void array_sort ARGS((array_t *, int (*)()));
 EXTERN void array_uniq ARGS((array_t *, int (*)(), void (*)()));
-EXTERN int array_abort ARGS((array_t *, int));
+EXTERN int array_abort ARGS((const array_t *, int));
 EXTERN int array_resize ARGS((array_t *, int));
 EXTERN char *array_do_data ARGS((array_t *));
 
 extern unsigned int array_global_index;
 extern int array_global_insert;
 
+/* allocates an array of 'number' elements of the type 'type' */
 #define array_alloc(type, number)		\
     array_do_alloc(sizeof(type), number)
 

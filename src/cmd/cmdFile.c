@@ -9,51 +9,52 @@
   Author      [Adapted to NuSMV by Marco Roveri]
 
   Copyright   [
-  This file is part of the ``cmd'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  This file is part of the ``cmd'' package of NuSMV version 2.
+  Copyright (C) 1998-2001 by CMU and FBK-irst.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #if HAVE_CONFIG_H
-# include "config.h"
+# include "nusmv-config.h"
 #endif
 
+#include "utils/error.h"
 #include "cmdInt.h"
 #include "cmd.h"
 
 
-static char rcsid[] UTIL_UNUSED = "$Id: cmdFile.c,v 1.4.6.2.2.1 2005/11/16 12:09:45 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: cmdFile.c,v 1.4.6.2.4.2.6.3 2009-08-05 13:57:56 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
 /*---------------------------------------------------------------------------*/
-#define ESC	'\033'
-#define BEEP	'\007'
-#define HIST	'%'
-#define SUBST	'^'
+#define ESC     '\033'
+#define BEEP    '\007'
+#define HIST    '%'
+#define SUBST   '^'
 
-#define STDIN	0
-#define STDOUT	1
+#define STDIN   0
+#define STDOUT  1
 
 #define MAX_BUF 65536
 
@@ -63,6 +64,9 @@ static char rcsid[] UTIL_UNUSED = "$Id: cmdFile.c,v 1.4.6.2.2.1 2005/11/16 12:09
 static char NuSMVHistChar = HIST;       /* can be changed by "set hist_char" */
 static char *seperator = " \t\n;";
 
+#if ! NUSMV_HAVE_ISATTY
+static inline int isatty(int d) { return 0; }
+#endif
 
 /**AutomaticStart*************************************************************/
 
@@ -70,7 +74,7 @@ static char *seperator = " \t\n;";
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
 
-#if HAVE_IOCTL_WITH_TIOCGETC
+#if NUSMV_HAVE_IOCTL_WITH_TIOCGETC
 static int cmp(char ** s1, char ** s2);
 static int match(char * newmatch, char * lastmatch, char * actual);
 #endif
@@ -79,7 +83,8 @@ static char * getarg(char * line, int num);
 static char * bad_event(int n);
 static char * do_subst(char * dest, char * new);
 static void print_prompt(char * prompt);
-#ifdef HAVE_LIBREADLINE
+
+#if NUSMV_HAVE_LIBREADLINE
 static char *removeWhiteSpaces(char *string);
 #endif
 
@@ -115,9 +120,10 @@ Cmd_FileOpen(
   char ** realFileName_p,
   int  silent)
 {
-  char *realFileName, *path, *user_path;
+  char *realFileName, *path, *user_path = NIL(char);
   char *lib_name;
   FILE *fp;
+  OptsHandler_ptr opt = OptsHandler_get_instance();
 
   if (strcmp(fileName, "-") == 0) {
     if (strcmp(mode, "w") == 0) {
@@ -132,9 +138,13 @@ Cmd_FileOpen(
   else {
     realFileName = NIL(char);
     if (strcmp(mode, "r") == 0) {
-      user_path = Cmd_FlagReadByName("open_path");
+
+      if (OptsHandler_is_option_registered(opt, "open_path")) {
+        user_path = OptsHandler_get_string_option_value(opt, "open_path");
+      }
+
       if (user_path != NIL(char)) {
-        lib_name = Sm_NuSMVObtainLibrary();
+        lib_name = CInit_NuSMVObtainLibrary();
         path = ALLOC(char, strlen(user_path)+strlen(lib_name)+10);
         (void) sprintf(path, "%s:%s", user_path, lib_name);
 
@@ -148,7 +158,7 @@ Cmd_FileOpen(
          *
          * if (the beginning of file_name is : ./ || ../ || ~/ || /) {
          * realFileName = util_file_search(fileName, NIL(char), "r");
-         * } else 
+         * } else
          */
         realFileName = util_file_search(fileName, path, "r");
         FREE(path);
@@ -160,7 +170,14 @@ Cmd_FileOpen(
     }
     if ((fp = fopen(realFileName, mode)) == NIL(FILE)) {
       if (! silent) {
+#if NUSMV_HAVE_ERRNO
         perror(realFileName);
+#else
+        fprintf(nusmv_stderr,
+                "File '%s': an error occurred during file open, but the " \
+                "system does not support a better identification\n",
+                realFileName);
+#endif
       }
     }
   }
@@ -177,7 +194,7 @@ Cmd_FileOpen(
 /* Definition of internal and static functions                               */
 /*---------------------------------------------------------------------------*/
 
-#if HAVE_IOCTL_WITH_TIOCGETC
+#if NUSMV_HAVE_IOCTL_WITH_TIOCGETC
 
 /*
  * Words are seperated by any of the characters in `seperator'.  The seperator
@@ -193,11 +210,11 @@ Cmd_FileOpen(
   Description [ Input is read from `stream' and returned in `buf'.  Up to
   `size' bytes will be placed into `buf'.  If `stream' is not stdin, is
   equivalent to calling fgets(buf, size, stream).
- 
+
   `prompt' is the prompt you want to appear at the beginning of the line.  The
   caller does not have to print the prompt string before calling this routine.
   The prompt has to be reprinted if the user hits ^D.
- 
+
   The file completion routines are derived from the source code for csh, which
   is copyrighted by the Regents of the University of California.]
 
@@ -211,28 +228,33 @@ char* CmdFgetsFilec(char* buf, int size, FILE* stream, char* prompt)
 
   DIR *dir;
   struct dirent *dp;
-#if HAVE_LIBREADLINE
+#if NUSMV_HAVE_LIBREADLINE
   char *dupline;
   char *cleanLine;
 #endif
-  
-#if HAVE_TERM_INTERRUPTS
+
+#if NUSMV_HAVE_TERM_INTERRUPTS
   int omask;
-  struct sgttyb tty, oldtty;	/* To mask interuupts */
+  struct sgttyb tty, oldtty;    /* To mask interuupts */
   int pending = LPENDIN;
 #endif
 
   char *last_word, *file, *path, *name, *line;
   char last_char, found[MAXNAMLEN];
-  array_t *names = NIL(array_t);  /* initialize so that lint doesn't complain */
+  array_t *names = NIL(array_t);  /* initialize so that lint doesn't complain
+                                     */
+#if (defined __CYGWIN32__) || (defined __MINGW32__)
+  fflush(stdout);
+  fflush(stderr);
+#endif
 
   sno = fileno(stream);
   if (sno != STDIN || !isatty(sno)) {
     print_prompt(prompt);
     return fgets(buf, size, stream);
   }
-  else if (Cmd_FlagReadByName("filec") == NIL(char)) {
-#if HAVE_LIBREADLINE
+  else if (!OptsHandler_is_option_registered(opt, "filec")) {
+#if NUSMV_HAVE_LIBREADLINE
     /* Effectively read one line of input printing the prompt */
     /* Ignore ^D */
     while ( NIL(char) == (dupline = (char*) readline(prompt)) );
@@ -242,16 +264,16 @@ char* CmdFgetsFilec(char* buf, int size, FILE* stream, char* prompt)
     if (cleanLine != NIL(char)) {
       /* If the line is non empty, add it to the history */
       if (*cleanLine) {
-	add_history(cleanLine);
+        add_history(cleanLine);
       }
 
       /* Copy the contents of cleanLine to buf, to simulate fgets */
       strncpy(buf, cleanLine, size);
       if (strlen(cleanLine) >= size) {
-	buf[size-1] = '\0';
+        buf[size-1] = '\0';
       }
       line = buf;
-    } 
+    }
     else {
       line = NIL(char);
     }
@@ -269,13 +291,13 @@ char* CmdFgetsFilec(char* buf, int size, FILE* stream, char* prompt)
     }
 #endif
     return line;
-  } 
+  }
   else {
     print_prompt(prompt);
   }
-    
+
   /* Allow hitting ESCAPE to break a read() */
-	
+
   (void) ioctl(sno, TIOCGETC, (char *) &tchars);
   oldtchars = tchars;
   tchars.t_brkc = ESC;
@@ -325,19 +347,19 @@ char* CmdFgetsFilec(char* buf, int size, FILE* stream, char* prompt)
       *found = '\0';
       maxlen = 0;
       while ((dp = readdir(dir)) != NIL(struct dirent)) {
-	if (strncmp(file, dp->d_name, len) == 0) {
-	  if (last_char == ESC) {
-	    if (match(dp->d_name, found, file) == 0) {
-	      break;
-	    }
-	  }
-	  else if (len != 0 || *(dp->d_name) != '.') {
-	    if (maxlen < NAMLEN(dp)) {
-	      maxlen = NAMLEN(dp);
-	    }
-	    array_insert_last(char *, names, util_strsav(dp->d_name));
-	  }
-	}
+        if (strncmp(file, dp->d_name, len) == 0) {
+          if (last_char == ESC) {
+            if (match(dp->d_name, found, file) == 0) {
+              break;
+            }
+          }
+          else if (len != 0 || *(dp->d_name) != '.') {
+            if (maxlen < NAMLEN(dp)) {
+              maxlen = NAMLEN(dp);
+            }
+            array_insert_last(char *, names, util_strsav(dp->d_name));
+          }
+        }
       }
       (void) closedir(dir);
         if (last_char == ESC) {
@@ -376,25 +398,25 @@ char* CmdFgetsFilec(char* buf, int size, FILE* stream, char* prompt)
         }
         *--file = '/';
       }
-      
-#if HAVE_TERM_INTERRUPTS
+
+#if NUSMV_HAVE_TERM_INTERRUPTS
       /* mask interrupts temporarily */
-      omask = sigblock(sigmask(SIGINT));	
+      omask = sigblock(sigmask(SIGINT));
       (void) ioctl(STDOUT, TIOCGETP, (char *)&tty);
       oldtty = tty;
       tty.sg_flags &= ~(ECHO|CRMOD);
       (void) ioctl(STDOUT, TIOCSETN, (char *)&tty);
 #endif
-      
+
       /* reprint prompt */
       (void) write(STDOUT, "\r", 1);
       print_prompt(prompt);
-      
+
       /* shove chars from buf back into the input queue */
       for (i = 0; buf[i]; i++) {
         (void) ioctl(STDOUT, TIOCSTI, &buf[i]);
       }
-#if HAVE_TERM_INTERRUPTS
+#if NUSMV_HAVE_TERM_INTERRUPTS
       /* restore interrupts */
       (void) ioctl(STDOUT, TIOCSETN, (char *)&oldtty);
       (void) sigsetmask(omask);
@@ -421,49 +443,54 @@ char* CmdFgetsFilec(char* buf, int size, FILE* stream, char* prompt)
 ******************************************************************************/
 char* CmdFgetsFilec(char* buf, int size, FILE* stream, char* prompt)
 {
-#if HAVE_LIBREADLINE
+#if NUSMV_HAVE_LIBREADLINE
   char *dupline;
   char *cleanLine;
 #endif
   char *line;
   int sno;
-#if !HAVE_LIBREADLINE
+#if !NUSMV_HAVE_LIBREADLINE
   int len;
-#endif  
-  
+#endif
+
+#if (defined __CYGWIN32__) || (defined __MINGW32__)
+  fflush(stdout);
+  fflush(stderr);
+#endif
+
   sno = fileno(stream);
   if (sno != STDIN || !isatty(sno)) {
     print_prompt(prompt);
     return (fgets(buf, size, stream));
-  } 
+  }
   else {
-#if HAVE_LIBREADLINE
+#if NUSMV_HAVE_LIBREADLINE
     /* Effectively read one line of input printing the prompt */
     /* Ignore ^D */
-    while ( NIL(char) == (dupline = (char*) readline(prompt))); 
+    while ( NIL(char) == (dupline = (char*) readline(prompt)));
     cleanLine = removeWhiteSpaces(dupline);
 
     /* Check if an EOF has been read */
     if (cleanLine != NIL(char)) {
       /* If the line is non empty, add it to the history */
       if (*cleanLine) {
-	add_history(cleanLine);
+        add_history(cleanLine);
       }
 
       /* Copy the contents of cleanLine to buf, to simulate fgets */
       strncpy(buf, cleanLine, size);
       if (strlen(cleanLine) >= size) {
-	buf[size-1] = '\0';
+        buf[size-1] = '\0';
       }
       line = buf;
-    } 
+    }
     else {
       line = NIL(char);
     }
     FREE(dupline);
 #else
     /* Get rid of the trailing newline */
-    print_prompt(prompt); 
+    print_prompt(prompt);
     line = fgets(buf, size, stream);
     if (line != NIL(char)) {
       len = strlen(line);
@@ -477,10 +504,10 @@ char* CmdFgetsFilec(char* buf, int size, FILE* stream, char* prompt)
 
 }
 
-#endif /* HAVE_IOCTL_WITH_TIOCGETC */
+#endif /* NUSMV_HAVE_IOCTL_WITH_TIOCGETC */
 
 
-#if HAVE_IOCTL_WITH_TIOCGETC
+#if NUSMV_HAVE_IOCTL_WITH_TIOCGETC
 /**Function********************************************************************
 
   Synopsis    [required]
@@ -519,7 +546,7 @@ match(
   char * actual)
 {
   int i = 0;
-    
+
   if (*actual == '\0' && *newmatch == '.') {
     return(1);
   }
@@ -534,7 +561,7 @@ match(
   *lastmatch = '\0';
   return(i);
 }
-#endif /* HAVE_IOCTL_WITH_TIOCGETC */
+#endif /* NUSMV_HAVE_IOCTL_WITH_TIOCGETC */
 
 
 
@@ -547,22 +574,22 @@ match(
 
   In the following ^ is the SUBST character and ! is the HIST character.
   Deals with:
- 	!!			last command
- 	!stuff			last command that began with "stuff"
- 	!*			all but 0'th argument of last command
- 	!$			last argument of last command
- 	!:n			n'th argument of last command
- 	!n			repeat the n'th command
- 	!-n			repeat n'th previous command
- 	^old^new		replace "old" w/ "new" in previous command
- 
+        !!                      last command
+        !stuff                  last command that began with "stuff"
+        !*                      all but 0'th argument of last command
+        !$                      last argument of last command
+        !:n                     n'th argument of last command
+        !n                      repeat the n'th command
+        !-n                     repeat n'th previous command
+        ^old^new                replace "old" w/ "new" in previous command
 
-  Trailing spaces are significant. Removes all initial spaces. 
+
+  Trailing spaces are significant. Removes all initial spaces.
 
   Returns `line' if no changes were made.  Returns pointer to a static buffer
   if any changes were made.  Sets `changed' to 1 if a history substitution
   took place, o/w set to 0.  Returns NULL if error occurred.]
-  
+
   SideEffects []
 
 ******************************************************************************/
@@ -572,9 +599,9 @@ CmdHistorySubstitution(
   int * changed)
 {
   static char buf[MAX_BUF], c;
-  char *value;
   char *last, *old, *new, *start, *b, *l;
   int n, len, i, num, internal_change;
+  OptsHandler_ptr opt = OptsHandler_get_instance();
 
   *changed = 0;
   internal_change = 0;
@@ -594,7 +621,7 @@ CmdHistorySubstitution(
     if (new == NIL(char)) {
       goto bad_modify;
     }
-    *new++ = '\0';		      /* makes change in contents of line */
+    *new++ = '\0';                    /* makes change in contents of line */
     start = strstr(last, old);
     if (start == NIL(char)) {
       *--new = SUBST;
@@ -613,8 +640,9 @@ CmdHistorySubstitution(
     return(buf);
   }
 
-  if ((value = Cmd_FlagReadByName("history_char")) != NIL(char)){
-    NuSMVHistChar = *value;
+  if (OptsHandler_is_option_registered(opt, "history_char")) {
+    const char* tmp = OptsHandler_get_string_option_value(opt, "history_char");
+    NuSMVHistChar = tmp[0];
   }
 
   for (l = line; (*b = *l); l++) {
@@ -673,7 +701,7 @@ CmdHistorySubstitution(
           }
           b = do_subst(b, array_fetch(char *, cmdCommandHistoryArray, num - 1));
         }
-        else {	/* replace !boo w/ last cmd beginning w/ boo */
+        else {  /* replace !boo w/ last cmd beginning w/ boo */
           start = l;
           while (*l && strchr(seperator, *l) == NIL(char)) {
             l++;
@@ -694,7 +722,7 @@ CmdHistorySubstitution(
             return(NIL(char));
           }
           *l-- = c;
-		    
+
         }
       }
       *changed = 1;
@@ -727,7 +755,7 @@ getnum(
 {
   int num = 0;
   char *line = *linep;
-    
+
   for (; isdigit(*line); line++) {
     num *= 10;
     num += *line - '0';
@@ -797,7 +825,7 @@ getarg(
   } while (b < line && c < &buf[127]);
   *c = '\0';
   return(buf);
-}	   
+}
 
 
 /**Function********************************************************************
@@ -860,9 +888,16 @@ static void print_prompt(char* prompt)
 
   if (prompt == NIL(char)) return;
 
+  /* Here I added this calls to fflush because fprintf is buffered and the
+     function write() uses a different buffer, which may lead the prompt being
+     output before some command output. See issue 2189. */
+  fflush(nusmv_stdout);
+  fflush(nusmv_stderr);
+
   while (*prompt != '\0') {
     if (*prompt == NuSMVHistChar) {
-      sprintf(buf, "%d", array_n(cmdCommandHistoryArray) + 1);
+      int c = snprintf(buf, sizeof(buf), "%d", array_n(cmdCommandHistoryArray) + 1);
+      SNPRINTF_CHECK(c, sizeof(buf));
       write(STDOUT, buf, strlen(buf));
     }
     else {
@@ -873,7 +908,7 @@ static void print_prompt(char* prompt)
   fflush(stdout);
 }
 
-#ifdef HAVE_LIBREADLINE
+#if NUSMV_HAVE_LIBREADLINE
 /**Function********************************************************************
 
   Synopsis [Removes tabs and spaces from the beginning and end of string.]

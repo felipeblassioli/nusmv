@@ -2,7 +2,7 @@ MODULE and-gate(in1,in2)
 VAR
   out : boolean;
 ASSIGN
-  init(out) := 0;
+  init(out) := FALSE;
   next(out) := (in1 & in2) union out;
 
 MODULE and-gate-init(in1,in2,init-out)
@@ -16,25 +16,25 @@ MODULE or-gate(in1,in2)
 VAR
   out : boolean;
 ASSIGN
-  init(out) := 0;
+  init(out) := FALSE;
   next(out) := (in1 | in2) union out;
 
 MODULE c-element(in1,in2)
 VAR
   out : boolean;
 ASSIGN
-  init(out) := 0;
+  init(out) := FALSE;
   next(out) := 
     case
       in1 = in2 : in1 union out;
-      1 : out;
+      TRUE : out;
     esac;
 
 MODULE mutex-half(inp,other-out)
 VAR
   out : boolean;
 ASSIGN
-  init(out) := 0;
+  init(out) := FALSE;
   next(out) := inp union out;
 TRANS
   !(next(out) & next(other-out))
@@ -43,7 +43,7 @@ MODULE user
 VAR
   req : boolean;
 ASSIGN
-  init(req) := 0;
+  init(req) := FALSE;
   next(req) := (!ack) union req;
 
 MODULE cell(left,right,token)
@@ -73,181 +73,217 @@ DEFINE
 
 MODULE main
 VAR
-  e[16] : process cell( e[1],e[15],1);
-  e[15] : process cell(e[16],e[14],0);
-  e[14] : process cell(e[15],e[13],0);
-  e[13] : process cell(e[14],e[12],0);
-  e[12] : process cell(e[13],e[11],0);
-  e[11] : process cell(e[12],e[10],0);
-  e[10] : process cell(e[11], e[9],0);
-  e[9]  : process cell(e[10], e[8],0);
-  e[8]  : process cell( e[9], e[7],0);
-  e[7]  : process cell( e[8], e[6],0);
-  e[6]  : process cell( e[7], e[5],0);
-  e[5]  : process cell( e[6], e[4],0);
-  e[4]  : process cell( e[5], e[3],0);
-  e[3]  : process cell( e[4], e[2],0);
-  e[2]  : process cell( e[3], e[1],0);
-  e[1]  : process cell( e[2],e[12],0);
+  e_16 : process cell( e_1,e_15,TRUE);
+  e_15 : process cell(e_16,e_14,FALSE);
+  e_14 : process cell(e_15,e_13,FALSE);
+  e_13 : process cell(e_14,e_12,FALSE);
+  e_12 : process cell(e_13,e_11,FALSE);
+  e_11 : process cell(e_12,e_10,FALSE);
+  e_10 : process cell(e_11, e_9,FALSE);
+  e_9  : process cell(e_10, e_8,FALSE);
+  e_8  : process cell( e_9, e_7,FALSE);
+  e_7  : process cell( e_8, e_6,FALSE);
+  e_6  : process cell( e_7, e_5,FALSE);
+  e_5  : process cell( e_6, e_4,FALSE);
+  e_4  : process cell( e_5, e_3,FALSE);
+  e_3  : process cell( e_4, e_2,FALSE);
+  e_2  : process cell( e_3, e_1,FALSE);
+  e_1  : process cell( e_2,e_12,FALSE);
 
 SPEC
   AG (
 
-        !(e[1].u.ack & e[2].u.ack)
+        !(e_1.u.ack & e_2.u.ack)
 
-      & !(e[1].u.ack & e[3].u.ack)
-      & !(e[2].u.ack & e[3].u.ack)
+      & !(e_1.u.ack & e_3.u.ack)
+      & !(e_2.u.ack & e_3.u.ack)
 
-      & !(e[1].u.ack & e[4].u.ack)
-      & !(e[2].u.ack & e[4].u.ack)	
-      & !(e[3].u.ack & e[4].u.ack)	
+      & !(e_1.u.ack & e_4.u.ack)
+      & !(e_2.u.ack & e_4.u.ack)	
+      & !(e_3.u.ack & e_4.u.ack)	
 
-      & !(e[1].u.ack & e[5].u.ack)
-      & !(e[2].u.ack & e[5].u.ack)	
-      & !(e[3].u.ack & e[5].u.ack)	
-      & !(e[4].u.ack & e[5].u.ack)	
+      & !(e_1.u.ack & e_5.u.ack)
+      & !(e_2.u.ack & e_5.u.ack)	
+      & !(e_3.u.ack & e_5.u.ack)	
+      & !(e_4.u.ack & e_5.u.ack)	
 
-      & !(e[1].u.ack & e[6].u.ack)
-      & !(e[2].u.ack & e[6].u.ack)	
-      & !(e[3].u.ack & e[6].u.ack)	
-      & !(e[4].u.ack & e[6].u.ack)	
-      & !(e[5].u.ack & e[6].u.ack)	
+      & !(e_1.u.ack & e_6.u.ack)
+      & !(e_2.u.ack & e_6.u.ack)	
+      & !(e_3.u.ack & e_6.u.ack)	
+      & !(e_4.u.ack & e_6.u.ack)	
+      & !(e_5.u.ack & e_6.u.ack)	
 
-      & !(e[1].u.ack & e[7].u.ack)
-      & !(e[2].u.ack & e[7].u.ack)	
-      & !(e[3].u.ack & e[7].u.ack)	
-      & !(e[4].u.ack & e[7].u.ack)	
-      & !(e[5].u.ack & e[7].u.ack)	
-      & !(e[6].u.ack & e[7].u.ack)	
+      & !(e_1.u.ack & e_7.u.ack)
+      & !(e_2.u.ack & e_7.u.ack)	
+      & !(e_3.u.ack & e_7.u.ack)	
+      & !(e_4.u.ack & e_7.u.ack)	
+      & !(e_5.u.ack & e_7.u.ack)	
+      & !(e_6.u.ack & e_7.u.ack)	
 
-      & !(e[1].u.ack & e[8].u.ack)
-      & !(e[2].u.ack & e[8].u.ack)	
-      & !(e[3].u.ack & e[8].u.ack)	
-      & !(e[4].u.ack & e[8].u.ack)	
-      & !(e[5].u.ack & e[8].u.ack)	
-      & !(e[6].u.ack & e[8].u.ack)	
-      & !(e[7].u.ack & e[8].u.ack)	
+      & !(e_1.u.ack & e_8.u.ack)
+      & !(e_2.u.ack & e_8.u.ack)	
+      & !(e_3.u.ack & e_8.u.ack)	
+      & !(e_4.u.ack & e_8.u.ack)	
+      & !(e_5.u.ack & e_8.u.ack)	
+      & !(e_6.u.ack & e_8.u.ack)	
+      & !(e_7.u.ack & e_8.u.ack)	
 
-      & !(e[1].u.ack & e[9].u.ack)
-      & !(e[2].u.ack & e[9].u.ack)	
-      & !(e[3].u.ack & e[9].u.ack)	
-      & !(e[4].u.ack & e[9].u.ack)	
-      & !(e[5].u.ack & e[9].u.ack)	
-      & !(e[6].u.ack & e[9].u.ack)	
-      & !(e[7].u.ack & e[9].u.ack)	
-      & !(e[8].u.ack & e[9].u.ack)	
+      & !(e_1.u.ack & e_9.u.ack)
+      & !(e_2.u.ack & e_9.u.ack)	
+      & !(e_3.u.ack & e_9.u.ack)	
+      & !(e_4.u.ack & e_9.u.ack)	
+      & !(e_5.u.ack & e_9.u.ack)	
+      & !(e_6.u.ack & e_9.u.ack)	
+      & !(e_7.u.ack & e_9.u.ack)	
+      & !(e_8.u.ack & e_9.u.ack)	
 
-      & !(e[1].u.ack & e[10].u.ack)
-      & !(e[2].u.ack & e[10].u.ack)	
-      & !(e[3].u.ack & e[10].u.ack)	
-      & !(e[4].u.ack & e[10].u.ack)	
-      & !(e[5].u.ack & e[10].u.ack)	
-      & !(e[6].u.ack & e[10].u.ack)	
-      & !(e[7].u.ack & e[10].u.ack)	
-      & !(e[8].u.ack & e[10].u.ack)	
-      & !(e[9].u.ack & e[10].u.ack)	
+      & !(e_1.u.ack & e_10.u.ack)
+      & !(e_2.u.ack & e_10.u.ack)	
+      & !(e_3.u.ack & e_10.u.ack)	
+      & !(e_4.u.ack & e_10.u.ack)	
+      & !(e_5.u.ack & e_10.u.ack)	
+      & !(e_6.u.ack & e_10.u.ack)	
+      & !(e_7.u.ack & e_10.u.ack)	
+      & !(e_8.u.ack & e_10.u.ack)	
+      & !(e_9.u.ack & e_10.u.ack)	
 
-      & !(e[1].u.ack & e[11].u.ack)
-      & !(e[2].u.ack & e[11].u.ack)	
-      & !(e[3].u.ack & e[11].u.ack)	
-      & !(e[4].u.ack & e[11].u.ack)	
-      & !(e[5].u.ack & e[11].u.ack)	
-      & !(e[6].u.ack & e[11].u.ack)	
-      & !(e[7].u.ack & e[11].u.ack)	
-      & !(e[8].u.ack & e[11].u.ack)	
-      & !(e[9].u.ack & e[11].u.ack)	
-      & !(e[10].u.ack & e[11].u.ack)	
+      & !(e_1.u.ack & e_11.u.ack)
+      & !(e_2.u.ack & e_11.u.ack)	
+      & !(e_3.u.ack & e_11.u.ack)	
+      & !(e_4.u.ack & e_11.u.ack)	
+      & !(e_5.u.ack & e_11.u.ack)	
+      & !(e_6.u.ack & e_11.u.ack)	
+      & !(e_7.u.ack & e_11.u.ack)	
+      & !(e_8.u.ack & e_11.u.ack)	
+      & !(e_9.u.ack & e_11.u.ack)	
+      & !(e_10.u.ack & e_11.u.ack)	
 
-      & !(e[1].u.ack & e[12].u.ack)
-      & !(e[2].u.ack & e[12].u.ack)	
-      & !(e[3].u.ack & e[12].u.ack)	
-      & !(e[4].u.ack & e[12].u.ack)	
-      & !(e[5].u.ack & e[12].u.ack)	
-      & !(e[6].u.ack & e[12].u.ack)	
-      & !(e[7].u.ack & e[12].u.ack)	
-      & !(e[8].u.ack & e[12].u.ack)	
-      & !(e[9].u.ack & e[12].u.ack)	
-      & !(e[10].u.ack & e[12].u.ack)	
-      & !(e[11].u.ack & e[12].u.ack)	
+      & !(e_1.u.ack & e_12.u.ack)
+      & !(e_2.u.ack & e_12.u.ack)	
+      & !(e_3.u.ack & e_12.u.ack)	
+      & !(e_4.u.ack & e_12.u.ack)	
+      & !(e_5.u.ack & e_12.u.ack)	
+      & !(e_6.u.ack & e_12.u.ack)	
+      & !(e_7.u.ack & e_12.u.ack)	
+      & !(e_8.u.ack & e_12.u.ack)	
+      & !(e_9.u.ack & e_12.u.ack)	
+      & !(e_10.u.ack & e_12.u.ack)	
+      & !(e_11.u.ack & e_12.u.ack)	
 
-      & !(e[1].u.ack & e[13].u.ack)
-      & !(e[2].u.ack & e[13].u.ack)	
-      & !(e[3].u.ack & e[13].u.ack)	
-      & !(e[4].u.ack & e[13].u.ack)	
-      & !(e[5].u.ack & e[13].u.ack)	
-      & !(e[6].u.ack & e[13].u.ack)	
-      & !(e[7].u.ack & e[13].u.ack)	
-      & !(e[8].u.ack & e[13].u.ack)	
-      & !(e[9].u.ack & e[13].u.ack)	
-      & !(e[10].u.ack & e[13].u.ack)	
-      & !(e[11].u.ack & e[13].u.ack)	
-      & !(e[12].u.ack & e[13].u.ack)	
+      & !(e_1.u.ack & e_13.u.ack)
+      & !(e_2.u.ack & e_13.u.ack)	
+      & !(e_3.u.ack & e_13.u.ack)	
+      & !(e_4.u.ack & e_13.u.ack)	
+      & !(e_5.u.ack & e_13.u.ack)	
+      & !(e_6.u.ack & e_13.u.ack)	
+      & !(e_7.u.ack & e_13.u.ack)	
+      & !(e_8.u.ack & e_13.u.ack)	
+      & !(e_9.u.ack & e_13.u.ack)	
+      & !(e_10.u.ack & e_13.u.ack)	
+      & !(e_11.u.ack & e_13.u.ack)	
+      & !(e_12.u.ack & e_13.u.ack)	
 
-      & !(e[1].u.ack & e[14].u.ack)
-      & !(e[2].u.ack & e[14].u.ack)	
-      & !(e[3].u.ack & e[14].u.ack)	
-      & !(e[4].u.ack & e[14].u.ack)	
-      & !(e[5].u.ack & e[14].u.ack)	
-      & !(e[6].u.ack & e[14].u.ack)	
-      & !(e[7].u.ack & e[14].u.ack)	
-      & !(e[8].u.ack & e[14].u.ack)	
-      & !(e[9].u.ack & e[14].u.ack)	
-      & !(e[10].u.ack & e[14].u.ack)	
-      & !(e[11].u.ack & e[14].u.ack)	
-      & !(e[12].u.ack & e[14].u.ack)	
-      & !(e[13].u.ack & e[14].u.ack)	
+      & !(e_1.u.ack & e_14.u.ack)
+      & !(e_2.u.ack & e_14.u.ack)	
+      & !(e_3.u.ack & e_14.u.ack)	
+      & !(e_4.u.ack & e_14.u.ack)	
+      & !(e_5.u.ack & e_14.u.ack)	
+      & !(e_6.u.ack & e_14.u.ack)	
+      & !(e_7.u.ack & e_14.u.ack)	
+      & !(e_8.u.ack & e_14.u.ack)	
+      & !(e_9.u.ack & e_14.u.ack)	
+      & !(e_10.u.ack & e_14.u.ack)	
+      & !(e_11.u.ack & e_14.u.ack)	
+      & !(e_12.u.ack & e_14.u.ack)	
+      & !(e_13.u.ack & e_14.u.ack)	
 
 
-      & !(e[1].u.ack & e[15].u.ack)
-      & !(e[2].u.ack & e[15].u.ack)	
-      & !(e[3].u.ack & e[15].u.ack)	
-      & !(e[4].u.ack & e[15].u.ack)	
-      & !(e[5].u.ack & e[15].u.ack)	
-      & !(e[6].u.ack & e[15].u.ack)	
-      & !(e[7].u.ack & e[15].u.ack)	
-      & !(e[8].u.ack & e[15].u.ack)	
-      & !(e[9].u.ack & e[15].u.ack)	
-      & !(e[10].u.ack & e[15].u.ack)	
-      & !(e[11].u.ack & e[15].u.ack)	
-      & !(e[12].u.ack & e[15].u.ack)	
-      & !(e[13].u.ack & e[15].u.ack)	
-      & !(e[14].u.ack & e[15].u.ack)	
+      & !(e_1.u.ack & e_15.u.ack)
+      & !(e_2.u.ack & e_15.u.ack)	
+      & !(e_3.u.ack & e_15.u.ack)	
+      & !(e_4.u.ack & e_15.u.ack)	
+      & !(e_5.u.ack & e_15.u.ack)	
+      & !(e_6.u.ack & e_15.u.ack)	
+      & !(e_7.u.ack & e_15.u.ack)	
+      & !(e_8.u.ack & e_15.u.ack)	
+      & !(e_9.u.ack & e_15.u.ack)	
+      & !(e_10.u.ack & e_15.u.ack)	
+      & !(e_11.u.ack & e_15.u.ack)	
+      & !(e_12.u.ack & e_15.u.ack)	
+      & !(e_13.u.ack & e_15.u.ack)	
+      & !(e_14.u.ack & e_15.u.ack)	
 
-      & !(e[1].u.ack & e[16].u.ack)
-      & !(e[2].u.ack & e[16].u.ack)	
-      & !(e[3].u.ack & e[16].u.ack)	
-      & !(e[4].u.ack & e[16].u.ack)	
-      & !(e[5].u.ack & e[16].u.ack)	
-      & !(e[6].u.ack & e[16].u.ack)	
-      & !(e[7].u.ack & e[16].u.ack)	
-      & !(e[8].u.ack & e[16].u.ack)	
-      & !(e[9].u.ack & e[16].u.ack)	
-      & !(e[10].u.ack & e[16].u.ack)	
-      & !(e[11].u.ack & e[16].u.ack)	
-      & !(e[12].u.ack & e[16].u.ack)	
-      & !(e[13].u.ack & e[16].u.ack)	
-      & !(e[14].u.ack & e[16].u.ack)	
-      & !(e[15].u.ack & e[16].u.ack)	
+      & !(e_1.u.ack & e_16.u.ack)
+      & !(e_2.u.ack & e_16.u.ack)	
+      & !(e_3.u.ack & e_16.u.ack)	
+      & !(e_4.u.ack & e_16.u.ack)	
+      & !(e_5.u.ack & e_16.u.ack)	
+      & !(e_6.u.ack & e_16.u.ack)	
+      & !(e_7.u.ack & e_16.u.ack)	
+      & !(e_8.u.ack & e_16.u.ack)	
+      & !(e_9.u.ack & e_16.u.ack)	
+      & !(e_10.u.ack & e_16.u.ack)	
+      & !(e_11.u.ack & e_16.u.ack)	
+      & !(e_12.u.ack & e_16.u.ack)	
+      & !(e_13.u.ack & e_16.u.ack)	
+      & !(e_14.u.ack & e_16.u.ack)	
+      & !(e_15.u.ack & e_16.u.ack)	
 )
 
 
 PSLSPEC
       always (
-        forall i in {1: 1}: !(e[i].u.ack & e[ 2].u.ack)
-      & forall i in {1: 2}: !(e[i].u.ack & e[ 3].u.ack)
-      & forall i in {1: 3}: !(e[i].u.ack & e[ 4].u.ack)
-      & forall i in {1: 4}: !(e[i].u.ack & e[ 5].u.ack)
-      & forall i in {1: 5}: !(e[i].u.ack & e[ 6].u.ack)
-      & forall i in {1: 6}: !(e[i].u.ack & e[ 7].u.ack)
-      & forall i in {1: 7}: !(e[i].u.ack & e[ 8].u.ack)
-      & forall i in {1: 8}: !(e[i].u.ack & e[ 9].u.ack)
-      & forall i in {1: 9}: !(e[i].u.ack & e[10].u.ack)
-      & forall i in {1:10}: !(e[i].u.ack & e[11].u.ack)
-      & forall i in {1:11}: !(e[i].u.ack & e[12].u.ack)
-      & forall i in {1:12}: !(e[i].u.ack & e[13].u.ack)
-      & forall i in {1:13}: !(e[i].u.ack & e[14].u.ack)
-      & forall i in {1:14}: !(e[i].u.ack & e[15].u.ack)
-      & forall i in {1:15}: !(e[i].u.ack & e[16].u.ack)
+--        (forall i in {1: 1}: !(e[i].u.ack & e[ 2].u.ack))
+        (!(e_1.u.ack & e_2.u.ack))
+--      & (forall i in {1: 2}: !(e[i].u.ack & e[ 3].u.ack))
+      & (!(e_1.u.ack & e_3.u.ack) & !(e_2.u.ack & e_3.u.ack))
+--      & (forall i in {1: 3}: !(e[i].u.ack & e[ 4].u.ack))
+      & (!(e_1.u.ack & e_4.u.ack) & !(e_2.u.ack & e_4.u.ack) & !(e_3.u.ack & e_4.u.ack))
+--      & (forall i in {1: 4}: !(e[i].u.ack & e[ 5].u.ack))
+      & (!(e_1.u.ack & e_5.u.ack) & !(e_2.u.ack & e_5.u.ack) & !(e_3.u.ack & e_5.u.ack) & !(e_4.u.ack & e_5.u.ack))
+--      & (forall i in {1: 5}: !(e[i].u.ack & e[ 6].u.ack))
+      & (!(e_1.u.ack & e_6.u.ack) & !(e_2.u.ack & e_6.u.ack) & !(e_3.u.ack & e_6.u.ack) & !(e_4.u.ack & e_6.u.ack) & 
+         !(e_5.u.ack & e_6.u.ack))
+--      & (forall i in {1: 6}: !(e[i].u.ack & e[ 7].u.ack))
+      & (!(e_1.u.ack & e_7.u.ack) & !(e_2.u.ack & e_7.u.ack) & !(e_3.u.ack & e_7.u.ack) & 
+         !(e_4.u.ack & e_7.u.ack) & !(e_5.u.ack & e_7.u.ack) & !(e_6.u.ack & e_7.u.ack))
+--      & (forall i in {1: 7}: !(e[i].u.ack & e[ 8].u.ack))
+      & (!(e_1.u.ack & e_8.u.ack) & !(e_2.u.ack & e_8.u.ack) & !(e_3.u.ack & e_8.u.ack) & 
+         !(e_4.u.ack & e_8.u.ack) & !(e_5.u.ack & e_8.u.ack) & !(e_6.u.ack & e_8.u.ack) & !(e_7.u.ack & e_8.u.ack))
+--      & (forall i in {1: 8}: !(e[i].u.ack & e[ 9].u.ack))
+      & (!(e_1.u.ack & e_9.u.ack) & !(e_2.u.ack & e_9.u.ack) & !(e_3.u.ack & e_9.u.ack) & !(e_4.u.ack & e_9.u.ack) & 
+         !(e_5.u.ack & e_9.u.ack) & !(e_6.u.ack & e_9.u.ack) & !(e_7.u.ack & e_9.u.ack) & !(e_8.u.ack & e_9.u.ack))
+--      & (forall i in {1: 9}: !(e[i].u.ack & e_10.u.ack))
+      & (!(e_1.u.ack & e_10.u.ack) & !(e_2.u.ack & e_10.u.ack) & !(e_3.u.ack & e_10.u.ack) & !(e_4.u.ack & e_10.u.ack) & 
+         !(e_5.u.ack & e_10.u.ack) & !(e_6.u.ack & e_10.u.ack) & !(e_7.u.ack & e_10.u.ack) & !(e_8.u.ack & e_10.u.ack) & 
+         !(e_9.u.ack & e_10.u.ack))
+--      & (forall i in {1:10}: !(e[i].u.ack & e_11.u.ack))
+      & (!(e_1.u.ack & e_11.u.ack) & !(e_2.u.ack & e_11.u.ack) & !(e_3.u.ack & e_11.u.ack) & !(e_4.u.ack & e_11.u.ack) & 
+         !(e_5.u.ack & e_11.u.ack) & !(e_6.u.ack & e_11.u.ack) & !(e_7.u.ack & e_11.u.ack) & !(e_8.u.ack & e_11.u.ack) & 
+         !(e_9.u.ack & e_11.u.ack) & !(e_10.u.ack & e_11.u.ack))
+--      & (forall i in {1:11}: !(e[i].u.ack & e_12.u.ack))
+      & (!(e_1.u.ack & e_12.u.ack) & !(e_2.u.ack & e_12.u.ack) & !(e_3.u.ack & e_12.u.ack) & !(e_4.u.ack & e_12.u.ack) & 
+         !(e_5.u.ack & e_12.u.ack) & !(e_6.u.ack & e_12.u.ack) & !(e_7.u.ack & e_12.u.ack) & !(e_8.u.ack & e_12.u.ack) & 
+         !(e_9.u.ack & e_12.u.ack) & !(e_10.u.ack & e_12.u.ack) & !(e_11.u.ack & e_12.u.ack))
+--      & (forall i in {1:12}: !(e[i].u.ack & e_13.u.ack))
+      & (!(e_1.u.ack & e_13.u.ack) & !(e_2.u.ack & e_13.u.ack) & !(e_3.u.ack & e_13.u.ack) & !(e_4.u.ack & e_13.u.ack) & 
+         !(e_5.u.ack & e_13.u.ack) & !(e_6.u.ack & e_13.u.ack) & !(e_7.u.ack & e_13.u.ack) & !(e_8.u.ack & e_13.u.ack) &
+         !(e_9.u.ack & e_13.u.ack) & !(e_10.u.ack & e_13.u.ack) & !(e_11.u.ack & e_13.u.ack) & !(e_12.u.ack & e_13.u.ack))
+--      & (forall i in {1:13}: !(e[i].u.ack & e_14.u.ack))
+      & (!(e_1.u.ack & e_14.u.ack) & !(e_2.u.ack & e_14.u.ack) & !(e_3.u.ack & e_14.u.ack) & !(e_4.u.ack & e_14.u.ack) & 
+         !(e_5.u.ack & e_14.u.ack) & !(e_6.u.ack & e_14.u.ack) & !(e_7.u.ack & e_14.u.ack) & !(e_8.u.ack & e_14.u.ack) & 
+         !(e_9.u.ack & e_14.u.ack) & !(e_10.u.ack & e_14.u.ack) & !(e_11.u.ack & e_14.u.ack) & !(e_12.u.ack & e_14.u.ack) & 
+         !(e_13.u.ack & e_14.u.ack))
+--      & (forall i in {1:14}: !(e[i].u.ack & e_15.u.ack))
+      & (!(e_1.u.ack & e_15.u.ack) & !(e_2.u.ack & e_15.u.ack) & !(e_3.u.ack & e_15.u.ack) & !(e_4.u.ack & e_15.u.ack) & 
+         !(e_5.u.ack & e_15.u.ack) & !(e_6.u.ack & e_15.u.ack) & !(e_7.u.ack & e_15.u.ack) & !(e_8.u.ack & e_15.u.ack) & 
+         !(e_9.u.ack & e_15.u.ack) & !(e_10.u.ack & e_15.u.ack) & !(e_11.u.ack & e_15.u.ack) & !(e_12.u.ack & e_15.u.ack) & 
+         !(e_13.u.ack & e_15.u.ack) & !(e_14.u.ack & e_15.u.ack))
+--      & (forall i in {1:15}: !(e[i].u.ack & e_16.u.ack))
+      & (!(e_1.u.ack & e_16.u.ack) & !(e_2.u.ack & e_16.u.ack) & !(e_3.u.ack & e_16.u.ack) & !(e_4.u.ack & e_16.u.ack) & 
+         !(e_5.u.ack & e_16.u.ack) & !(e_6.u.ack & e_16.u.ack) & !(e_7.u.ack & e_16.u.ack) & !(e_8.u.ack & e_16.u.ack) & 
+         !(e_9.u.ack & e_16.u.ack) & !(e_10.u.ack & e_16.u.ack) & !(e_11.u.ack & e_16.u.ack) & !(e_12.u.ack & e_16.u.ack) & 
+         !(e_13.u.ack & e_16.u.ack) & !(e_13.u.ack & e_16.u.ack) & !(e_15.u.ack & e_16.u.ack))
       )
       ;
 

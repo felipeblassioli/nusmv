@@ -1,10 +1,12 @@
+% -*-latex-*-
 \begin{nusmvCommand} {check\_ltlspec\_bmc} {\label{checkLtlspecBmcCoomand} 
 Checks the given LTL specification, or all LTL specifications if no
 formula is given.  Checking parameters are the maximum length and the
 loopback value}
 
-\cmdLine{check\_ltlspec\_bmc [-h | -n idx | -p "formula [IN context]"]
-[-k max\_length] [-l loopback] [-o filename]}
+\cmdLine{check\_ltlspec\_bmc [-h ] | [-n idx | -p "formula [IN
+      context]" | -P "name"] [-k max\_length] [-l loopback] [-o
+    filename]}
 
 This command generates one or more problems, and calls SAT solver for
 each one. Each problem is related to a specific problem bound, which
@@ -32,6 +34,9 @@ the properties database.}
 \opt{-p \parameter{"\anyexpr [IN context]"}}{Checks the \anyexpr specified on
 the command-line. \code{context} is the module instance name which
 the variables in \anyexpr must be evaluated in.}
+
+\opt{-P \parameter{\natnum{name}}}{Checks the LTL property named \natnum{name} in
+the property database.} 
             
 \opt{-k \parameter{\natnum{\it max\_length}}}{\natnum{\it max\_length} is the maximum problem
 bound to be checked. Only natural numbers are valid values for this

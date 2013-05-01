@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (C) 1999, 2000, 2001, 2002 Marco Roveri.
-# Originally written by Marco Roveri <roveri@irst.itc.it>
+# Originally written by Marco Roveri <roveri@fbk.eu>
 
 # This program is distributed in the hope that it will be useful, but
 # WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -36,7 +36,7 @@ my %smv_reserved = (
 my %state_renamed;
 
 sub help {
-    print STDERR "ISCAS'89 to SMV file converter by roveri\@irst.itc.it\n";
+    print STDERR "ISCAS'89 to SMV file converter by roveri\@fbk.eu\n";
     print STDERR "Version $version\n";
     print STDERR "Usage: iscas2cnf [-h] [-d] [-o file] [-f file]\n";
     print STDERR "\t -h      This help message\n";
@@ -165,7 +165,7 @@ sub print_rs {
 
 sub main {
     print STDOUT "-- Generated with a translator from ISCAS89 to SMV by\n";
-    print STDOUT "-- Marco Roveri roveri\@irst.itc.it\n";
+    print STDOUT "-- Marco Roveri roveri\@fbk.eu\n";
     print STDOUT "MODULE main\n";
     while(<STDIN>) {
         if ($opt_d) { print STDERR "Read $_"; }

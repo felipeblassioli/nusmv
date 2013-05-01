@@ -26,25 +26,37 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.2 2003/08/07 15:43:31]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = node.h nodeInt.h node.c nodePrint.c nodeWffPrint.c 
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/src/addons \
+	-I$(top_srcdir)/$(CUDD_DIR)/include
+
+SUBDIRS = printers normalizers
+
+PKG_SOURCES = node.h nodeInt.h nodePkg.c node.c nodePrint.c nodeWffPrint.c \
+	MasterNodeWalker.h MasterNodeWalker_private.h MasterNodeWalker.c  \
+	NodeWalker.h NodeWalker_private.h NodeWalker.c
+
 
 nodedir = $(includedir)/nusmv/node
-node_HEADERS =  node.h
+node_HEADERS =  node.h MasterNodeWalker.h NodeWalker.h
 
 # -------------------------------------------------------
 
 noinst_LTLIBRARIES = libnode.la
 libnode_la_SOURCES = $(PKG_SOURCES)
 
+libnode_la_LIBADD = \
+	printers/libnodeprinters.la \
+	normalizers/libnodenormalizers.la

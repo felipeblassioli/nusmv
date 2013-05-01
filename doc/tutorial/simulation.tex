@@ -1,3 +1,4 @@
+% -*-latex-*-
 Simulation offers to the user the possibility of exploring the possible
 executions (\emph{traces} from now on) of a \nusmv model. 
 In this way, the user can get familiar with a model and can acquire
@@ -68,7 +69,7 @@ ASSIGN
   init(state) := ready;
   next(state) := case
                    state = ready & request : busy;
-                   1                       : \{ready,busy\};
+                   TRUE                    : \{ready,busy\};
                  esac;
 \end{alltt}
 
@@ -121,9 +122,9 @@ Consider for instance the following simulation session:
 \nusmvprompt \nusmvtext{pick\_state -r}
 \nusmvprompt \nusmvtext{print\_current\_state -v}
 Current state is 1.1
-request = 0
+request = FALSE
 state = ready
-\nusmvprompt \nusmvtext{simulate -r 3}
+\nusmvprompt \nusmvtext{simulate -r -k 3}
 *********  Starting Simulation From State  1.1  *********
 \nusmvprompt \nusmvtext{show\_traces -t}
 There is 1 trace currently available.
@@ -132,16 +133,16 @@ There is 1 trace currently available.
 Trace Description: Simulation Trace
 Trace Type: Simulation
 -> State: 1.1 <-
-    request = 0
+    request = FALSE
     state = ready
 -> State: 1.2 <-
-    request = 1
+    request = TRUE
     state = busy
 -> State: 1.3 <-
-    request = 1
+    request = TRUE
     state = ready
 -> State: 1.4 <-
-    request = 1
+    request = TRUE
     state = busy
 \end{alltt}
 
@@ -149,7 +150,7 @@ Trace Type: Simulation
 Command {\bf pick\_state -r} requires to pick the starting state of the
 simulation \emph{randomly} from the set of initial states of the model.
 \cindex{simulate}
-Command {\bf simulate -r 3} asks to build a three-steps simulation by 
+Command {\bf simulate -r -k 3} asks to build a three-steps simulation by 
 picking randomly the next states of the steps.
 \cindex{show\_traces}
 As shown by command {\bf show\_traces -v}, 
@@ -172,25 +173,25 @@ of length $3$.
 \nusmvprompt \nusmvtext{goto\_state 1.4}
 The starting state for new trace is:
 -> State 2.4 <-
-    request = 1
+    request = TRUE
     state = busy
-\nusmvprompt \nusmvtext{simulate -r 3}
+\nusmvprompt \nusmvtext{simulate -r -k 3}
 ********  Simulation Starting From State  2.4  ********
 \nusmvprompt \nusmvtext{show\_traces 2}
 ################### Trace number: 2 ###################
 Trace Description: Simulation Trace
 Trace Type: Simulation
 -> State: 2.1 <-
-    request = 1
+    request = TRUE
     state = ready
 -> State: 2.2 <-
     state = busy
 -> State: 2.3 <-
-    request = 0
+    request = FALSE
 -> State: 2.4 <-
-    request = 1
+    request = TRUE
 -> State: 2.5 <-
-    request = 0
+    request = FALSE
 -> State: 2.6 <-
     state = ready
 -> State: 2.7 <-
@@ -207,41 +208,41 @@ an example of an interactive simulation is shown below:
 
 ================= State =================
 0) -------------------------
-    request = 1
+    request = TRUE
     state = ready
 
 ================= State =================
 1) -------------------------
-    request = 0
+    request = FALSE
     state = ready
 
 
 Choose a state from the above (0-1): {\bf 1} \ret
 
 Chosen state is: 1
-\nusmvprompt \nusmvtext{simulate -i 1}
+\nusmvprompt \nusmvtext{simulate -i -k 1}
 ********  Simulation Starting From State  3.1  ********
 
 ***************  AVAILABLE FUTURE STATES  *************
 
 ================= State =================
 0) -------------------------
-    request = 1
+    request = TRUE
     state = ready
 
 ================= State =================
 1) -------------------------
-    request = 1
+    request = TRUE
     state = busy
 
 ================= State =================
 2) -------------------------
-    request = 0
+    request = FALSE
     state = ready
 
 ================= State =================
 3) -------------------------
-    request = 0
+    request = FALSE
     state = busy
 
 
@@ -253,10 +254,10 @@ Chosen state is: 0
 Trace Description: Simulation Trace
 Trace Type: Simulation
 -> State: 3.1 <-
-    request = 0
+    request = FALSE
     state = ready
 -> State: 3.2 <-
-    request = 1
+    request = TRUE
 \end{alltt}
 
 \subsection{Specifying Constraints}
@@ -272,13 +273,13 @@ command using option \commandopt{c}.
 For example the following command picks an initial state by defining
 a simple constraint:
 \begin{alltt}
-\nusmvprompt \nusmvtext{pick\_state -c "request = 1" -i}
+\nusmvprompt \nusmvtext{pick\_state -c "request = TRUE" -i}
 
 ***************  AVAILABLE STATES  ***************
 
 ================= State =================
 0) -------------------------
-    request = 1
+    request = TRUE
     state = ready
 
 

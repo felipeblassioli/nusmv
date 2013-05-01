@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,32 +30,38 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
+#include <math.h>
+
+#include "bmc.h"
 #include "bmcInt.h"
-#include "bmcVarsMgr.h"
-#include "bmcFsm.h"
 #include "bmcUtils.h"
-#include "bmcWff.h"
 #include "bmcTableau.h"
 #include "bmcConv.h"
 
+#include "wff/wff.h"
+#include "wff/w2w/w2w.h"
+
+#include "enc/enc.h"
+#include "enc/be/BeEnc.h"
 #include "be/be.h"
-#include "prop/prop.h"
+
+#include "fsm/be/BeFsm.h"
+
+#include "prop/propPkg.h"
 #include "parser/symbols.h" /* for constants */
 #include "utils/error.h"
-#include "enc/enc.h"
-
-#include <math.h>
 
 
-static char rcsid[] UTIL_UNUSED = "$Id: bmcTest.c,v 1.20.4.5.2.2 2004/08/04 13:28:34 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: bmcTest.c,v 1.20.4.5.2.2.2.5.4.1 2007-06-18 16:50:53 nusmv Exp $";
+
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -76,7 +82,7 @@ static char rcsid[] UTIL_UNUSED = "$Id: bmcTest.c,v 1.20.4.5.2.2 2004/08/04 13:2
 /*---------------------------------------------------------------------------*/
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
-static int iGeneratedFormulae = 0;
+static int generated_formulas = 0;
 
 /*---------------------------------------------------------------------------*/
 /* Macro declarations                                                        */
@@ -89,23 +95,23 @@ static int iGeneratedFormulae = 0;
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
 static node_ptr
-bmc_test_mk_loopback_ltl ARGS((const BmcVarsMgr_ptr vars_mgr,
+bmc_test_mk_loopback_ltl ARGS((const BeEnc_ptr be_enc,
 			       const int k, const int l));
 
 static node_ptr
-bmc_test_gen_wff ARGS((const BmcVarsMgr_ptr vars_mgr,
+bmc_test_gen_wff ARGS((const BeEnc_ptr be_enc,
 		       int max_depth, int max_conns, 
 		       boolean usePastOperators));
 
 static node_ptr
-bmc_test_gen_tableau ARGS((const Bmc_Fsm_ptr be_fsm, const node_ptr ltl_nnf_wff,
+bmc_test_gen_tableau ARGS((const BeFsm_ptr be_fsm, const node_ptr ltl_nnf_wff,
 			   const int k, const int l, 
 			   boolean usePastOperators));
 
 static int UsageBmcTestTableau ARGS((void));
 
 static void
-bmc_test_bexpr_output ARGS((const BmcVarsMgr_ptr vars_mgr, FILE* f,
+bmc_test_bexpr_output ARGS((const BeEnc_ptr be_enc, FILE* f,
 			    const node_ptr bexp, const int output_type));
 
 
@@ -130,7 +136,7 @@ bmc_test_bexpr_output ARGS((const BmcVarsMgr_ptr vars_mgr, FILE* f,
 ******************************************************************************/
 void Bmc_TestReset()
 {
-  iGeneratedFormulae = 0;
+  generated_formulas = 0;
 }
 
 
@@ -169,8 +175,8 @@ void Bmc_TestReset()
 ******************************************************************************/
 int Bmc_TestTableau(int argc, char ** argv)
 {
-  Bmc_Fsm_ptr be_fsm  = NULL;
-  BmcVarsMgr_ptr vars_mgr = NULL;
+  BeFsm_ptr be_fsm  = NULL;
+  BeEnc_ptr be_enc = NULL;
   node_ptr tableau_test;
   node_ptr wff=NULL;
   int k, l, max_depth, max_conns;
@@ -187,13 +193,13 @@ int Bmc_TestTableau(int argc, char ** argv)
               GWO_Historically, GWO_Once, GWO_Since, GWO_Triggered
   } wff_operator;
 
-  nusmv_assert(iGeneratedFormulae>=0);
+  nusmv_assert(generated_formulas>=0);
 
   wff_operator = GWO_None;
 
-  k = get_bmc_pb_length(options);
+  k = get_bmc_pb_length(OptsHandler_get_instance());
 
-  l = Bmc_Utils_ConvertLoopFromString(get_bmc_pb_loop(options), NULL);
+  l = Bmc_Utils_ConvertLoopFromString(get_bmc_pb_loop(OptsHandler_get_instance()), NULL);
   l = Bmc_Utils_RelLoop2AbsLoop(l, k);
 
   if (Bmc_Utils_IsAllLoopbacks(l)) {
@@ -209,8 +215,8 @@ int Bmc_TestTableau(int argc, char ** argv)
     return 1;
   }
 
-  be_fsm  = Prop_master_get_be_fsm();
-  vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
+  be_fsm  = PropDb_master_get_be_fsm(PropPkg_get_prop_database());
+  be_enc = BeFsm_get_be_encoding(be_fsm);
 
 
   /* process command options */
@@ -242,14 +248,14 @@ int Bmc_TestTableau(int argc, char ** argv)
 	  }
 	}
 
-	if (prop_no >= PropDb_get_size() || prop_no < 0) {
+	if (prop_no >= PropDb_get_size(PropPkg_get_prop_database()) || prop_no < 0) {
 	  fprintf(nusmv_stdout,
 		  "Error: \"%s\" is not a valid value, must be in the range [0,%d].\n",
-		  strNumber, PropDb_get_size()-1);
+		  strNumber, PropDb_get_size(PropPkg_get_prop_database())-1);
 	  return 1;
 	}
 	
-	ltlprop = PropDb_get_prop_at_index(prop_no);
+	ltlprop = PropDb_get_prop_at_index(PropPkg_get_prop_database(), prop_no);
 	
 	if (Prop_get_type(ltlprop) != Prop_Ltl) {
 	  fprintf(nusmv_stderr,
@@ -258,10 +264,10 @@ int Bmc_TestTableau(int argc, char ** argv)
 	}
 
 	/* here prop is ok */
-	ltlspec = Prop_get_expr(ltlprop);
-	ltlspec = Compile_FlattenSexpExpandDefine(Enc_get_symb_encoding(), 
+	ltlspec = Prop_get_expr_core(ltlprop);
+	ltlspec = Compile_FlattenSexpExpandDefine(Compile_get_global_symb_table(), 
 						  ltlspec, Nil);
-	wff = Bmc_Wff_MkNnf(detexpr2bexpr(ltlspec));
+	wff = Wff2Nnf(Compile_detexpr2bexpr(Enc_get_bdd_encoding(), ltlspec));
 	break;
 
 	
@@ -298,8 +304,8 @@ int Bmc_TestTableau(int argc, char ** argv)
 	break;
 
       case 'p': /* for past operators */
-	  usePastOperators = true;
-	  break;
+	usePastOperators = true;
+	break;
 
       case 'x':
 	crossComparison = true;
@@ -349,143 +355,144 @@ int Bmc_TestTableau(int argc, char ** argv)
     switch (wff_operator) {
 
     case GWO_None:
-      wff = bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators);
+      wff = bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators);
       break;
 
     case GWO_Globally:
-      wff = Bmc_Wff_MkGlobally(bmc_test_gen_wff(vars_mgr, max_depth, 
+      wff = Wff_make_globally(bmc_test_gen_wff(be_enc, max_depth, 
 						max_conns, usePastOperators));
       break;
 
     case GWO_Future:
-      wff = Bmc_Wff_MkEventually(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, 
+      wff = Wff_make_eventually(bmc_test_gen_wff(be_enc, max_depth, max_conns, 
 						  usePastOperators));
       break;
 
     case GWO_Until:
-      wff = Bmc_Wff_MkUntil(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-			    bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+      wff = Wff_make_until(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+			    bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
       break;
 
     case GWO_Releases:
-      wff = Bmc_Wff_MkReleases(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-             bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+      wff = Wff_make_releases(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+			       bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
       break;
 
     case GWO_Historically:
-      wff = Bmc_Wff_MkHistorically(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+      wff = Wff_make_historically(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
       break;
 
     case GWO_Once:
-      wff = Bmc_Wff_MkOnce(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+      wff = Wff_make_once(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
       break;
 
     case GWO_Since:
-      wff = Bmc_Wff_MkSince(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-          bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+      wff = Wff_make_since(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+			    bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
       break;
 
     case GWO_Triggered:
-      wff = Bmc_Wff_MkTriggered(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-             bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+      wff = Wff_make_triggered(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+				bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
       break;
 
 
     default:
       nusmv_assert(FALSE); /* no other types are expected here */
     }
-    wff = Bmc_Wff_MkNnf(wff);
+    wff = Wff2Nnf(wff);
   }
 
   if (!crossComparison) {
-        /* generates the test tableau */
-        tableau_test = bmc_test_gen_tableau(be_fsm, wff, k, l, usePastOperators);
+    /* generates the test tableau */
+    tableau_test = bmc_test_gen_tableau(be_fsm, wff, k, l, usePastOperators);
 
-        /* writes down the imply formula */
-          if (iGeneratedFormulae == 0) {
-            int i=0;
+    /* writes down the imply formula */
+    if (generated_formulas == 0) {
+      int i=0;
 
-            f = fopen("Bmc_TestTableau.smv", "w");
-            nusmv_assert(f != NULL);
+      f = fopen("Bmc_TestTableau.smv", "w");
+      nusmv_assert(f != NULL);
 
-            /* writes down the non-deterministic model */
-            fprintf(f, "MODULE main\nVAR\n");
-            for (i = 0; i < BmcVarsMgr_GetStateVarsNum(vars_mgr); i++) {
-              fprintf(f, "p%d: boolean;\n", i);
-            }
-           }
-          else {
-          /* this command has already been invoked */
-            f = fopen("Bmc_TestTableau.smv", "a");
-            nusmv_assert(f != NULL);
-          }
+      /* writes down the non-deterministic model */
+      fprintf(f, "MODULE main\nVAR\n");
+      for (i = 0; i < BeEnc_get_state_vars_num(be_enc); i++) {
+	fprintf(f, "p%d: boolean;\n", i);
+      }
+    }
+    else {
+      /* this command has already been invoked */
+      f = fopen("Bmc_TestTableau.smv", "a");
+      nusmv_assert(f != NULL);
+    }
 
-          Bmc_Utils_ConvertLoopFromInteger(l, szLoopback, sizeof(szLoopback));
-          fprintf(f, "\n\n-- Property %d (k=%d, l=%s, max_depth=%d, max_conns=%d): \n",
-                  iGeneratedFormulae, k, szLoopback, max_depth, max_conns);
-          fprintf(f, "LTLSPEC ");
+    Bmc_Utils_ConvertLoopFromInteger(l, szLoopback, sizeof(szLoopback));
+    fprintf(f, "\n\n-- Property %d (k=%d, l=%s, max_depth=%d, max_conns=%d): \n",
+	    generated_formulas, k, szLoopback, max_depth, max_conns);
+    fprintf(f, "LTLSPEC ");
 
-          ++iGeneratedFormulae;
+    ++generated_formulas;
 
-          fprintf (f, "\n");
-          bmc_test_bexpr_output(vars_mgr, f, tableau_test,
-                                BMC_BEXP_OUTPUT_SMV);
-          fprintf(f, "\n\n");
+    fprintf (f, "\n");
+    bmc_test_bexpr_output(be_enc, f, tableau_test,
+			  BMC_BEXP_OUTPUT_SMV);
+    fprintf(f, "\n\n");
 
-          fclose(f);
- }
- else {
-        /* writes down the formula */
-          if (iGeneratedFormulae == 0) {
-            int i=0;
+    fclose(f);
+  }
+  else {
+    /* writes down the formula */
+    if (generated_formulas == 0) {
+      int i=0;
 
-            f1 = fopen("Bmc_TestTableau_BMC.smv", "w");
-            f2 = fopen("Bmc_TestTableau_BDD.smv", "w");
-            nusmv_assert(f1 != NULL);
-            nusmv_assert(f2 != NULL);
+      f1 = fopen("Bmc_TestTableau_BMC.smv", "w");
+      f2 = fopen("Bmc_TestTableau_BDD.smv", "w");
+      nusmv_assert(f1 != NULL);
+      nusmv_assert(f2 != NULL);
 
-            /* writes down the non-deterministic model */
-            fprintf(f1, "MODULE main\nVAR\n");
-            fprintf(f2, "MODULE main\nVAR\n");
-            for (i = 0; i < BmcVarsMgr_GetStateVarsNum(vars_mgr); i++) {
-              fprintf(f1, "p%d: boolean;\n", i);
-              fprintf(f2, "p%d: boolean;\n", i);
-            }
-           }
-          else {
-          /* this command has already been invoked */
-            f1 = fopen("Bmc_TestTableau_BMC.smv", "a");
-            f2 = fopen("Bmc_TestTableau_BDD.smv", "a");
-            nusmv_assert(f1 != NULL);
-            nusmv_assert(f2 != NULL);
-          }
+      /* writes down the non-deterministic model */
+      fprintf(f1, "MODULE main\nVAR\n");
+      fprintf(f2, "MODULE main\nVAR\n");
+      for (i = 0; i < BeEnc_get_state_vars_num(be_enc); i++) {
+	fprintf(f1, "p%d: boolean;\n", i);
+	fprintf(f2, "p%d: boolean;\n", i);
+      }
+    }
+    else {
+      /* this command has already been invoked */
+      f1 = fopen("Bmc_TestTableau_BMC.smv", "a");
+      f2 = fopen("Bmc_TestTableau_BDD.smv", "a");
+      nusmv_assert(f1 != NULL);
+      nusmv_assert(f2 != NULL);
+    }
 
-          Bmc_Utils_ConvertLoopFromInteger(l, szLoopback, sizeof(szLoopback));
-          fprintf(f1, "\n\n-- Property %d (k=%d, l=%s, max_depth=%d, max_conns=%d): \n",
-                  iGeneratedFormulae, k, szLoopback, max_depth, max_conns);
-          fprintf(f1, "LTLSPEC ");
-          fprintf(f2, "\n\n-- Property %d (k=%d, l=%s, max_depth=%d, max_conns=%d): \n",
-                  iGeneratedFormulae, k, szLoopback, max_depth, max_conns);
-          fprintf(f2, "LTLSPEC ");
+    Bmc_Utils_ConvertLoopFromInteger(l, szLoopback, sizeof(szLoopback));
+    fprintf(f1, "\n\n-- Property %d (k=%d, l=%s, max_depth=%d, max_conns=%d): \n",
+	    generated_formulas, k, szLoopback, max_depth, max_conns);
+    fprintf(f1, "LTLSPEC ");
+    fprintf(f2, "\n\n-- Property %d (k=%d, l=%s, max_depth=%d, max_conns=%d): \n",
+	    generated_formulas, k, szLoopback, max_depth, max_conns);
+    fprintf(f2, "LTLSPEC ");
 
-          ++iGeneratedFormulae;
+    ++generated_formulas;
 
-          fprintf (f1, "\n");
-          fprintf (f2, "\n");
+    fprintf (f1, "\n");
+    fprintf (f2, "\n");
 
-          bmc_test_bexpr_output(vars_mgr, f1, wff, BMC_BEXP_OUTPUT_SMV);
+    bmc_test_bexpr_output(be_enc, f1, wff, BMC_BEXP_OUTPUT_SMV);
 
-          wff = Bmc_Wff_MkImplies(bmc_test_mk_loopback_ltl(Bmc_Fsm_GetVarsManager(be_fsm),k,l),wff);
+    wff = Wff_make_implies(bmc_test_mk_loopback_ltl(be_enc, k, l), wff);
 
 
-          bmc_test_bexpr_output(vars_mgr, f2, wff, BMC_BEXP_OUTPUT_SMV);
+    bmc_test_bexpr_output(be_enc, f2, wff, BMC_BEXP_OUTPUT_SMV);
 
-          fprintf(f1, "\n\n");
-          fprintf(f2, "\n\n");
+    fprintf(f1, "\n\n");
+    fprintf(f2, "\n\n");
 
-          fclose(f1);
-          fclose(f2);
- }
+    fclose(f1);
+    fclose(f2);
+  }
+
   return 0;
 }
 
@@ -519,89 +526,6 @@ static int UsageBmcTestTableau(void)
 }
 
 
-
-
-/**Function********************************************************************
-
-  Synopsis           [Bmc_TestVarsMgr]
-
-  Description        []
-
-  SideEffects        [...]
-
-  SeeAlso            []
-
-******************************************************************************/
-void Bmc_TestVarsMgr(const BmcVarsMgr_ptr vars_mgr)
-{
-  int i;
-  node_ptr X, X1, X2, X3, X4;
-  be_ptr A, A1, A2, A3, A4,
-    B, B1, B2, B3, B4,
-    C, C1, C2, C3, C4;
-
-  boolean local_test_passed, test_passed = true;
-  int time;
-  int max_time;
-
-  max_time = BmcVarsMgr_GetMaxTime(vars_mgr);
-  printf("maxtime = %d\n", max_time);
-
-  for (i = 0; i < BmcVarsMgr_GetStateVarsNum(vars_mgr); i++) {
-    for (time = 0; time <= max_time; time++) {
-      X = BmcVarsMgr_VarIndex2Name(vars_mgr, i);
-      A = Be_Index2Var(BmcVarsMgr_GetBeMgr(vars_mgr), i);
-      B = Be_Index2Var(BmcVarsMgr_GetBeMgr(vars_mgr),
-                       i + BmcVarsMgr_GetStateVarsNum(vars_mgr));
-      C = Be_Index2Var(BmcVarsMgr_GetBeMgr(vars_mgr),
-                       i + ((2 + time) * BmcVarsMgr_GetStateVarsNum(vars_mgr)));
-
-      X1 = BmcVarsMgr_VarIndex2Name(vars_mgr, i);
-      X2 = BmcVarsMgr_Curr2Name(vars_mgr, A);
-      X3 = BmcVarsMgr_Next2Name(vars_mgr, B);
-      X4 = BmcVarsMgr_Timed2Name(vars_mgr, C);
-
-      A1 = BmcVarsMgr_VarIndex2Curr(vars_mgr, i);
-      A2 = BmcVarsMgr_Name2Curr(vars_mgr, X);
-      A3 = BmcVarsMgr_Next2Curr(vars_mgr, B);
-      A4 = BmcVarsMgr_Timed2Curr(vars_mgr, C);
-
-      B1 = BmcVarsMgr_VarIndex2Next(vars_mgr, i);
-      B2 = BmcVarsMgr_Name2Next(vars_mgr, X);
-      B3 = BmcVarsMgr_Curr2Next(vars_mgr, A);
-      B4 = BmcVarsMgr_Timed2Next(vars_mgr, C);
-
-      C1 = BmcVarsMgr_VarIndex2Timed(vars_mgr, i, time, max_time);
-      C2 = BmcVarsMgr_Name2Timed(vars_mgr, X, time, max_time);
-      C3 = BmcVarsMgr_Next2Timed(vars_mgr, B, time);
-      C4 = BmcVarsMgr_Curr2Timed(vars_mgr, A, time, max_time);
-
-      local_test_passed = (A1 == A2) && (A2 == A3) && (A3 == A4) &&
-  (B1 == B2) && (B2 == B3) && (B3 == B4) &&
-  (C1 == C2) && (C2 == C3) && (C3 == C4);
-
-      printf("X = %p\tX1 = %p\tX2 = %p\tX3 = %p\tX4 = %p\n", X, X1, X2,
-        X3, X4);
-      printf("A = %p\tA1 = %p\tA2 = %p\tA3 = %p\tA4 = %p\n", A, A1, A2,
-        A3, A4);
-      printf("B = %p\tB1 = %p\tB2 = %p\tB3 = %p\tB4 = %p\n", B, B1, B2,
-        B3, B4);
-      printf("C = %p\tC1 = %p\tC2 = %p\tC3 = %p\tC4 = %p\n", C, C1, C2,
-        C3, C4);
-      printf("%d-ith variable, @%d time\n", i, time);
-      printf("Test [%s]\n", local_test_passed ? "PASSED" : "NOT PASSED");
-
-      test_passed = test_passed && local_test_passed;
-    }
-  }
-
-  printf("Number of variables = %d\n", BmcVarsMgr_GetStateVarsNum(vars_mgr));
-  printf("X = curvar_bexpr\nA = curvar\nB = nextvar\nC = timedvar\n");
-
-  printf("\n\nWP4_test1b [%s]\n", test_passed ? "PASSED" : "\aNOT_PASSED");
-}
-
-
 /*---------------------------------------------------------------------------*/
 /* Definition of internal functions                                          */
 /*---------------------------------------------------------------------------*/
@@ -630,7 +554,7 @@ void Bmc_TestVarsMgr(const BmcVarsMgr_ptr vars_mgr)
   </PRE>
 
 
-  In general all variables in time 2 must be forced to be equivalent
+  In general all state variables in time 2 must be forced to be equivalent
   to the corresponding variables timed in 6, the variables in 3 to 7,
   and so on up to the variables in 6 (equivalent to variables in
   10). Then variables in 7 (or 3 again) must be forced to be equivalent
@@ -657,7 +581,9 @@ void Bmc_TestVarsMgr(const BmcVarsMgr_ptr vars_mgr)
   </PRE>
  where:
    p0..pn are all boolean variables into the model
-   X^(n) is expanded to XXX..X n-times ]
+   X^(n) is expanded to XXX..X n-times.
+ Note that frozen vars can be ignored since they are always equal to their previous
+ values]
 
   SideEffects        []
 
@@ -665,33 +591,36 @@ void Bmc_TestVarsMgr(const BmcVarsMgr_ptr vars_mgr)
 
 ******************************************************************************/
 static node_ptr
-bmc_test_mk_loopback_ltl(const BmcVarsMgr_ptr vars_mgr, const int k, const int l)
+bmc_test_mk_loopback_ltl(const BeEnc_ptr be_enc, const int k, const int l)
 {
   node_ptr result;
   node_ptr bigand_vars;
   node_ptr single_var_eq;
   node_ptr var;
-  int i = 0;
-  int iLoopLength = 0;
+  int idx;
+  int loop_len = 0;
 
   nusmv_assert( !Bmc_Utils_IsNoLoopback(l) && (l < k) );
-  nusmv_assert( BmcVarsMgr_GetStateVarsNum(vars_mgr) > 0 );
+  nusmv_assert( BeEnc_get_state_vars_num(be_enc) > 0 );
 
-  iLoopLength = k-l;
+  loop_len = k-l;
 
   /* first cycle is performed manually, in order to optimize a bit */
-  var = BmcVarsMgr_VarIndex2Name(vars_mgr, i);
-  bigand_vars = Bmc_Wff_MkIff(var, Bmc_Wff_MkXopNext(var, iLoopLength));
+  idx = BeEnc_get_first_untimed_var_index(be_enc, BE_VAR_TYPE_CURR);
+  var = BeEnc_index_to_name(be_enc, idx);
+  bigand_vars = Wff_make_iff(var, Wff_make_opnext_times(var, loop_len));
 
   /* iterates across the remaining variables: */
-  for (i = 1; i < BmcVarsMgr_GetStateVarsNum(vars_mgr); i++) {
-    var = BmcVarsMgr_VarIndex2Name(vars_mgr, i);
-    single_var_eq = Bmc_Wff_MkIff( var, Bmc_Wff_MkXopNext(var, iLoopLength) );
-    bigand_vars = Bmc_Wff_MkAnd(bigand_vars, single_var_eq);
+  idx = BeEnc_get_next_var_index(be_enc, idx, BE_VAR_TYPE_CURR);
+  while (BeEnc_is_var_index_valid(be_enc, idx)) {
+    var = BeEnc_index_to_name(be_enc, idx);
+    single_var_eq = Wff_make_iff(var, Wff_make_opnext_times(var, loop_len));
+    bigand_vars = Wff_make_and(bigand_vars, single_var_eq);
+    idx = BeEnc_get_next_var_index(be_enc, idx, BE_VAR_TYPE_CURR);
   }
 
-  result = Bmc_Wff_MkGlobally(bigand_vars);
-  result = Bmc_Wff_MkXopNext(result, l); /* shifts to loop starting point */
+  result = Wff_make_globally(bigand_vars);
+  result = Wff_make_opnext_times(result, l); /* shifts to loop starting point */
 
   return result;
 }
@@ -711,32 +640,30 @@ bmc_test_mk_loopback_ltl(const BmcVarsMgr_ptr vars_mgr, const int k, const int l
 
 ******************************************************************************/
 static node_ptr
-bmc_test_gen_tableau(const Bmc_Fsm_ptr be_fsm, const node_ptr ltl_nnf_wff,
+bmc_test_gen_tableau(const BeFsm_ptr be_fsm, const node_ptr ltl_nnf_wff,
 		     const int k, const int l, boolean usePastOperators)
 {
   node_ptr tableau_as_wff;
   node_ptr implies_formula;
   be_ptr tableau_k_l_ltl_wff;
-  BmcVarsMgr_ptr vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
 
   /* generates the tableau (with no fairness): */
-  tableau_k_l_ltl_wff = Bmc_GetTestTableau(vars_mgr, ltl_nnf_wff, k, l);
+  tableau_k_l_ltl_wff = Bmc_GetTestTableau(be_enc, ltl_nnf_wff, k, l);
 
   /* reconvert the tableau back to a wff_(k,l) */
-  tableau_as_wff = Bmc_Conv_Be2Bexp(vars_mgr, tableau_k_l_ltl_wff);
+  tableau_as_wff = Bmc_Conv_Be2Bexp(be_enc, tableau_k_l_ltl_wff);
 
   /* build the implies: */
   if (Bmc_Utils_IsNoLoopback(l)) {
-    implies_formula = Bmc_Wff_MkImplies(tableau_as_wff, ltl_nnf_wff);
+    implies_formula = Wff_make_implies(tableau_as_wff, ltl_nnf_wff);
   }
   else {
     nusmv_assert(!Bmc_Utils_IsAllLoopbacks(l)); /* all loops are not allowed nowadays */
-    implies_formula = Bmc_Wff_MkImplies(
-      Bmc_Wff_MkAnd(tableau_as_wff,
-        bmc_test_mk_loopback_ltl(Bmc_Fsm_GetVarsManager(be_fsm),
-               k, l)),
-      ltl_nnf_wff
-      );
+    implies_formula = Wff_make_implies(
+			Wff_make_and(tableau_as_wff,
+				      bmc_test_mk_loopback_ltl(be_enc, k, l)),
+			ltl_nnf_wff);
   }
 
   return implies_formula;
@@ -755,7 +682,7 @@ bmc_test_gen_tableau(const Bmc_Fsm_ptr be_fsm, const node_ptr ltl_nnf_wff,
   SeeAlso            []
 
 ******************************************************************************/
-static node_ptr bmc_test_gen_wff(const BmcVarsMgr_ptr vars_mgr,
+static node_ptr bmc_test_gen_wff(const BeEnc_ptr be_enc,
 				 int max_depth, int max_conns, 
 				 boolean usePastOperators)
 {
@@ -770,18 +697,24 @@ static node_ptr bmc_test_gen_wff(const BmcVarsMgr_ptr vars_mgr,
   do {
    rnd_tmp = floor(rand()) / (RAND_MAX + 1.0);
 
-   rnd = (int) floor((GEN_WFF_CONSES_OP_NUMBER + BmcVarsMgr_GetStateVarsNum(vars_mgr))
-         * rnd_tmp) + 1;
+   rnd = (int) floor((GEN_WFF_CONSES_OP_NUMBER + BeEnc_get_state_vars_num(be_enc))
+		     * rnd_tmp) + 1;
   }
   while (!usePastOperators && (rnd>10 && rnd<=15));
 
   /* if depth or connses of wff are exausted get a random number such that:
      (rnd >= 0) && (rnd < 'number of state variables')... */
   if ((max_depth < 0) || (max_conns < 0)) {
-    rnd = (int) (((float) BmcVarsMgr_GetStateVarsNum(vars_mgr) * rand()) /
-     (RAND_MAX + 1.0));
+    int idx; 
+    rnd = (int) (((float) BeEnc_get_state_vars_num(be_enc) * rand()) /
+		 (RAND_MAX + 1.0));
+
+    idx = BeEnc_get_var_index_with_offset(be_enc, 
+		  BeEnc_get_first_untimed_var_index(be_enc, BE_VAR_TYPE_CURR), 
+		  rnd, BE_VAR_TYPE_CURR);
+    
     /* ...then return correspondent state variable to the random integer */
-    return BmcVarsMgr_VarIndex2Name(vars_mgr, rnd);
+    return BeEnc_index_to_name(be_enc, idx);
   }
 
   /* exclude atoms from depth and connses decrement contributes */
@@ -792,50 +725,66 @@ static node_ptr bmc_test_gen_wff(const BmcVarsMgr_ptr vars_mgr,
   switch (rnd) {
   /* Propositional operators */
   case 1:
-    return Bmc_Wff_MkNot(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_not(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
   case 2:
-    return Bmc_Wff_MkOr (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-                         bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_or (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+                         bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
   case 3:
-    return Bmc_Wff_MkAnd(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-                         bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_and(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+                         bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
   case 4:
-    return Bmc_Wff_MkImplies(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-                             bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_implies(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+                             bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
   case 5:
-    return Bmc_Wff_MkIff(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-                         bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_iff(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+                         bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
 
   /* Future operators */
   case 6:
-    return Bmc_Wff_MkOpNext    (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_opnext    (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
   case 7:
-    return Bmc_Wff_MkEventually(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_eventually(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
   case 8:
-    return Bmc_Wff_MkGlobally  (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_globally  (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
   case 9:
-    return Bmc_Wff_MkUntil     (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-                                bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_until     (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+                                bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
   case 10:
-    return Bmc_Wff_MkReleases  (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-                                bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_releases  (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+                                bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
 
   /* Past operators */
   case 11:
-    return Bmc_Wff_MkOpPrec      (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
-  case 12:
-    return Bmc_Wff_MkOnce        (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
-  case 13:
-    return Bmc_Wff_MkHistorically(bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
-  case 14:
-    return Bmc_Wff_MkSince       (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-                                  bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
-  case 15:
-    return Bmc_Wff_MkTriggered   (bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators),
-                                  bmc_test_gen_wff(vars_mgr, max_depth, max_conns, usePastOperators));
+    return Wff_make_opprec      (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
 
-  default:
-    return BmcVarsMgr_VarIndex2Name(vars_mgr, rnd - GEN_WFF_CONSES_OP_NUMBER - 1);
+  case 12:
+    return Wff_make_once        (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
+  case 13:
+    return Wff_make_historically(bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
+  case 14:
+    return Wff_make_since       (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+                                  bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+  case 15:
+    return Wff_make_triggered   (bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators),
+                                  bmc_test_gen_wff(be_enc, max_depth, max_conns, usePastOperators));
+
+  default: 
+    { 
+      int idx = BeEnc_get_var_index_with_offset(be_enc, 
+	BeEnc_get_first_untimed_var_index(be_enc, BE_VAR_TYPE_CURR), 
+	rnd - GEN_WFF_CONSES_OP_NUMBER - 1, BE_VAR_TYPE_CURR);
+
+      return BeEnc_index_to_name(be_enc, idx);
+    }
   }
 }
 
@@ -854,7 +803,7 @@ static node_ptr bmc_test_gen_wff(const BmcVarsMgr_ptr vars_mgr,
 
 ******************************************************************************/
 static void
-bmc_test_bexpr_output(const BmcVarsMgr_ptr vars_mgr, FILE* f,
+bmc_test_bexpr_output(const BeEnc_ptr be_enc, FILE* f,
 		      const node_ptr bexp, const int output_type)
 {
   int type;
@@ -882,96 +831,96 @@ bmc_test_bexpr_output(const BmcVarsMgr_ptr vars_mgr, FILE* f,
 
   case AND:                             /* AND       */
     fprintf(f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf(f, " %s ", (output_type == BMC_BEXP_OUTPUT_SMV) ? "&" : "/\\");
-    bmc_test_bexpr_output(vars_mgr, f, cdr (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, cdr (bexp), output_type);
     fprintf(f, ")");
     break;
 
   case OR:                              /* OR        */
     fprintf (f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, " %s ", (output_type == BMC_BEXP_OUTPUT_SMV) ? "|" : "\\/");
-    bmc_test_bexpr_output(vars_mgr, f, cdr (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, cdr (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case NOT:                             /* NOT       */
     fprintf (f, "%c", (output_type == BMC_BEXP_OUTPUT_SMV) ? '!' : '~');
     fprintf (f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case IMPLIES:                         /* IMPLIES   */
     fprintf (f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, " -> ");
-    bmc_test_bexpr_output(vars_mgr, f, cdr (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, cdr (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case IFF:                             /* IFF       */
     fprintf (f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, " <-> ");
-    bmc_test_bexpr_output(vars_mgr, f, cdr (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, cdr (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case OP_FUTURE:                       /* OP_FUTURE */
     fprintf (f, "F(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case OP_ONCE:                       /* OP_ONCE */
     fprintf (f, "O(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case OP_GLOBAL:                       /* OP_GLOBAL */
     fprintf (f, "G(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case OP_HISTORICAL:                       /* OP_HISTORICAL */
     fprintf (f, "H(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case UNTIL:                           /* UNTIL     */
     fprintf (f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, " U ");
-    bmc_test_bexpr_output(vars_mgr, f, cdr (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, cdr (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case SINCE:                           /* SINCE     */
     fprintf (f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, " S ");
-    bmc_test_bexpr_output(vars_mgr, f, cdr (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, cdr (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case RELEASES:                        /* RELEASES  */
     fprintf (f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, " V ");
-    bmc_test_bexpr_output(vars_mgr, f, cdr (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, cdr (bexp), output_type);
     fprintf (f, ")");
     break;
 
   case TRIGGERED:                       /* TRIGGERED  */
     fprintf (f, "(");
-    bmc_test_bexpr_output(vars_mgr, f, car (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, car (bexp), output_type);
     fprintf (f, " T ");
-    bmc_test_bexpr_output(vars_mgr, f, cdr (bexp), output_type);
+    bmc_test_bexpr_output(be_enc, f, cdr (bexp), output_type);
     fprintf (f, ")");
     break;
 
@@ -990,7 +939,7 @@ bmc_test_bexpr_output(const BmcVarsMgr_ptr vars_mgr, FILE* f,
       }
 
       /* then print the internal bexp */
-      bmc_test_bexpr_output(vars_mgr, f, temp_bexp, output_type);
+      bmc_test_bexpr_output(be_enc, f, temp_bexp, output_type);
 
       while ((i--) > 0) fprintf (f, ")");
     }
@@ -1011,7 +960,7 @@ bmc_test_bexpr_output(const BmcVarsMgr_ptr vars_mgr, FILE* f,
       }
 
       /* then print the internal bexp */
-      bmc_test_bexpr_output(vars_mgr, f, temp_bexp, output_type);
+      bmc_test_bexpr_output(be_enc, f, temp_bexp, output_type);
 
       while ((i--) > 0) fprintf (f, ")");
     }
@@ -1032,7 +981,7 @@ bmc_test_bexpr_output(const BmcVarsMgr_ptr vars_mgr, FILE* f,
       }
 
       /* then print the internal bexp */
-      bmc_test_bexpr_output(vars_mgr, f, temp_bexp, output_type);
+      bmc_test_bexpr_output(be_enc, f, temp_bexp, output_type);
 
       while ((i--) > 0) fprintf (f, ")");
     }
@@ -1044,15 +993,15 @@ bmc_test_bexpr_output(const BmcVarsMgr_ptr vars_mgr, FILE* f,
       be_ptr r;
 
       /* gets the the be correspondent to the state variable */
-      r = BmcVarsMgr_Name2Curr(vars_mgr, bexp);
+      r = BeEnc_name_to_untimed(be_enc, bexp);
 
       /* if bexp is a really state variable, then prints out the index
          of correspondent be variable */
-      if (r != (be_ptr)NULL) {
-        fprintf(f, "p%d", Be_Var2Index(BmcVarsMgr_GetBeMgr(vars_mgr), r));
+      if (r != (be_ptr) NULL) {
+        fprintf(f, "p%d", Be_Var2Index(BeEnc_get_be_manager(be_enc), r));
       }
       else {
-  internal_error("bmc_test_bexpr_output: given wff atom isn\' in BE environ\n");
+	internal_error("bmc_test_bexpr_output: given wff atom isn\' in BE environ\n");
       }
     }
   }

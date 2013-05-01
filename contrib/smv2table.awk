@@ -1,11 +1,19 @@
+# smv2table.awk
+# Copyright 2002, 2009 Adolfo Villafiorita
 #
-# Copyright (C) 2002 Adolfo Villafiorita
-# Originally written by Adolfo Villafiorita <adolfo@irst.itc.it>
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
-# General Public License for more details.
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
 
 # This awk script parses a NuSMV trace and produces a tab separated
 # matrix-like representation of the counter-example.
@@ -24,11 +32,8 @@ BEGIN {
   current_var   = 0 
 }
 
-# title line: ignore it
-/--- NuSMV Trace File --- .*/ {}
-
-# trace identification line: ignore it
-/\#+ Trace number: [0-9]+ \#+/ {}
+# accessory information: ignore it
+/Trace .*/ {}
 
 # state identification line: increment current state number
 # remark. A better approach consists in assigning to current_state
@@ -36,14 +41,23 @@ BEGIN {
 # counterexample, identifies the current state). This would allow,
 # e.g., to correctly assign the state number to traces in which states
 # are not numbered sequentially
-/-> State [0-9]+\.[0-9]+ <-/ {
+/-> State: [0-9]+\.[0-9]+ <-/ {
   current_state ++;
+  input_active = 0;
 }
+
+/-> Input: [0-9]+\.[0-9]+ <-/ {
+  input_active = 1; 
+  # unused at the moment... could be used to distinguish input variables
+}
+
 
 # lines of the type "   var = value" identify assignments
 /[\t ]+.*=.*/ {
   gsub("[\t ]+", "", $0); # strip spaces
-  split($0, token, "=");  # split string token[0] = var, token[2] = val;
+  split($0, token, "=");  # split string 
+
+  # From here on: token[1] = var, token[2] = val;
 
   if (match(token[1], GREP)) {
     state[current_state, token[1]] = token[2];

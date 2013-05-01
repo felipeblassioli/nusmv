@@ -19,68 +19,68 @@
 ---
 
 -- period 20ms, execution time 3ms
-MODULE pipe11(timeout, processor_granted, request, finish)
+MODULE pipe11(timeout, processor_granted)
 VAR
   state: 0..3;                         -- program counter.
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 3;
   request := case                      -- Tells the scheduler that this
-               state = 0: 0;           -- process wants to execute.
-               1:         1;
+               state = 0: FALSE;           -- process wants to execute.
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p11: state;
+                   !(processor_granted = p11): state;
                    state = 0: 0;
-                   1: state + 1 mod 4;
+                   TRUE: (state + 1) mod 4;
                  esac;
 
 
 -- period 20ms, execution time 3ms
-MODULE pipe12(timeout, processor_granted, request, finish)
+MODULE pipe12(timeout, processor_granted)
 VAR
   state: 0..3;
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 3;
   request := case
-               state = 0: 0;
-               1:         1;
+               state = 0: FALSE;
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p12: state;
+                   !(processor_granted = p12): state;
                    state = 0: 0;
-                   1: state + 1 mod 4;
+                   TRUE: (state + 1) mod 4;
                  esac;
 
 
 -- period 20ms, execution time 4ms
-MODULE pipe13(timeout, processor_granted, request, finish)
+MODULE pipe13(timeout, processor_granted)
 VAR
   state: 0..4;
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 4;
   request := case
-               state = 0: 0;
-               1:         1;
+               state = 0: FALSE;
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p13: state;
+                   !(processor_granted = p13): state;
                    state = 0: 0;
-                   1: state + 1 mod 5;
+                   TRUE: (state + 1) mod 5;
                  esac;
 
 
@@ -89,68 +89,68 @@ ASSIGN
 ---
 
 -- period 50ms, execution time 6ms
-MODULE pipe21(timeout, processor_granted, request, finish)
+MODULE pipe21(timeout, processor_granted)
 VAR
   state: 0..6;
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 6;
   request := case
-               state = 0: 0;
-               1:         1;
+               state = 0: FALSE;
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p21: state;
+                   !(processor_granted = p21): state;
                    state = 0: 0;
-                   1: state + 1 mod 7;
+                   TRUE: (state + 1) mod 7;
                  esac;
 
 
 -- period 50ms, execution time 6ms
-MODULE pipe22(timeout, processor_granted, request, finish)
+MODULE pipe22(timeout, processor_granted)
 VAR
   state: 0..4;
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 4;
   request := case
-               state = 0: 0;
-               1:         1;
+               state = 0: FALSE;
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p22: state;
+                   !(processor_granted = p22): state;
                    state = 0: 0;
-                   1: state + 1 mod 5;
+                   TRUE: (state + 1) mod 5;
                  esac;
 
 
 -- period 50ms, execution time 5ms
-MODULE pipe23(timeout, processor_granted, request, finish)
+MODULE pipe23(timeout, processor_granted)
 VAR
   state: 0..5;
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 5;
   request := case
-               state = 0: 0;
-               1:         1;
+               state = 0: FALSE;
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p23: state;
+                   !(processor_granted = p23): state;
                    state = 0: 0;
-                   1: state + 1 mod 6;
+                   TRUE: (state + 1) mod 6;
                  esac;
 
 
@@ -159,68 +159,68 @@ ASSIGN
 ---
 
 -- period 100ms, execution time 5ms
-MODULE pipe31(timeout, processor_granted, request, finish)
+MODULE pipe31(timeout, processor_granted)
 VAR
   state: 0..5;
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 5;
   request := case
-               state = 0: 0;
-               1:         1;
+               state = 0: FALSE;
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p31: state;
+                   !(processor_granted = p31): state;
                    state = 0: 0;
-                   1: state + 1 mod 6;
+                   TRUE: (state + 1) mod 6;
                  esac;
 
 
 -- period 100ms, execution time 6ms
-MODULE pipe32(timeout, processor_granted, request, finish)
+MODULE pipe32(timeout, processor_granted)
 VAR
   state: 0..6;
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 6;
   request := case
-               state = 0: 0;
-               1:         1;
+               state = 0: FALSE;
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p32: state;
+                   !(processor_granted = p32): state;
                    state = 0: 0;
-                   1: state + 1 mod 7;
+                   TRUE: (state + 1) mod 7;
                  esac;
 
 
 -- period 100ms, execution time 5ms
-MODULE pipe33(timeout, processor_granted, request, finish)
+MODULE pipe33(timeout, processor_granted)
 VAR
   state: 0..5;
 DEFINE
   start  := state = 0 & timeout;
   finish := state = 5;
   request := case
-               state = 0: 0;
-               1:         1;
+               state = 0: FALSE;
+               TRUE:         TRUE;
              esac;
 ASSIGN
   init(state) := 0;
   next(state) := case
                    start: 1;
                    finish: 0;
-                   !processor_granted = p33: state;
+                   !(processor_granted = p33): state;
                    state = 0: 0;
-                   1: state + 1 mod 6;
+                   TRUE: (state + 1) mod 6;
                  esac;
 
 
@@ -232,7 +232,7 @@ VAR
 
 ASSIGN
   init(timer) := 0;
-  next(timer) := timer + 1 mod 100;
+  next(timer) := (timer + 1) mod 100;
 
 DEFINE
   timeout100 := timer mod 100 = 0;
@@ -242,26 +242,26 @@ DEFINE
 VAR
 -- data driven pipeline. Each phase is awoken by the end of the
 -- previous phase:
---  P11: pipe11(timeout20, processor_granted, req11, P11finish);
---  P12: pipe12(P11finish, processor_granted, req12, P12finish);
---  P13: pipe13(P12finish, processor_granted, req13, P13finish);
---  P21: pipe21(timeout50, processor_granted, req21, P21finish);
---  P22: pipe22(P21finish, processor_granted, req22, P22finish);
---  P23: pipe23(P22finish, processor_granted, req23, P23finish);
---  P31: pipe31(timeout100,processor_granted, req31, P31finish);
---  P32: pipe32(P31finish, processor_granted, req32, P32finish);
---  P33: pipe33(P32finish, processor_granted, req33, P33finish);
+--  P11: pipe11(timeout20,  processor_granted);
+--  P12: pipe12(P11.finish, processor_granted);
+--  P13: pipe13(P12.finish, processor_granted);
+--  P21: pipe21(timeout50,  processor_granted);
+--  P22: pipe22(P21.finish, processor_granted);
+--  P23: pipe23(P22.finish, processor_granted);
+--  P31: pipe31(timeout100, processor_granted);
+--  P32: pipe32(P31.finish, processor_granted);
+--  P33: pipe33(P32.finish, processor_granted);
 
 -- synchronized pipeline. Each phase has its own period:
-  P11: pipe11(timeout20, processor_granted, req11, P11finish);
-  P12: pipe12(timeout20, processor_granted, req12, P12finish);
-  P13: pipe13(timeout20, processor_granted, req13, P13finish);
-  P21: pipe21(timeout50, processor_granted, req21, P21finish);
-  P22: pipe22(timeout50, processor_granted, req22, P22finish);
-  P23: pipe23(timeout50, processor_granted, req23, P23finish);
-  P31: pipe31(timeout100,processor_granted, req31, P31finish);
-  P32: pipe32(timeout100,processor_granted, req32, P32finish);
-  P33: pipe33(timeout100,processor_granted, req33, P33finish);
+  P11: pipe11(timeout20, processor_granted);
+  P12: pipe12(timeout20, processor_granted);
+  P13: pipe13(timeout20, processor_granted);
+  P21: pipe21(timeout50, processor_granted);
+  P22: pipe22(timeout50, processor_granted);
+  P23: pipe23(timeout50, processor_granted);
+  P31: pipe31(timeout100,processor_granted);
+  P32: pipe32(timeout100,processor_granted);
+  P33: pipe33(timeout100,processor_granted);
 
 -- used just to make SMV recognize the symbols idle and p*.
   aux: {idle, p11, p12, p13, p21, p22, p23, p31, p32, p33};
@@ -274,17 +274,17 @@ VAR
 --
 DEFINE
   processor_granted := case
-                         req11: p11;
-                         req12: p12;
-                         req13: p13;
-                         req21: p21;
-                         req22: p22;
-                         req23: p23;
-                         req31: p31;
-                         req32: p32;
-                         req33: p33;
+                         P11.request: p11;
+                         P12.request: p12;
+                         P13.request: p13;
+                         P21.request: p21;
+                         P22.request: p22;
+                         P23.request: p23;
+                         P31.request: p31;
+                         P32.request: p32;
+                         P33.request: p33;
 
-                         1: idle;
+                         TRUE: idle;
                        esac;
 
 -- error would occur if a timeout occurs and the process hasn't finished
@@ -301,24 +301,24 @@ DEFINE
 SPEC AG !error
 
 -- compute each pipeline execution time
-COMPUTE MIN[P11.start, P13finish]
-COMPUTE MAX[P11.start, P13finish]
+COMPUTE MIN[P11.start, P13.finish]
+COMPUTE MAX[P11.start, P13.finish]
 
-COMPUTE MIN[P21.start, P23finish]
-COMPUTE MAX[P21.start, P23finish]
+COMPUTE MIN[P21.start, P23.finish]
+COMPUTE MAX[P21.start, P23.finish]
 
-COMPUTE MIN[P31.start, P33finish]
-COMPUTE MAX[P31.start, P33finish]
+COMPUTE MIN[P31.start, P33.finish]
+COMPUTE MAX[P31.start, P33.finish]
 
 
 -- Compute each pipeline execution time
-COMPUTE MIN[timeout20, P13finish]
-COMPUTE MAX[timeout20, P13finish]
+COMPUTE MIN[timeout20, P13.finish]
+COMPUTE MAX[timeout20, P13.finish]
 
-COMPUTE MIN[timeout50, P23finish]
-COMPUTE MAX[timeout50, P23finish]
+COMPUTE MIN[timeout50, P23.finish]
+COMPUTE MAX[timeout50, P23.finish]
 
-COMPUTE MIN[timeout100, P33finish]
-COMPUTE MAX[timeout100, P33finish]
+COMPUTE MIN[timeout100, P33.finish]
+COMPUTE MAX[timeout100, P33.finish]
 
 

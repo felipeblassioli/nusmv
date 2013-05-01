@@ -24,16 +24,17 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.4 2003/08/04 11:29:51]
 
 ## parser must be the first package to be built
 
 contribdatadir = $(datadir)/nusmv/contrib
-nobase_contribdata_DATA = README iscas89-2smv kiss2-2smv \
-	smv2table.awk smv-mode.el
+nobase_dist_contribdata_DATA = README iscas89-2smv kiss2-2smv \
+	smv2table.awk smv-mode.el order_bits.pl nusmv-mode.el NuSMV.m4 \
+	emacs-gdb-macros.el remove_string.pl

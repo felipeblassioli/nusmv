@@ -92,13 +92,13 @@ ti0300 : timer(log1.TT0300l, step); -- Rung 123: FLOP GATE CLOSE DURING WGH HOPP
 
 
 -- hardware model
-bc56 : conveyor(log2.CR0065, IN0053, 1, step);
+bc56 : conveyor(log2.CR0065, IN0053, TRUE, step);
 wghgat : gate(log2.CR0081, log1.CR0082, step);
 wghhop : bucket(bc56.q, wghgat.z, step);
 mixgat : gate(log1.CR0101, !log1.CR0101, step);
 eirich : mixer((wghgat.z & (wghhop.h > 0)), mixgat.z, log1.CR0075, log2.CR0077, log1.CR0069, log1.CR0085, log1.CR0089, step);
-flare : burner(log1.CR0048, 1, IN0148, eirich.material, step);
-bc57 : conveyor(log2.CR0106, mixgat.z, 1, step);
+flare : burner(log1.CR0048, TRUE, IN0148, eirich.material, step);
+bc57 : conveyor(log2.CR0106, mixgat.z, TRUE, step);
 
 
 ASSIGN
@@ -109,7 +109,7 @@ next(step) :=
 	(step = 2) : 3;
 	(step = 3) : 4;
 	(step = 4) & repeat: 1;
-	1 : 0;
+	TRUE : 0;
   esac;
 
 repeat := (log1.change | log2.change | log3.change);
@@ -120,19 +120,19 @@ init(step) := 1;
 next(again) :=
 	case
 	  (step > 0) : again;
-	  (opstep = 4) : {0,1};
-	  1 : again;
+	  (opstep = 4) : {FALSE,TRUE};
+	  TRUE : again;
 	esac;
 
-init(again) := 0;
+init(again) := FALSE;
 
 next(idle) :=
 	case
-	  ((step = 4) & !repeat) : {0, 1};
-	  1 : idle;
+	  ((step = 4) & !repeat) : {FALSE, TRUE};
+	  TRUE : idle;
 	esac;
 
-init(idle) := 0;
+init(idle) := FALSE;
  
 next(opstep) :=
 	case
@@ -153,16 +153,16 @@ next(opstep) :=
 	  	  (opstep = 12) : 
 			case
 			  !again : 13;
-			  1 : 2;
+			  TRUE : 2;
 			esac;
 	  	  (opstep = 13) : 14;
 	  	  (opstep = 14) : 15;
 		  (opstep = 15) : 16;
 		  (opstep = 16) : 17;
 		  (opstep = 17) & !log1.CR0048: 0;
-		  1 : opstep;
+		  TRUE : opstep;
 		esac;
-	  1 : opstep;
+	  TRUE : opstep;
 	esac;
 
 init(opstep) := 0;
@@ -180,92 +180,92 @@ DEFINE
 -- BC-57 CONVEYOR      START  NO P/B
 IN0146 := 
 	case
-	  idle : 0;
-	  (opstep = 0) : 1;
-	  1 : 0;
+	  idle : FALSE;
+	  (opstep = 0) : TRUE;
+	  TRUE : FALSE;
 	esac;
 
 -- MIXER -   START AUTO PUSHBUTTON NO P/B
 IN0111 := 
 	case
-	  idle : 0;
-	  (opstep = 1) : 1;
-	  1 : 0;
+	  idle : FALSE;
+	  (opstep = 1) : TRUE;
+	  TRUE : FALSE;
 	esac;
 
 
 -- BC-56 CONVEYOR START   NO P/B
 IN0095 :=
 	case
-	  idle : 0;
-	  (opstep = 3) : 1;
-	  1 : 0;
+	  idle : FALSE;
+	  (opstep = 3) : TRUE;
+	  TRUE : FALSE;
 	esac;
 
 
 -- BC56 stop P.B.
 IN0094 :=
 	case
-	  idle : 1;
-	  (opstep = 5) : 0;
-	  1 : 1;
+	  idle : TRUE;
+	  (opstep = 5) : FALSE;
+	  TRUE : TRUE;
 	esac;
 
 -- MIXER H20  STOP   NC P/B
 IN0056 := 
 	case
-	  idle : 1;
-	  (opstep = 7) : 0;
-	  1 : 1;
+	  idle : TRUE;
+	  (opstep = 7) : FALSE;
+	  TRUE : TRUE;
 	esac;
 
 -- MIXER DISCHARGE GATE OPEN P/B      NO P/B
 IN0135 := 
 	case
-	  idle : 0;
-	  (opstep = 9) : 1;
-	  1 : 0;
+	  idle : FALSE;
+	  (opstep = 9) : TRUE;
+	  TRUE : FALSE;
 	esac;
 
 -- MIXER DISCHARGE GATE CLOSE P/B      NC P/B
 IN0136 := 
 	case
-	  idle : 1;
-	  (opstep = 11) : 0;
-	  1 : 1;
+	  idle : TRUE;
+	  (opstep = 11) : FALSE;
+	  TRUE : TRUE;
 	esac;
 
 -- MIXER -   STOP
 IN0108 := 
 	case
-	  idle : 1;
-	  (opstep = 13) : 0;
-	  1 : 1;
+	  idle : TRUE;
+	  (opstep = 13) : FALSE;
+	  TRUE : TRUE;
 	esac;
 
 
  -- #1 STAR   STOP P/B  NC P/B
 IN0114 := 
 	case
-	  idle : 1;
-	  (opstep = 14) : 0;
-	  1 : 1;
+	  idle : TRUE;
+	  (opstep = 14) : FALSE;
+	  TRUE : TRUE;
 	esac;
 
 -- #1 PAN    STOP P/B   NC P/B
 IN0120 := 
 	case
-	  idle : 1;
-	  (opstep = 15) : 0;
-	  1 : 1;
+	  idle : TRUE;
+	  (opstep = 15) : FALSE;
+	  TRUE : TRUE;
 	esac;
 
 -- BC57 stop P.B.
 IN0145 := 
 	case
-	  idle : 1;
-	  (opstep = 16) : 0;
-	  1 : 1;
+	  idle : TRUE;
+	  (opstep = 16) : FALSE;
+	  TRUE : TRUE;
 	esac;
 
 --
@@ -308,10 +308,10 @@ ASSIGN
 next(working) :=
 	case
 	  (step < 4) : working;
-	  1 : RUN;
+	  TRUE : RUN;
 	esac;
 
-init(working) := 0;
+init(working) := FALSE;
 
 DEFINE
 q := working & SOURCE & DEST;
@@ -331,53 +331,53 @@ ASSIGN
 next(material) := 
 	case
 	  (step < 4) : material;
-	  exit : 0;
-	  FF : 1;
-	  1 : material;
+	  exit : FALSE;
+	  FF : TRUE;
+	  TRUE : material;
 	esac;
 
-init(material) := 0;
+init(material) := FALSE;
 
 
 next(watsol) := 
 	case
 	  (step < 4) : watsol;
-	  1 : water;
+	  TRUE : water;
 	esac;
 
-init(watsol) := 0;
+init(watsol) := FALSE;
 
 next(ms34) := 
 	case
 	  (step < 4) : ms34;
-	  1 : slow;
+	  TRUE : slow;
 	esac;
 
-init(ms34) := 0;
+init(ms34) := FALSE;
 
 next(mf34) := 
 	case
 	  (step < 4) : mf34;
-	  1 : fast;
+	  TRUE : fast;
 	esac;
 
-init(mf34) := 0;
+init(mf34) := FALSE;
 
 next(m7) := 
 	case
 	  (step < 4) : m7;
-	   1 : star;
+	   TRUE : star;
 	esac;
 
-init(m7) := 0;
+init(m7) := FALSE;
 
 next(m9) := 
 	case
 	  (step < 4) : m9;
-	  1 : pan;
+	  TRUE : pan;
 	esac;
 
-init(m9) := 0;
+init(m9) := FALSE;
 
 SPEC
 !EF(watsol & !material)
@@ -402,9 +402,9 @@ next(h) :=
 	FF :
 	   case
 		h = 7 : h;
-		1 : h + 1;
+		TRUE : h + 1;
 	   esac;
-	1 : h;
+	TRUE : h;
    esac;
 
 init(h) := 0;
@@ -426,12 +426,12 @@ t : boolean;
 ASSIGN
 next(t) :=
 	case
-	  !EN : 0;
+	  !EN : FALSE;
 	  (step > 0) : t;
-	  1 : EN;
+	  TRUE : EN;
 	esac;
 
-init(t) := 0;
+init(t) := FALSE;
 
 
 MODULE med_timer (EN, step)
@@ -446,7 +446,7 @@ next(t) :=
 	  (t = 0) : 1;
 	  (t = 1) : 2;
 	  (t = 2) : 2;
-	  1 : t;
+	  TRUE : t;
 	esac;
 
 init(t) := 0;
@@ -468,20 +468,20 @@ next(t) :=
 	  (t = 0) : 1;
 	  (t = 1) : 2;
 	  (t = 2) : 2;
-	  1 : t;
+	  TRUE : t;
 	esac;
 
 next(done) :=
 	case
 	  (step > 0) : done;
-	  !EN : 0;
-	  (t < 2) : 0;
-	  done : 1;
-	  1 : {0, 1};
+	  !EN : FALSE;
+	  (t < 2) : FALSE;
+	  done : TRUE;
+	  TRUE : {FALSE, TRUE};
 	esac;
 
 init(t) := 0;
-init(done) := 0;
+init(done) := FALSE;
 
 FAIRNESS
 done
@@ -497,37 +497,37 @@ ASSIGN
 next(air_sol) :=
 	case
 	  (step < 4) : air_sol;
-	  1 : air;
+	  TRUE : air;
 	esac;
 
-init(air_sol) := 0;
+init(air_sol) := FALSE;
 
 next(pilot_valve) :=
 	case
 	  (step < 4) : pilot_valve;
-	  1 : flame_st;
+	  TRUE : flame_st;
 	esac;
 
-init(pilot_valve) := 0;
+init(pilot_valve) := FALSE;
 
 next(main_valve) := 
 	case
 	  (step < 4) : main_valve;
-	  !flame_st : 0;
-	  flame : 1;
-	  1 : main_valve;
+	  !flame_st : FALSE;
+	  flame : TRUE;
+	  TRUE : main_valve;
 	esac;
 
-init(main_valve) := 0;
+init(main_valve) := FALSE;
 
 next(flame) :=
 	case
 	  (step < 4) : flame;
-	  q & gas : 1;
-	  1 : 0;
+	  q & gas : TRUE;
+	  TRUE : FALSE;
 	esac;
 
-init(flame) := 0;
+init(flame) := FALSE;
 
 DEFINE
 q := air_sol & fan;
@@ -550,12 +550,12 @@ ASSIGN
 next(z) := 
 	case
 	  (step > 0) : z;
-	  open : 1;
-	  close : 0;
-	  1 : z;
+	  open : TRUE;
+	  close : FALSE;
+	  TRUE : z;
 	esac;
 
-init(z) := 0;
+init(z) := FALSE;
 
 SPEC
 !EF(open & close & (step = 0))
@@ -624,10 +624,10 @@ ASSIGN
 next(CR0307) :=
    case
 	(step = 1) : IN0097 & IN0098;
-	1 : CR0307;
+	TRUE : CR0307;
    esac;
 
-init(CR0307) := 0;
+init(CR0307) := FALSE;
 
 
 
@@ -635,20 +635,20 @@ init(CR0307) := 0;
 next(CR0308) :=
    case
 	(step = 1) : IN0148 & IN0149;
-	1 : CR0308;
+	TRUE : CR0308;
    esac;
 
-init(CR0308) := 0;
+init(CR0308) := FALSE;
 
 
 --Rung 63, Mixer dump latch
 next(CR0299) :=
    case
 	(step = 1) : (IN0054 | CR0299) & !IN0135;
-	1 : CR0299;
+	TRUE : CR0299;
    esac;
 
-init(CR0299) := 0;
+init(CR0299) := FALSE;
 
 
 
@@ -656,10 +656,10 @@ init(CR0299) := 0;
 next(CR0075) :=
    case
 	(step = 1) : TT0276 | (CR0075 & IN0056);
-	1 : CR0075;
+	TRUE : CR0075;
    esac;
 
-init(CR0075) := 0;
+init(CR0075) := FALSE;
 
 
 
@@ -667,10 +667,10 @@ init(CR0075) := 0;
 next(CR0048) :=
    case
 	(step = 1) : (IN0148 | CR0048) & !TS0297;
-	1 : CR0048;
+	TRUE : CR0048;
    esac;
 
-init(CR0048) := 0;
+init(CR0048) := FALSE;
 
 
 
@@ -678,10 +678,10 @@ init(CR0048) := 0;
 next(CR0261) :=
    case
 	(step = 1) : f;
-	1 : CR0261;
+	TRUE : CR0261;
    esac;
 
-init(CR0261) := 0;
+init(CR0261) := FALSE;
 
 f := (IN0111 | CR0261) & IN0108 & !CR0285;
 
@@ -689,10 +689,10 @@ f := (IN0111 | CR0261) & IN0108 & !CR0285;
 next(CR0270) :=
    case
 	(step = 1) : IN0108 & TT0262; 
-	1 : CR0270;
+	TRUE : CR0270;
    esac;
 
-init(CR0270) := 0;
+init(CR0270) := FALSE;
 
 
 
@@ -700,10 +700,10 @@ init(CR0270) := 0;
 next(CR0069) :=
    case
 	(step = 1) : TS0271;
-	1 : CR0069;
+	TRUE : CR0069;
    esac;
 
-init(CR0069) := 0;
+init(CR0069) := FALSE;
 
 
 
@@ -711,20 +711,20 @@ init(CR0069) := 0;
 next(TS0272l) :=
    case
 	(step = 1) : IN0112; 
-	1 : TS0272l;
+	TRUE : TS0272l;
    esac;
 
-init(TS0272l) := 0;
+init(TS0272l) := FALSE;
 
 
 --Rung 111, mixer star #1 mixer starter
 next(CR0085) :=
    case
 	(step = 1) : TS0272 | (IN0116 & IN0114); 
-	1 : CR0085;
+	TRUE : CR0085;
    esac;
 
-init(CR0085) := 0;
+init(CR0085) := FALSE;
 
 
 
@@ -732,20 +732,20 @@ init(CR0085) := 0;
 next(TS0274l) :=
    case
 	(step = 1) : IN0116; 
-	1 : TS0274l;
+	TRUE : TS0274l;
    esac;
 
-init(TS0274l) := 0;
+init(TS0274l) := FALSE;
 
 
 -- Rung 117, mixer pan number 1 motor starter
 next(CR0089) :=
    case
 	(step = 1) : TS0274 | (IN0122 & IN0120);
-	1 : CR0089;
+	TRUE : CR0089;
    esac;
 
-init(CR0089) := 0;
+init(CR0089) := FALSE;
 
 
 
@@ -753,10 +753,10 @@ init(CR0089) := 0;
 next(CR0082) :=
    case
 	(step = 1) : m; 
-	1 : CR0082;
+	TRUE : CR0082;
    esac;
 
-init(CR0082) := 0;
+init(CR0082) := FALSE;
 
 m := (IN0053  | CR0082 | TT0300) & !IN0102;
 
@@ -764,20 +764,20 @@ m := (IN0053  | CR0082 | TT0300) & !IN0102;
 next(TT0300l) :=
    case
 	(step = 1) : CR0080 & !IN0102; 
-	1 : TT0300l;
+	TRUE : TT0300l;
    esac;
 
-init(TT0300l) := 0;
+init(TT0300l) := FALSE;
 
 
 --Rung127, weigh hopper open latch
 next(CR0309) :=
    case
 	(step = 1) : o; 
-	1 : CR0309;
+	TRUE : CR0309;
    esac;
 
-init(CR0309) := 0;
+init(CR0309) := FALSE;
 
 o := (IN0054 | CR0309) & !IN0053 & IN0107 & !IN0103
 			 & !IN0137 & !CR0080 & !IN0103;
@@ -786,36 +786,36 @@ o := (IN0054 | CR0309) & !IN0053 & IN0107 & !IN0103
 next(CR0101) :=
    case
 	(step = 1) : p; 
-	1 : CR0101;
+	TRUE : CR0101;
    esac;
 
-init(CR0101) := 0;
+init(CR0101) := FALSE;
 
 p := (IN0135 | CR0101) & !CR0278 & IN0136 & IN0149;
 
 next(change) :=
      case
-	!(CR0307 = next(CR0307)) : 1;	
-	!(CR0308 = next(CR0308)) : 1;	
-	!(CR0299 = next(CR0299)) : 1;	
-	!(CR0075 = next(CR0075)) : 1;	
-	!(CR0048 = next(CR0048)) : 1;	
-	!(CR0261 = next(CR0261)) : 1;	
-	!(CR0270 = next(CR0270)) : 1;	
-	!(CR0069 = next(CR0069)) : 1;	
-	!(TS0272l = next(TS0272l)) : 1;	
-	!(CR0085 = next(CR0085)) : 1;	
-	!(TS0274l = next(TS0274l)) : 1;	
-	!(CR0089 = next(CR0089)) : 1;	
-	!(CR0082 = next(CR0082)) : 1;	
-	!(TT0300l = next(TT0300l)) : 1;	
-	!(CR0309 = next(CR0309)) : 1;	
-	!(CR0101 = next(CR0101)) : 1;	
+	!(CR0307 = next(CR0307)) : TRUE;	
+	!(CR0308 = next(CR0308)) : TRUE;	
+	!(CR0299 = next(CR0299)) : TRUE;	
+	!(CR0075 = next(CR0075)) : TRUE;	
+	!(CR0048 = next(CR0048)) : TRUE;	
+	!(CR0261 = next(CR0261)) : TRUE;	
+	!(CR0270 = next(CR0270)) : TRUE;	
+	!(CR0069 = next(CR0069)) : TRUE;	
+	!(TS0272l = next(TS0272l)) : TRUE;	
+	!(CR0085 = next(CR0085)) : TRUE;	
+	!(TS0274l = next(TS0274l)) : TRUE;	
+	!(CR0089 = next(CR0089)) : TRUE;	
+	!(CR0082 = next(CR0082)) : TRUE;	
+	!(TT0300l = next(TT0300l)) : TRUE;	
+	!(CR0309 = next(CR0309)) : TRUE;	
+	!(CR0101 = next(CR0101)) : TRUE;	
 	(step < 4) : change;
-	1 : 0;
+	TRUE : FALSE;
     esac;
 
-init(change) := 0;
+init(change) := FALSE;
 
 MODULE rll2 (
 step,
@@ -871,10 +871,10 @@ ASSIGN
 next(CR0065) :=
    case
 	(step = 2) : q;
-	1 : CR0065;
+	TRUE : CR0065;
    esac;
 
-init(CR0065) := 0;
+init(CR0065) := FALSE;
 
 q := (((IN0095 & (IN0112 | IN0113)) | CR0307) & IN0148) & IN0094;
 
@@ -883,10 +883,10 @@ q := (((IN0095 & (IN0112 | IN0113)) | CR0307) & IN0148) & IN0094;
 next(CR0106) :=
    case
 	(step = 2) : (IN0146 | CR0308) & IN0145;
-	1 : CR0106;
+	TRUE : CR0106;
    esac;
 
-init(CR0106) := 0;
+init(CR0106) := FALSE;
 
 
 
@@ -896,12 +896,12 @@ next(TT0276l) :=
 	(step = 2) : 
 		case
 		  !TT0276 : CR0299 & !CR0287 & IN0107;
-		  1 : CR0299 & IN0056 & IN0107;
+		  TRUE : CR0299 & IN0056 & IN0107;
 		esac;
-	1 : TT0276l;
+	TRUE : TT0276l;
    esac;
 
-init(TT0276l) := 0;
+init(TT0276l) := FALSE;
 
 
 
@@ -912,12 +912,12 @@ next(TS0297l) :=
 	(step = 2) : 
 	  case
 	    !TS0297 : !IN0148;
-	    1 : CR0048;
+	    TRUE : CR0048;
 	  esac;
-	1 : TS0297l;
+	TRUE : TS0297l;
    esac;
 
-init(TS0297l) := 0;
+init(TS0297l) := FALSE;
 
 
 -- Rung 88, mixer start delay (5 seconds) (Must change to other format)
@@ -926,22 +926,22 @@ next(TT0262l) :=
 	(step = 2) : 
 		case
 		  !TT0262 : CR0261;
-		  1 :  (CR0261 | CR0285);
+		  TRUE :  (CR0261 | CR0285);
 		esac;
-	1 : TT0262l;
+	TRUE : TT0262l;
    esac;
 
-init(TT0262l) := 0;
+init(TT0262l) := FALSE;
 
 
 --Rung 104, mixer slow speed duration timer (8 seconds)
 next(TS0271l) :=
 	 case
 	   (step = 2) : CR0270;
-	    1 : TS0271l;
+	    TRUE : TS0271l;
 	 esac;
 
-init(TS0271l) := 0;
+init(TS0271l) := FALSE;
 
 
 
@@ -949,20 +949,20 @@ init(TS0271l) := 0;
 next(CR0077) :=
    case
 	(step = 2) : CR0270 & !TS0271;
-	1 : CR0077;
+	TRUE : CR0077;
    esac;
 
-init(CR0077) := 0;
+init(CR0077) := FALSE;
 
 
 --Rung 130, mixer weigh hopper flop gate open
 next(CR0081) :=
    case
 	(step = 2) : CR0309 & !IN0103;
-	1 : CR0081;
+	TRUE : CR0081;
    esac;
 
-init(CR0081) := 0;
+init(CR0081) := FALSE;
 
 
 
@@ -970,10 +970,10 @@ init(CR0081) := 0;
 next(CR0080) :=
    case
 	(step = 2) : ab;
-	1 : CR0080;
+	TRUE : CR0080;
    esac;
 
-init(CR0080) := 0;
+init(CR0080) := FALSE;
 
 ab := ((IN0054 & IN0103) | (CR0080 & IN0136)) & !IN0137;
 
@@ -981,30 +981,30 @@ ab := ((IN0054 & IN0103) | (CR0080 & IN0136)) & !IN0137;
 next(CR0278) :=
    case
 	(step = 2) : ac;
-	1 : CR0278;
+	TRUE : CR0278;
    esac;
 
-init(CR0278) := 0;
+init(CR0278) := FALSE;
 
 ac := (IN0136 | CR0278) & !IN0138 & !CR0101 & !IN0135;
 
 next(change) :=
     case
-	!(CR0065 = next(CR0065)) : 1;	
-	!(CR0106 = next(CR0106)) : 1;	
-	!(TT0276l = next(TT0276l)) : 1;	
-	!(TS0297l = next(TS0297l)) : 1;	
-	!(TT0262l = next(TT0262l)) : 1;	
-	!(TS0271l = next(TS0271l)) : 1;	
-	!(CR0077 = next(CR0077)) : 1;	
-	!(CR0081 = next(CR0081)) : 1;	
-	!(CR0080 = next(CR0080)) : 1;	
-	!(CR0278 = next(CR0278)) : 1;	
+	!(CR0065 = next(CR0065)) : TRUE;	
+	!(CR0106 = next(CR0106)) : TRUE;	
+	!(TT0276l = next(TT0276l)) : TRUE;	
+	!(TS0297l = next(TS0297l)) : TRUE;	
+	!(TT0262l = next(TT0262l)) : TRUE;	
+	!(TS0271l = next(TS0271l)) : TRUE;	
+	!(CR0077 = next(CR0077)) : TRUE;	
+	!(CR0081 = next(CR0081)) : TRUE;	
+	!(CR0080 = next(CR0080)) : TRUE;	
+	!(CR0278 = next(CR0278)) : TRUE;	
 	(step < 4) : change;
-	1 : 0;
+	TRUE : FALSE;
     esac;
 
-init(change) := 0;
+init(change) := FALSE;
 
 MODULE rll3 (
 step,
@@ -1024,10 +1024,10 @@ ASSIGN
 next(CR0287) :=
    case
 	(step = 3) : (TT0276 | CR0287) & CR0299;
-	1 : CR0287;
+	TRUE : CR0287;
    esac;
 
-init(CR0287) := 0;
+init(CR0287) := FALSE;
 
 
 
@@ -1035,20 +1035,20 @@ init(CR0287) := 0;
 next(CR0285) :=
    case
 	(step = 3) : IN0112 & IN0116 & IN0122;
-	1 : CR0285;
+	TRUE : CR0285;
    esac;
 
-init(CR0285) := 0;
+init(CR0285) := FALSE;
 
 
 
 next(change) := 
     case
-	!(CR0287 = next(CR0287)) : 1;	
-	!(CR0285 = next(CR0285)) : 1;	
+	!(CR0287 = next(CR0287)) : TRUE;	
+	!(CR0285 = next(CR0285)) : TRUE;	
 	(step < 4) : change;
-	1 : 0;
+	TRUE : FALSE;
     esac;
 
-init(change) := 0;
+init(change) := FALSE;
 

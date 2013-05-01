@@ -25,7 +25,7 @@
 
   Copyright   [
   This file is part of the ``ltl'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -41,11 +41,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -54,7 +54,7 @@
 #include "fsm/bdd/BddFsm.h" 
 #include "fsm/bdd/FairnessList.h" 
 
-static char rcsid[] UTIL_UNUSED = "$Id: ltlCompassion.c,v 1.4.2.11 2004/05/13 12:20:37 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: ltlCompassion.c,v 1.4.2.11.4.4 2006-06-01 16:15:10 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Static function prototypes                                                */
@@ -95,12 +95,12 @@ fill_path_with_inputs ARGS((BddFsm_ptr fsm, BddEnc_ptr enc, node_ptr path));
 ******************************************************************************/
 bdd_ptr feasible(BddFsm_ptr fsm, BddEnc_ptr enc)
 {
-  bdd_ptr new, old, R, tmp_1, tmp_2, init_bdd, trans_bdd;
+  bdd_ptr new, old, R, init_bdd, trans_bdd;
   bdd_ptr invar_bdd, next_invar_bdd;
   JusticeList_ptr justice;
   CompassionList_ptr compassion;
 
-  if (opt_verbose_level_gt(options, 0)) {
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
     fprintf(nusmv_stderr, "checking feasability...");
     fprintf(nusmv_stderr, "\n");
   }
@@ -118,7 +118,7 @@ bdd_ptr feasible(BddFsm_ptr fsm, BddEnc_ptr enc)
   justice = BddFsm_get_justice(fsm);
   compassion = BddFsm_get_compassion(fsm);
 
-  old = bdd_zero(dd_manager);
+  old = bdd_false(dd_manager);
   R = bdd_dup(trans_bdd);
   bdd_free(dd_manager, trans_bdd);
 
@@ -137,7 +137,7 @@ bdd_ptr feasible(BddFsm_ptr fsm, BddEnc_ptr enc)
         /* Loop over specifications */
         bdd_ptr spec = JusticeList_get_p(justice, iter); 
 
-        if (opt_verbose_level_gt(options, 0)) {
+        if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
           fprintf(nusmv_stderr, "evaluating justice constraint");
           fprintf(nusmv_stderr, "\n");
         }
@@ -171,7 +171,7 @@ bdd_ptr feasible(BddFsm_ptr fsm, BddEnc_ptr enc)
         bdd_ptr p_spec = CompassionList_get_p(compassion, iter);
         bdd_ptr q_spec = CompassionList_get_q(compassion, iter);
 
-        if (opt_verbose_level_gt(options, 0)) {
+        if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
           fprintf(nusmv_stderr, "evaluating compassion constraint");
           fprintf(nusmv_stderr, "\n");
         }
@@ -267,7 +267,7 @@ node_ptr witness(BddFsm_ptr fsm, BddEnc_ptr enc, bdd_ptr feasib)
     prec = predecessors(enc, R, state);
     not = bdd_not(dd_manager, succ); 
     diff = bdd_and(dd_manager, prec, not);
-    while (bdd_isnot_zero(dd_manager, diff)){
+    while (bdd_isnot_false(dd_manager, diff)){
       bdd_free(dd_manager, state);
       state = BddEnc_pick_one_state(enc, diff);
       bdd_free(dd_manager, succ);
@@ -308,12 +308,11 @@ node_ptr witness(BddFsm_ptr fsm, BddEnc_ptr enc, bdd_ptr feasib)
       /* Loop over specifications */
       bdd_ptr spec = JusticeList_get_p(justice, iter);
 
-      if (opt_verbose_level_gt(options, 0)) {
+      if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
         fprintf(nusmv_stderr, "evaluating ");
         fprintf(nusmv_stderr, "\n");
       }
       {
-        bdd_ptr result;
         node_ptr curr_period;
         int found = 0;
 
@@ -321,7 +320,7 @@ node_ptr witness(BddFsm_ptr fsm, BddEnc_ptr enc, bdd_ptr feasib)
         while (! found) {
           bdd_ptr tmp = bdd_and(dd_manager, spec, (bdd_ptr)car(curr_period));
 
-          found = bdd_isnot_zero(dd_manager, tmp);
+          found = bdd_isnot_false(dd_manager, tmp);
           curr_period = cdr(curr_period);
           bdd_free(dd_manager, tmp);
           if (curr_period == Nil) break;
@@ -350,7 +349,6 @@ node_ptr witness(BddFsm_ptr fsm, BddEnc_ptr enc, bdd_ptr feasib)
       bdd_ptr q_spec = CompassionList_get_q(compassion, iter);
 
       {
-        bdd_ptr result;
         node_ptr curr_period;
         int found = 0;
 
@@ -359,7 +357,7 @@ node_ptr witness(BddFsm_ptr fsm, BddEnc_ptr enc, bdd_ptr feasib)
         while (! found) {
           bdd_ptr tmp = bdd_and(dd_manager, q_spec,
                                 (bdd_ptr)car(curr_period));
-          found = bdd_isnot_zero(dd_manager, tmp);
+          found = bdd_isnot_false(dd_manager, tmp);
           curr_period = cdr(curr_period);
           bdd_free(dd_manager, tmp);
           if (curr_period == Nil) break;
@@ -367,7 +365,7 @@ node_ptr witness(BddFsm_ptr fsm, BddEnc_ptr enc, bdd_ptr feasib)
         if (!found){
           bdd_ptr tmp = bdd_and(dd_manager, final, p_spec);
 
-          if (bdd_isnot_zero(dd_manager, tmp)) {
+          if (bdd_isnot_false(dd_manager, tmp)) {
             bdd_ptr tmp_1 = bdd_and(dd_manager, final, q_spec);
 
             period = append(period,
@@ -395,7 +393,7 @@ node_ptr witness(BddFsm_ptr fsm, BddEnc_ptr enc, bdd_ptr feasib)
   result = fill_path_with_inputs(fsm, enc, prefix);
 
   { /* We release the prefix list and its contents */
-    node_ptr p;
+    node_ptr p = prefix;
     
     while(p != Nil) {
       node_ptr m = p;
@@ -424,15 +422,15 @@ node_ptr witness(BddFsm_ptr fsm, BddEnc_ptr enc, bdd_ptr feasib)
 ******************************************************************************/
 static bdd_ptr successor(BddEnc_ptr enc, bdd_ptr from, bdd_ptr relation)
 {
-  bdd_ptr result, next_result, vars, temp;
+  bdd_ptr result, next_result, vars;
 
-  vars = BddEnc_get_state_vars_support(enc);
+  vars = BddEnc_get_state_vars_cube(enc);
   next_result = bdd_and_abstract(dd_manager, relation, from, vars);
   result = BddEnc_next_state_var_to_state_var(enc, next_result);
   bdd_free(dd_manager, next_result);
   bdd_free(dd_manager, vars);
 
-  return(result); 
+  return result; 
 }
 
 /**Function*******************************************************************
@@ -450,7 +448,7 @@ static bdd_ptr successors(BddEnc_ptr enc, bdd_ptr from, bdd_ptr relation)
 {
   bdd_ptr old, new;
 
-  old = bdd_zero(dd_manager);
+  old = bdd_false(dd_manager);
   new = bdd_dup(from);
   while (old != new){
     bdd_ptr image; 
@@ -463,7 +461,7 @@ static bdd_ptr successors(BddEnc_ptr enc, bdd_ptr from, bdd_ptr relation)
   }
   bdd_free(dd_manager, old);
 
-  return(new); 
+  return new; 
 }
 
 /**Function*******************************************************************
@@ -481,7 +479,7 @@ static bdd_ptr predecessor(BddEnc_ptr enc, bdd_ptr relation, bdd_ptr to)
   bdd_ptr result, next_to, vars;
 
   next_to = BddEnc_state_var_to_next_state_var(enc, to);
-  vars = BddEnc_get_next_state_vars_support(enc);
+  vars = BddEnc_get_next_state_vars_cube(enc);
   result = bdd_and_abstract(dd_manager, relation, next_to, vars);
   bdd_free(dd_manager, next_to);
   bdd_free(dd_manager, vars);
@@ -504,7 +502,7 @@ static bdd_ptr predecessors(BddEnc_ptr enc, bdd_ptr relation, bdd_ptr to)
 {
   bdd_ptr old, new;
 
-  old = bdd_zero(dd_manager);
+  old = bdd_false(dd_manager);
   new = bdd_dup(to);
   while (old != new){
     bdd_ptr bwdimage;
@@ -516,7 +514,7 @@ static bdd_ptr predecessors(BddEnc_ptr enc, bdd_ptr relation, bdd_ptr to)
     bdd_free(dd_manager,bwdimage);
   }
   bdd_free(dd_manager, old);
-  return(new); 
+  return new; 
 }
 
 /**Function********************************************************************
@@ -541,7 +539,7 @@ static node_ptr path(BddEnc_ptr enc, bdd_ptr source,
   f = predecessor(enc, R, dest);
   
   tmp = bdd_and(dd_manager, start, f);
-  while (bdd_is_zero(dd_manager, tmp)){
+  while (bdd_is_false(dd_manager, tmp)){
     bdd_ptr fold;
 
     fold = f;
@@ -565,13 +563,13 @@ static node_ptr path(BddEnc_ptr enc, bdd_ptr source,
   test = bdd_and(dd_manager, start, dest);
   bdd_free(dd_manager, f);
   test = bdd_and(dd_manager, start, dest);
-  while (bdd_is_zero(dd_manager, test)){
+  while (bdd_is_false(dd_manager, test)){
     bdd_ptr tmp;
 
     f = predecessor(enc, R, dest);
     
     tmp = bdd_and(dd_manager, start, f);
-    while (bdd_is_zero(dd_manager, tmp)){
+    while (bdd_is_false(dd_manager, tmp)){
       bdd_ptr fold;
 
       fold = f;

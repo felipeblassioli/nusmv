@@ -1,48 +1,50 @@
 MODULE main
 VAR
-  bit[0] : counter_cell(1);
-  bit[1] : counter_cell(bit[0].carry_out);
-  bit[2] : counter_cell(bit[1].carry_out);
+  bit_0 : counter_cell(TRUE);
+  bit_1 : counter_cell(bit_0.carry_out);
+  bit_2 : counter_cell(bit_1.carry_out);
 
 SPEC
-  AG AF bit[2].carry_out
+  AG AF bit_2.carry_out
 
 SPEC
-  AG AF bit[1].carry_out
+  AG AF bit_1.carry_out
 
 SPEC
-  AG AF bit[0].carry_out
+  AG AF bit_0.carry_out
 
 PSLSPEC
-  AG AF bit[1].carry_out;
+  AG AF bit_1.carry_out;
 
 PSLSPEC
-  G F bit[1].carry_out;
+  G F bit_1.carry_out;
 
 PSLSPEC
-  always eventually! bit[1].carry_out;
+  always eventually! bit_1.carry_out;
 
 PSLSPEC
-  AG AF bit[2].carry_out;
+  AG AF bit_2.carry_out;
 
 PSLSPEC
-  G F bit[2].carry_out;
+  G F bit_2.carry_out;
 
 PSLSPEC
-  always eventually! bit[2].carry_out;
+  always eventually! bit_2.carry_out;
 
 PSLSPEC
-  forall i in {0:2}: G F bit[i].carry_out;
+--  forall i in {0:2}: G F bit[i].carry_out;
+  (G F bit_0.carry_out) & (G F bit_1.carry_out) & (G F bit_2.carry_out);
 
 PSLSPEC
-  forall i in {0:2}: always eventually! bit[i].carry_out;
+--  forall i in {0:2}: always eventually! bit[i].carry_out;
+  (always eventually! bit_0.carry_out) & (always eventually! bit_1.carry_out) & (always eventually! bit_2.carry_out);
 
   
 MODULE counter_cell(carry_in)
 VAR
   value : boolean;
 ASSIGN
-  init(value) := 0;
-  next(value) := value + carry_in mod 2;
+  init(value) := FALSE;
+  next(value) := value xor carry_in;
 DEFINE
   carry_out := value & carry_in;

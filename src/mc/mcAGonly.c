@@ -4,7 +4,8 @@
 
   PackageName [mc]
 
-  Synopsis    [This file contains the code to deal with AG formulas in a special way.]
+  Synopsis [This file contains the code to deal with AG formulas in a
+  special way.]
 
   Description [This file contains the code to deal with AG formulas
   only, using special purpose algorithms. This functionality is invoked
@@ -18,33 +19,33 @@
   Author      [Marco Roveri]
 
   Copyright   [
-  This file is part of the ``mc'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  This file is part of the ``mc'' package of NuSMV version 2.
+  Copyright (C) 1998-2001 by CMU and FBK-irst.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information on NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "mc.h"
-#include "mcInt.h" 
+#include "mcInt.h"
 
 #include "node/node.h"
 #include "parser/symbols.h"
@@ -52,17 +53,23 @@
 #include "trace/Trace.h"
 #include "trace/TraceManager.h"
 #include "enc/enc.h"
+#include "prop/propPkg.h"
 
 
-static char rcsid[] UTIL_UNUSED = "$Id: mcAGonly.c,v 1.5.4.23.2.1 2005/06/27 14:46:38 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: mcAGonly.c,v 1.5.4.23.4.4.6.7 2009-09-10 15:31:21 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
-static boolean is_AG_only_formula(node_ptr n);
-static boolean is_AG_only_formula_recur(node_ptr n, int* ag_count);
+static boolean check_AG_only ARGS((BddFsm_ptr fsm, BddEnc_ptr enc, Prop_ptr prop,
+                                   Expr_ptr spec, node_ptr context,
+                                   NodeList_ptr symbols,
+                                   Trace_ptr* out_trace));
+
+static boolean is_AG_only_formula ARGS((node_ptr n));
+static boolean is_AG_only_formula_recur ARGS((node_ptr n, int* ag_count));
 static node_ptr make_AG_counterexample ARGS((BddFsm_ptr, BddStates));
-      
+
 
 /*---------------------------------------------------------------------------*/
 /* Definition of exported functions                                          */
@@ -78,7 +85,7 @@ static node_ptr make_AG_counterexample ARGS((BddFsm_ptr, BddStates));
   is done to normalize the formula (e.g. push negations). The AG mode
   relies on the previous computation and storage of the reachable
   state space (<tt>reachable_states_layers</tt>), they are used in
-  counterexample computation.] 
+  counterexample computation.]
 
   SideEffects        []
 
@@ -86,88 +93,108 @@ static node_ptr make_AG_counterexample ARGS((BddFsm_ptr, BddStates));
 
 ******************************************************************************/
 void Mc_CheckAGOnlySpec(Prop_ptr prop) {
-  BddFsm_ptr fsm;
-  Expr_ptr spec = Prop_get_expr(prop);
-  Trace_ptr trace;
+  BddFsm_ptr fsm = BDD_FSM(NULL);
+  Expr_ptr spec = Prop_get_expr_core(prop);
+  Trace_ptr trace = TRACE(NULL);
   BddEnc_ptr enc = Enc_get_bdd_encoding();
 
-
-  if (opt_verbose_level_gt(options, 0)) {
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
     fprintf(nusmv_stderr, "evaluating ");
     print_spec(nusmv_stderr, prop);
     fprintf(nusmv_stderr, "\n");
   }
 
-  if (opt_cone_of_influence(options) == true) {
-    Prop_apply_coi_for_bdd(prop, global_fsm_builder);
-  }
-
-  fsm = Prop_get_bdd_fsm(prop);
-  if (fsm == BDD_FSM(NULL)) {
-    Prop_set_fsm_to_master(prop);
-    fsm = Prop_get_bdd_fsm(prop);
-    BDD_FSM_CHECK_INSTANCE(fsm);
-  }
+  fsm = Prop_compute_ground_bdd_fsm(prop, global_fsm_builder);
+  BDD_FSM_CHECK_INSTANCE(fsm);
 
   if (is_AG_only_formula(spec)) {
-    trace = check_AG_only(fsm, enc, prop, spec, Nil);
+    SexpFsm_ptr sexp_fsm; /* needed for trace language */
+
+    sexp_fsm = Prop_get_scalar_sexp_fsm(prop);
+    if (SEXP_FSM(NULL) == sexp_fsm) {
+      sexp_fsm = PropDb_master_get_scalar_sexp_fsm(PropPkg_get_prop_database());
+      SEXP_FSM_CHECK_INSTANCE(sexp_fsm);
+    }
+
+    fprintf(nusmv_stdout, "-- ");
+    print_spec(nusmv_stdout, prop);
+
+    if (check_AG_only(fsm, enc, prop, spec, Nil,
+                      SexpFsm_get_symbols_list(sexp_fsm), &trace)) {
+
+      /* property is true */
+      fprintf(nusmv_stdout, "is true\n");
+      Prop_set_status(prop, Prop_True);
+    }
+    else { /* property is false */
+      fprintf(nusmv_stdout, "is false\n");
+      Prop_set_status(prop, Prop_False);
+
+      if (TRACE(NULL) != trace) {
+        /* Print the trace using default plugin */
+        fprintf(nusmv_stdout,
+            "-- as demonstrated by the following execution sequence\n");
+
+        TraceManager_register_trace(global_trace_manager, trace);
+        TraceManager_execute_plugin(global_trace_manager, TRACE_OPT(NULL),
+                                    TRACE_MANAGER_DEFAULT_PLUGIN,
+                                    TRACE_MANAGER_LAST_TRACE);
+
+        Prop_set_trace(prop, Trace_get_id(trace));
+
+      }
+    }
   }
   else {
     warning_non_ag_only_spec(prop);
     return;
   }
 
-  if (trace == TRACE(NULL)) Prop_set_status(prop, Prop_True);
-  else {
-    int tr = TraceManager_register_trace(global_trace_manager, trace);
-
-    /* Print the trace using default plugin */
-    fprintf(nusmv_stdout,
-	    "-- as demonstrated by the following execution sequence\n");
-
-    TraceManager_execute_plugin(global_trace_manager,
-                    TraceManager_get_default_plugin(global_trace_manager), tr); 
-
-    Prop_set_status(prop, Prop_False);
-    Prop_set_trace(prop, Trace_get_id(trace));
-  }
-}
+} /* Mc_CheckAGOnlySpec */
 
 
 /**Function********************************************************************
 
-  Synopsis           [This function checks for SPEC of the form AG
-  alpha in "context".]
+  Synopsis    [This function checks for SPEC of the form AG alpha in
+               "context".]
 
   Description [The implicit assumption is that "spec" must be an AG
-  formula (i.e. it must contain only conjunctions and AG's).  No attempt
-  is done to normalize the formula (e.g. push negations). The AG mode
-  relies on the previous computation and storage of the reachable
-  state space (<tt>reachable_states_layers</tt>), they are used in
-  counterexample computation.] 
+               formula (i.e. it must contain only conjunctions and
+               AG's).  No attempt is done to normalize the formula
+               (e.g. push negations). The AG mode relies on the
+               previous computation and storage of the reachable state
+               space (<tt>reachable_states_layers</tt>), they are used
+               in counterexample computation.
 
-  SideEffects        []
+               Returns true iff the property is true.]
 
-  SeeAlso            [check_spec]
+  SideEffects [*out_trace contains the counterexample trace (where
+               applicable)]
+
+  SeeAlso     [check_spec]
 
 ******************************************************************************/
-Trace_ptr check_AG_only(BddFsm_ptr fsm, BddEnc_ptr enc, Prop_ptr prop, 
-			Expr_ptr spec, node_ptr context)
+static boolean check_AG_only(BddFsm_ptr fsm, BddEnc_ptr enc, Prop_ptr prop,
+                             Expr_ptr spec, node_ptr context,
+                             NodeList_ptr symbols, Trace_ptr* out_trace)
 {
-  Trace_ptr res;
+  boolean res = false;
 
-  if (spec == Nil) return TRACE(NULL);
+  if (spec == Nil) return false;
 
   switch (node_get_type(spec)) {
 
   case CONTEXT:
-    res = check_AG_only(fsm, enc, prop, cdr(spec), car(spec));
+    res = check_AG_only(fsm, enc, prop, cdr(spec),
+                        car(spec), symbols, out_trace);
     break;
 
   case AND:
-    res = check_AG_only(fsm, enc, prop, car(spec), context);
-    if (res == TRACE(NULL)) {
-      res = check_AG_only(fsm, enc, prop, cdr(spec), context);
+    res = check_AG_only(fsm, enc, prop, car(spec),
+                        context, symbols, out_trace);
+    if (res) { /* lazy mc */
+      res = check_AG_only(fsm, enc, prop, cdr(spec),
+                          context, symbols, out_trace);
     }
     break;
 
@@ -176,7 +203,7 @@ Trace_ptr check_AG_only(BddFsm_ptr fsm, BddEnc_ptr enc, Prop_ptr prop,
       bdd_ptr tmp_1, tmp_2, acc;
       bdd_ptr invar_bdd, reachable_bdd;
       DdManager* dd = BddEnc_get_dd_manager(enc);
-      bdd_ptr s0 = eval_spec(fsm, enc, car(spec), context);
+      bdd_ptr s0 = eval_ctl_spec(fsm, enc, car(spec), context);
 
       invar_bdd = BddFsm_get_state_constraints(fsm);
       reachable_bdd = BddFsm_get_reachable_states(fsm);
@@ -191,41 +218,38 @@ Trace_ptr check_AG_only(BddFsm_ptr fsm, BddEnc_ptr enc, Prop_ptr prop,
       bdd_free(dd, tmp_1);
       bdd_free(dd, invar_bdd);
 
-      fprintf(nusmv_stdout, "-- ");
-      print_spec(nusmv_stdout, prop);
-
-      if (bdd_is_zero(dd, acc)) {
-        fprintf(nusmv_stdout, "is true\n");
+      if (bdd_is_false(dd, acc)) {
         bdd_free(dd, acc);
-        res = TRACE(NULL);
-      } 
-      else {
-	node_ptr path;
-
-        fprintf(nusmv_stdout, "is false\n");        
-        path = make_AG_counterexample(fsm, acc);
-
-        res = Trace_create_from_state_input_list(enc, "AG Only counterexample",
-						 TRACE_TYPE_CNTEXAMPLE, path);
-         
-        /* free the list "path" */ 
-        walk_dd(dd, bdd_free, path);
-	free_list(path);
-
-        bdd_free(dd, acc);
+        res = true;
       }
-      
-      break; 
+      else {
+        res = false;
+
+        if (opt_counter_examples(OptsHandler_get_instance())) {
+          /* build counter-example trace */
+          node_ptr path = make_AG_counterexample(fsm, acc);
+
+          nusmv_assert(NIL(Trace_ptr) != out_trace);
+          (*out_trace) = Mc_create_trace_from_bdd_state_input_list(enc, symbols,
+                         "AG Only counterexample", TRACE_TYPE_CNTEXAMPLE, path);
+
+          /* free the list "path" */
+          walk_dd(dd, bdd_free, path);
+          free_list(path);
+
+          bdd_free(dd, acc);
+        }
+      }
+
+      break;
     } /* case AG */
-    
+
   default:
-    if (opt_verbose_level_gt(options, 0)) {    
+    if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
       fprintf(nusmv_stdout, "*** WARNING - ");
       print_spec(nusmv_stdout, prop);
       fprintf(nusmv_stdout, "skipped: it is not an AG-only formula\n");
     }
-    res = TRACE(NULL);
-
   } /* switch */
 
   return res;
@@ -255,44 +279,51 @@ make_AG_counterexample(BddFsm_ptr fsm, BddStates target_states)
   DdManager* dd = BddEnc_get_dd_manager(enc);
 
   node_ptr counterexample = Nil;
-  bdd_ptr state;
+  bdd_ptr state, dist;
+  bdd_ptr tgt = bdd_dup(target_states);
   int distance;
   int i;
-  
-  distance = BddFsm_get_distance_of_states(fsm, target_states); 
+
+  distance = BddFsm_get_minimum_distance_of_states(fsm, target_states);
 
   /* returns an empty list if any of given target states is not reachable */
   if (distance == -1) return Nil;
 
   /* pushes the one state from target states (all reachable) at the end: */
-  state = BddEnc_pick_one_state(enc, target_states);
+  dist = BddFsm_get_reachable_states_at_distance(fsm, distance);
+  bdd_and_accumulate(dd, &tgt, dist);
+  bdd_free(dd, dist);
+
+  state = BddEnc_pick_one_state(enc, tgt);
+  bdd_free(dd, tgt);
+
   counterexample = cons((node_ptr) state, counterexample);
 
-  for (i = distance-1; i >= 0; --i) {
+  for (i = distance-1; i > 0 ; --i) {
     BddStates pre_image;
     BddStates reachables;
-    BddInputs inputs; 
+    BddInputs inputs;
     bdd_ptr input;
 
     pre_image = BddFsm_get_backward_image(fsm, state);
     reachables = BddFsm_get_reachable_states_at_distance(fsm, i);
-    
+
     bdd_and_accumulate(dd, &pre_image, reachables);
     bdd_free(dd, reachables);
- 
+
     /* transitions from the reachable pre image to the current state at i+1 */
     inputs = BddFsm_states_to_states_get_inputs(fsm, pre_image, state);
     input = BddEnc_pick_one_input(enc, inputs);
-    nusmv_assert(!bdd_is_zero(dd, input));
+    nusmv_assert(!bdd_is_false(dd, input));
     bdd_free(dd, inputs);
     counterexample = cons((node_ptr) input, counterexample);
 
     state = BddEnc_pick_one_state(enc, pre_image);
     bdd_free(dd, pre_image);
-    nusmv_assert(!bdd_is_zero(dd, state));
+    nusmv_assert(!bdd_is_false(dd, state));
     counterexample = cons((node_ptr) state, counterexample);
   }
- 
+
   return counterexample;
 }
 
@@ -331,42 +362,42 @@ static boolean is_AG_only_formula_recur(node_ptr n, int* ag_count)
 
   switch (node_get_type(n)) {
 
-  case CONTEXT: 
-      return is_AG_only_formula_recur(cdr(n), ag_count); 
+  case CONTEXT:
+      return is_AG_only_formula_recur(cdr(n), ag_count);
 
-  case NOT:    
+  case NOT:
       return is_AG_only_formula_recur(car(n), ag_count);
 
-  case AND:    
-  case OR:     
-  case XOR:     
-  case XNOR:    
-  case IMPLIES: 
-  case IFF:    
+  case AND:
+  case OR:
+  case XOR:
+  case XNOR:
+  case IMPLIES:
+  case IFF:
     return ((is_AG_only_formula_recur(car(n), ag_count)) &&
-	    (is_AG_only_formula_recur(cdr(n), ag_count)));
-    
+            (is_AG_only_formula_recur(cdr(n), ag_count)));
+
   case EX:   /* Non-AG formula */
-  case AX:  
-  case EF:  
-  case AF:  
-  case EG:  
-  case EU:  
-  case AU:  
-  case EBU: 
-  case ABU: 
-  case EBF: 
-  case ABF: 
-  case EBG: 
-  case ABG: 
-    return false; 
-    
-  case AG:    
+  case AX:
+  case EF:
+  case AF:
+  case EG:
+  case EU:
+  case AU:
+  case EBU:
+  case ABU:
+  case EBF:
+  case ABF:
+  case EBG:
+  case ABG:
+    return false;
+
+  case AG:
     *ag_count += 1;
     if(*ag_count > 1) return false; /* More than one AG */
-    return is_AG_only_formula_recur(car(n), ag_count); 
+    return is_AG_only_formula_recur(car(n), ag_count);
 
-  default:      
+  default:
     { /* for all the other cases, we can safely assume it to be AG Only formula. */
       return true;
     }

@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``utils'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst.
+  Copyright (C) 2003 by FBK-irst.
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,19 +31,20 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 
 #include "object.h"
 #include "object_private.h"
+#include "utils/error.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: object.c,v 1.1.2.5 2003/09/30 10:46:01 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: object.c,v 1.1.2.5.4.1.6.1 2009-06-18 13:47:00 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -205,8 +206,8 @@ void object_copy_aux(const Object_ptr self, Object_ptr copy)
 ******************************************************************************/
 static Object_ptr object_copy(const Object_ptr self)
 {
-  nusmv_assert(false); /* this is a virtual class, no real instances 
-			  are allowed */
+  error_unreachable_code(); /* this is a virtual class, no real instances 
+                          are allowed */
   return OBJECT(NULL);
 }
 
@@ -229,6 +230,6 @@ static void object_finalize(Object_ptr self, void* arg)
 {
   object_deinit(self);
 
-  nusmv_assert(false); /* this is a virtual class, no real instances 
+  error_unreachable_code(); /* this is a virtual class, no real instances 
 			  are allowed */
 }

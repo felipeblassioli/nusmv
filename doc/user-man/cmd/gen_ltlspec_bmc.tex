@@ -1,6 +1,8 @@
+% -*-latex-*-
 \begin{nusmvCommand} {gen\_ltlspec\_bmc} {Dumps into one or more dimacs files the given LTL specification, or all LTL specifications if no formula is given. Generation and dumping parameters are the maximum bound and the loopback value}
 
-\cmdLine{gen\_ltlspec\_bmc [-h | -n idx | -p "formula" [IN context]] \linebreak[4][-k max\_length] [-l loopback] [-o filename]}
+\cmdLine{gen\_ltlspec\_bmc [-h] | [ -n idx | -p "formula" [IN context]
+    | -P "name"] [-k max\_length] [-l loopback] [-o filename]}
 
 This command generates one or more problems, and  dumps each problem
 into a dimacs file. Each problem is related to a specific problem
@@ -32,6 +34,9 @@ The validity of \code{index} value is checked out by the system.  }
 on the command-line. \code{context} is the module instance name which
 the variables in  \anyexpr must be evaluated in.}
             
+\opt{-P \parameter{\natnum{name}}}{Checks the LTL property named \natnum{name} in
+the property database.} 
+
 \opt{-k \parameter{\natnum{\it max\_length}}}{ {\it max\_length} is the maximum problem
 bound used when increasing problem bound starting from zero. Only
 natural numbers are valid values for this option. If no value is given

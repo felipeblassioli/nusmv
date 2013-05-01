@@ -26,26 +26,42 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.2 2003/08/07 15:43:31]
 
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = bdd/BddFsm.h bdd/FairnessList.h bdd/bdd.h bdd/bddInt.h \
-	bdd/bddCmd.c bdd/BddFsm.c bdd/BddFsmCache.c bdd/FairnessList.c \
-	sexp/Expr.h sexp/SexpFsm.h sexp/sexp.h sexp/sexpInt.h \
-	sexp/Expr.c sexp/SexpFsm.c 
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
+
+PKG_H = FsmBuilder.h fsm.h 
+PKG_C = FsmBuilder.c fsm.c
+
+SEXP_H = 	sexp/BoolSexpFsm.h sexp/Expr.h sexp/SexpFsm_private.h \
+					sexp/BoolSexpFsm_private.h sexp/SexpFsm.h sexp/sexp.h
+SEXP_C = sexp/BoolSexpFsm.c sexp/Expr.c sexp/SexpFsm.c
+
+BDD_H = bdd/BddFsm.h bdd/bdd.h bdd/FairnessList.h
+BDD_C = bdd/bddCmd.c bdd/BddFsm.c bdd/BddFsmCache.c bdd/bddMisc.c \
+				bdd/FairnessList.c
+
+BE_H = be/BeFsm.h
+BE_C = be/BeFsm.c
+
+
+PKG_SOURCES = $(PKG_H) $(SEXP_H) $(BDD_H) $(BE_H)  \
+							fsmInt.h sexp/sexpInt.h bdd/bddInt.h \
+							$(PKG_C) $(SEXP_C) $(BDD_C) $(BE_C) 
 
 fsmdir = $(includedir)/nusmv/fsm
-nobase_fsm_HEADERS = bdd/bdd.h  bdd/BddFsm.h  bdd/FairnessList.h \
-	sexp/sexp.h  sexp/SexpFsm.h  sexp/Expr.h  
+nobase_fsm_HEADERS = $(PKG_H) $(SEXP_H) $(BDD_H) $(BE_H)
 
 # -------------------------------------------------------
 

@@ -9,7 +9,7 @@ ASSIGN
 TRANS
   case
     y = 7 :  next(y) = 0;
-    1     :  next(y) = (y + 1) mod 16;
+    TRUE     :  next(y) = (y + 1) mod 16;
   esac
 
 LTLSPEC

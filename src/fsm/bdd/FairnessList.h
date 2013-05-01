@@ -17,7 +17,7 @@
 
   Copyright   [
   This file is part of the ``fsm.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -33,11 +33,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -118,30 +118,30 @@ EXTERN JusticeList_ptr JusticeList_create ARGS((DdManager* dd_manager));
 
 EXTERN BddStates 
 JusticeList_get_p ARGS((const JusticeList_ptr self, 
-			const FairnessListIterator_ptr iter));
+                        const FairnessListIterator_ptr iter));
 
 EXTERN void JusticeList_append_p ARGS((JusticeList_ptr self, BddStates p));
 
 EXTERN void 
 JusticeList_apply_synchronous_product ARGS((JusticeList_ptr self, 
-					    const JusticeList_ptr other));
+                                            const JusticeList_ptr other));
 
 /* Compassion */
 EXTERN CompassionList_ptr CompassionList_create ARGS((DdManager* dd_manager));
 
 EXTERN BddStates 
 CompassionList_get_p ARGS((const CompassionList_ptr self, 
-			   const FairnessListIterator_ptr iter));
+                           const FairnessListIterator_ptr iter));
 
 EXTERN BddStates 
 CompassionList_get_q ARGS((const CompassionList_ptr self, 
-			   const FairnessListIterator_ptr iter));
+                           const FairnessListIterator_ptr iter));
 
 EXTERN void CompassionList_append_p_q ARGS((CompassionList_ptr self, 
-					    BddStates p, BddStates q));
+                                            BddStates p, BddStates q));
 
 EXTERN void 
 CompassionList_apply_synchronous_product ARGS((CompassionList_ptr self, 
-					       const CompassionList_ptr other));
+                                               const CompassionList_ptr other));
 
 #endif /* __FSM_BDD_FAIRNESS_LIST_H__ */

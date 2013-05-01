@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``be'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,11 +30,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -43,34 +43,15 @@
 #include "beInt.h"
 
 #include "rbc/rbc.h"
-#include "opt/opt.h"
+#include "rbc/InlineResult.h"
 
+#include "opt/opt.h"
+#include "utils/defs.h"
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
 /*---------------------------------------------------------------------------*/
-
-/**Constant********************************************************************
-
-  Synopsis    [A switcher of the function Be_Cnf_RemoveDuplicateLiterals]
-
-  Description [After BE2CNF conversion the function
-  Be_Cnf_RemoveDuplicateLiterals removes duplicate literals 
-  from clauses (see function Be_ConvertToCnf).
-  But in the current implementation of RBC and BE2CNF-conversion,
-  duplicate literals cannot appear. 
-  If you nevertheless want to enable this function, define the macro
-  REMOVE_DUPLICATE_LITERALS to 1.
-  NOTE: for some reason Be_Cnf_RemoveDuplicateLiterals requires a lot of
-  time. The problems seems to be in ListNode_destroy and node_find]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-#define REMOVE_DUPLICATE_LITERALS 0
-
+const int BE_INVALID_SUBST_VALUE = RBC_INVALID_SUBST_VALUE;
 
 /*---------------------------------------------------------------------------*/
 /* Type declarations                                                         */
@@ -83,7 +64,6 @@
 /*---------------------------------------------------------------------------*/
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
-EXTERN options_ptr options;
 
 
 /*---------------------------------------------------------------------------*/
@@ -213,6 +193,22 @@ void Be_RbcManager_Reserve(Be_Manager_ptr self, const size_t size)
   Rbc_ManagerReserve((Rbc_Manager_t*)self->spec_manager, size);
 }
 
+
+/**Function********************************************************************
+
+  Synopsis    [Resets RBC cache]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     []
+
+******************************************************************************/
+void Be_RbcManager_Reset (const Be_Manager_ptr self)
+{
+  Rbc_ManagerReset((Rbc_Manager_t*)self->spec_manager);
+}
 
 /**Function********************************************************************
 
@@ -448,65 +444,81 @@ be_ptr Be_Ite(Be_Manager_ptr manager, be_ptr c, be_ptr t, be_ptr e)
   Synopsis    [Creates a fresh copy G(X') of the be F(X) by shifting
   each variable index of a given amount]
 
-  Description [Shifting operation replaces each occurence of the variable x_i
-  in `f' with the variable x_(i + shift).
-  A simple lazy mechanism is implemented to optimize that cases which
-  given expression is a constant in]
+  Description [Shifting operation replaces each occurence of the
+               variable x_i in `f' with the variable x_(i + shift).  A
+               simple lazy mechanism is implemented to optimize that
+               cases which given expression is a constant in.
+
+               The two indices arrays log2phy and phy2log map
+               respectively the logical level to the physical level,
+               and the physical level to the logical levels. They
+               allow the be encoder to freely organize the variables
+               into a logical and a physical level. This feature has
+               been introduced with NuSMV-2.4 that ships dynamic
+               encodings.
+
+               !!!! WARNING !!!!
+                 Since version 2.4 memoizing has been moved to BeEnc,
+                 as there is no way of calculating a good hashing key
+                 as the time would be requested, but timing
+                 information are not available at this stage.
+               ]
 
   SideEffects []
 
   SeeAlso     []
 
 ******************************************************************************/
-be_ptr Be_ShiftVar(Be_Manager_ptr manager, be_ptr f, int shift)
+be_ptr Be_LogicalShiftVar(Be_Manager_ptr manager, be_ptr f, int shift,
+                          const int* log2phy, const int* phy2log)
 {
-  shift_memoize_key key;
-  be_ptr result = NULL;
-
-  nusmv_assert(htShift_ptr != NULL); /* init problems? */
-
   /* lazy evaluation: */
   if (Be_IsConstant(manager, f)) return f;
 
-  /* create the key, then search for it: */
-  key.be   = f;
-  key.shift = shift;
-
-  if ( !st_lookup(htShift_ptr, (char*) &key, (char**) &result) ) {
-    /* Duplicates the key */
-    /* This ALLOC is deleted by Be_shiftHash_CallbackDeleteEntryAndKey: */
-    shift_memoize_key* key_copy = ALLOC(shift_memoize_key, 1);
-    key_copy->be    = key.be;
-    key_copy->shift = key.shift;
-
-    result = BE( manager, Rbc_Shift(GET_RBC_MGR(manager),
-                                    RBC(manager, f), shift) );
-    st_insert( htShift_ptr, (char*) key_copy, (char*) result );
-  }
-
-  nusmv_assert(result!=NULL);
-  return result;
+  return BE(manager,
+            Rbc_LogicalShift(GET_RBC_MGR(manager),
+                             RBC(manager, f), shift,
+                             log2phy, phy2log));
 }
 
 
 /**Function********************************************************************
 
-  Synopsis    [Replaces all variables in f with other variables]
+  Synopsis    [Replaces all variables in f with other variables, taking
+               them at logical level]
 
   Description [Replaces every occurence of the variable x_i in in `f'
-  with the variable x_j provided that subst[i] = j.
-  There is no need for `subst' to contain all the  variables,
-  but it should map at least the variables in `f' in order for
-  the substitution to work properly.]
+               with the variable x_j provided that subst[i] = j.
 
-  SideEffects [f will change]
+               Notice that in this context, 'i' and 'j' are LOGICAL
+               indices, not physical, i.e. the substitution array is
+               provided in terms of logical indices, and is related
+               only to the logical level.
+
+               For a substitution at physical level, see Be_VarSubst.
+
+               There is no need for `subst' to contain all the
+               variables, but it should map at least the variables in
+               `f' in order for the substitution to work properly.
+
+               The two indices arrays log2phy and phy2log map
+               respectively the logical level to the physical level,
+               and the physical level to the logical levels. They
+               allow the be encoder to freely organize the variables
+               into a logical and a physical level. This feature has
+               been introduced with NuSMV-2.3 that ships dynamic
+               encodings.]
+
+  SideEffects []
 
   SeeAlso     []
 
 ******************************************************************************/
-be_ptr Be_VarSubst(Be_Manager_ptr manager, be_ptr f, int* subst)
+be_ptr Be_LogicalVarSubst(Be_Manager_ptr manager, be_ptr f, int* subst,
+                          const int* log2phy, const int* phy2log)
 {
-  return BE( manager, Rbc_Subst(GET_RBC_MGR(manager), RBC(manager, f), subst) );
+  return BE( manager, Rbc_LogicalSubst(GET_RBC_MGR(manager), RBC(manager, f),
+                                       subst, log2phy, phy2log) );
 }
 
 
@@ -516,47 +528,54 @@ be_ptr Be_VarSubst(Be_Manager_ptr manager, be_ptr f, int* subst)
 
   Description [Since it creates a new Be_Cnf structure, the caller
   is responsible for deleting it when it is no longer used
-  (via Be_Cnf_Delete)]
+  (via Be_Cnf_Delete).
+
+  'polarity' is used to determine if the clauses generated should
+   represent the RBC positively, negatively, or both (1, -1 or 0
+   respectively). For an RBC that is known to be true, the clauses
+   that represent it being false are not needed (they would be removed
+   anyway by propogating the unit literal which states that the RBC is
+   true). Similarly for when the RBC is known to be false. This
+   parameter is only used with the compact cnf conversion algorithm,
+   and is ignored if the simple algorithm is used.]
 
   SideEffects []
 
   SeeAlso     [Be_Cnf_Delete]
 
 ******************************************************************************/
-Be_Cnf_ptr Be_ConvertToCnf(Be_Manager_ptr manager, be_ptr f)
+Be_Cnf_ptr Be_ConvertToCnf(Be_Manager_ptr manager, be_ptr f, int polarity)
 {
   Be_Cnf_ptr cnf;
-  int max_var_idx; 
+  int max_var_idx;
   int literalAssignedToWholeFormula = INT_MIN;
 
   /* performs the cnf conversion: */
-  if (opt_verbose_level_gt(options, 0)) {
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 0)) {
     fprintf(nusmv_stderr, "\nConverting the BE problem into CNF problem...\n");
   }
 
   cnf = Be_Cnf_Create(f);
   max_var_idx = Rbc_Convert2Cnf(GET_RBC_MGR(manager),
-				RBC(manager, f),
-				Be_Cnf_GetClausesList(cnf),
-				Be_Cnf_GetVarsList(cnf),
-				&literalAssignedToWholeFormula);
-  
+                                RBC(manager, f),
+                                polarity,
+                                Be_Cnf_GetClausesList(cnf),
+                                Be_Cnf_GetVarsList(cnf),
+                                &literalAssignedToWholeFormula);
+
   nusmv_assert(literalAssignedToWholeFormula >= INT_MIN);
 
-#if REMOVE_DUPLICATE_LITERALS 
-  /* see the description of  REMOVE_DUPLICATE_LITERALS*/
   Be_Cnf_RemoveDuplicateLiterals(cnf);
-#endif
 
   Be_Cnf_SetMaxVarIndex(cnf, max_var_idx);
 
-  if (opt_verbose_level_gt(options, 1)) {
+  if (opt_verbose_level_gt(OptsHandler_get_instance(), 1)) {
     fprintf(nusmv_stderr, " Conversion returned maximum variable index = %d\n",
-	    Be_Cnf_GetMaxVarIndex(cnf));
-    fprintf(nusmv_stderr, " Length of list of clauses = %d\n", 
-	    Be_Cnf_GetClausesNumber(cnf));
-    fprintf(nusmv_stderr, " Length of list of variables = %d\n", 
-	    Be_Cnf_GetVarsNumber(cnf));
+            Be_Cnf_GetMaxVarIndex(cnf));
+    fprintf(nusmv_stderr, " Length of list of clauses = %" PRIuPTR "\n",
+            Be_Cnf_GetClausesNumber(cnf));
+    fprintf(nusmv_stderr, " Length of list of variables = %" PRIuPTR "\n",
+            Be_Cnf_GetVarsNumber(cnf));
   }
 
   Be_Cnf_SetFormulaLiteral(cnf, literalAssignedToWholeFormula);
@@ -577,35 +596,33 @@ Be_Cnf_ptr Be_ConvertToCnf(Be_Manager_ptr manager, be_ptr f)
   SeeAlso     []
 
 ******************************************************************************/
-lsList Be_CnfModelToBeModel(Be_Manager_ptr manager, lsList cnfModel)
+Slist_ptr Be_CnfModelToBeModel(Be_Manager_ptr manager, Slist_ptr cnfModel)
 {
-  lsList beModel = lsCreate();
-  lsGen gen;
-  int cnfLiteral;
-  int beLiteral;
+  Slist_ptr beModel = Slist_create();
+  nusmv_ptrint cnfLiteral, beLiteral;
+  Siter iter;
 
-  lsForEachItem(cnfModel, gen, cnfLiteral) {
-    beLiteral = Be_CnfLiteral2BeLiteral(manager, cnfLiteral);
+  SLIST_FOREACH(cnfModel, iter) {
+    cnfLiteral = (nusmv_ptrint) Siter_element(iter);
+
+    beLiteral = (nusmv_ptrint) Be_CnfLiteral2BeLiteral(manager, cnfLiteral);
     /* if there is corresponding rbc variable => remember it */
     if (0 != beLiteral) {
-      lsNewEnd(beModel, (lsGeneric)beLiteral, 0);
+      Slist_push(beModel, (void*)beLiteral);
     }
-  };
-  
+  }
+
   return beModel;
 }
 
 
 /**Function********************************************************************
 
-  Synopsis    [Converts a CNF literal into BE literal]
+  Synopsis    [Converts a CNF literal into a BE literal]
 
-  Description [Literal is an index with optinal sign, so index = abs(literal)..
-  The function returns 0 if there is no BE index associated with the given CNF
-  index.
-  A given CNF literal should be created by given BE manager (through 
-  Be_ConvertToCnf).
-  ]
+  Description [The function returns 0 if there is no BE index
+  associated with the given CNF index.  A given CNF literal should be
+  created by given BE manager (through Be_ConvertToCnf).]
 
   SideEffects []
 
@@ -618,32 +635,89 @@ int Be_CnfLiteral2BeLiteral(const Be_Manager_ptr self, int cnfLiteral)
   int rbcIndex;
 
   /* literal is always != 0, otherwise the sign cannot be represented. */
-  nusmv_assert(0 != cnfLiteral); 
-  
-  cnfIndex = abs(cnfLiteral); 
+  nusmv_assert(0 != cnfLiteral);
+
+  cnfIndex = abs(cnfLiteral);
   rbcIndex = Rbc_CnfVar2RbcIndex(GET_RBC_MGR(self), cnfIndex);
 
-  if (-1 != rbcIndex) return (cnfLiteral > 0) ? rbcIndex : -rbcIndex;  
+  if (-1 != rbcIndex) return (cnfLiteral > 0) ? (rbcIndex+1) : (-rbcIndex-1);
   else return 0;
 }
 
 
 /**Function********************************************************************
 
-  Synopsis    [Returns a CNF index associated with a given BE index]
+  Synopsis    [Converts a BE literal into a CNF literal (sign is taken into
+  account)]
 
-  Description [If no CNF index is associated with a given BE index, 0 is
-  returned.
-  BE indexes are associated with CNF indexes through function Be_ConvertToCnf.
-  Note: Input BE index cannot be 0, it is impossible in current implementation.
-  ]
+  Description []
 
   SideEffects []
 
   SeeAlso     [Be_ConvertToCnf]
 
 ******************************************************************************/
-int Be_BeIndex2CnfIndex(const Be_Manager_ptr self, int beIndex)
+int Be_BeLiteral2CnfLiteral(const Be_Manager_ptr self, int beLiteral)
+{
+  int be_idx = Be_BeLiteral2BeIndex(self, beLiteral);
+  return (beLiteral > 0) ?
+    Be_BeIndex2CnfLiteral(self, be_idx) :
+    -Be_BeIndex2CnfLiteral(self, be_idx);
+}
+
+
+
+/**Function********************************************************************
+
+  Synopsis    [Converts a BE literal into a CNF literal]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     [Be_ConvertToCnf]
+
+******************************************************************************/
+int Be_BeLiteral2BeIndex(const Be_Manager_ptr self, int beLiteral)
+{
+  nusmv_assert(beLiteral != 0);
+  return abs(beLiteral)-1;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Converts a BE index into a BE literal (always positive)]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     [Be_ConvertToCnf]
+
+******************************************************************************/
+int Be_BeIndex2BeLiteral(const Be_Manager_ptr self, int beIndex)
+{
+  nusmv_assert(beIndex >= 0);
+  return beIndex+1;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis [Returns a CNF literal (always positive) associated with a
+  given BE index]
+
+  Description [If no CNF index is associated with a given BE index, 0
+  is returned. BE indexes are associated with CNF indexes through
+  function Be_ConvertToCnf.  ]
+
+  SideEffects []
+
+  SeeAlso     [Be_ConvertToCnf]
+
+******************************************************************************/
+int Be_BeIndex2CnfLiteral(const Be_Manager_ptr self, int beIndex)
 {
   return Rbc_RbcIndex2CnfVar(GET_RBC_MGR(self), beIndex);
 }
@@ -755,10 +829,122 @@ void Be_PrintStats(Be_Manager_ptr manager, int clustSize, FILE* outFile)
 }
 
 
+/**Function********************************************************************
+
+  Synopsis    [Returns true iff sign of literal is positive.]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     [Be_CnfLiteral_Negate, Be_BeLiteral_IsSignPositive]
+
+******************************************************************************/
+boolean Be_CnfLiteral_IsSignPositive(const Be_Manager_ptr self, int cnfLiteral)
+{
+  nusmv_assert(cnfLiteral != 0);
+  return cnfLiteral > 0;
+}
+
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns negated literal.]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     [Be_CnfLiteral_IsSignPositive, Be_BeLiteral_Negate]
+
+******************************************************************************/
+int Be_CnfLiteral_Negate(const Be_Manager_ptr self, int cnfLiteral)
+{
+  nusmv_assert(cnfLiteral != 0);
+  return -cnfLiteral;
+}
+
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns true iff sign of literal is positive.]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     [Be_BeLiteral_Negate, Be_CnfLiteral_IsSignPositive]
+
+******************************************************************************/
+boolean Be_BeLiteral_IsSignPositive(const Be_Manager_ptr self, int beLiteral)
+{
+  nusmv_assert(beLiteral != 0);
+  return beLiteral > 0;
+}
+
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns negated literal.]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     [Be_BeLiteral_IsSignPositive, Be_CnfLiteral_Negate]
+
+******************************************************************************/
+int Be_BeLiteral_Negate(const Be_Manager_ptr self, int beLiteral)
+{
+  nusmv_assert(beLiteral != 0);
+  return -beLiteral;
+}
+
+
+/**Function********************************************************************
+
+  Synopsis [Performs the inlining of f, either including or not
+  the conjuction set.]
+
+  Description [If add_conj is true, the conjuction set is included, otherwise
+        only the inlined formula is returned for a lazy SAT solving.]
+
+  SideEffects []
+
+  SeeAlso     [InlineResult]
+
+******************************************************************************/
+be_ptr Be_apply_inlining(Be_Manager_ptr mgr, be_ptr f, boolean add_conj)
+{
+  be_ptr res;
+  InlineResult_ptr ir;
+
+  /* lazy evaluation: */
+  if (Be_IsConstant(mgr, f)) return f;
+
+  ir = RbcInline_apply_inlining(GET_RBC_MGR(mgr), RBC(mgr, f));
+
+  if (add_conj) res = BE(mgr, InlineResult_get_inlined_f_and_c(ir));
+  else res = BE(mgr, InlineResult_get_inlined_f(ir));
+
+  /* [MR] Here we destroy the structure computed by the inlining
+     routines Also the caching of this structure in
+     rbcInline.c:RbcInline_apply_inlining is disabled. This is
+     needed because if a large number of calls to inliner are
+     performes (e.g. in the incremental SBMC) then the usage of
+     memory is too large. */
+  InlineResult_destroy(ir);
+
+  return res;
+}
+
+
 /*---------------------------------------------------------------------------*/
 /* Definitions of internal functions                                         */
 /*---------------------------------------------------------------------------*/
-
 
 
 /*---------------------------------------------------------------------------*/

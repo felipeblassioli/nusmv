@@ -24,29 +24,37 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information on NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[v 1.0.0.0 2005/5/3 15:06:47]
 
-INCLUDES = -I../.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
+
+INCLUDES = -I. -I../.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
 
 BUILT_SOURCES = psl_grammar.h psl_grammar.c psl_input.c 
 
 MOSTLYCLEANFILES = psl_grammar.h psl_grammar.c psl_input.c
 
-AM_YFLAGS = -d -p psl_yy
-AM_LFLAGS = -l -Ppsl_yy -o$(LEX_OUTPUT_ROOT).c
+AM_YFLAGS = -d -p psl_yy 
 
-PKG_SOURCES = psl_grammar.y psl_input.l psl_grammar.h \
-	      pslExpr.c pslNode.c pslConv.c pslPrint.c \
-	      pslExpr.h   pslInt.h  pslNode.h
+if USE_LEGACY_FLEX
+AM_LFLAGS = -l -Ppsl_yy -o$(LEX_OUTPUT_ROOT).c
+else
+AM_LFLAGS = -Ppsl_yy -o$(LEX_OUTPUT_ROOT).c
+endif
+
+PKG_SOURCES = psl_grammar.y psl_input.l psl_grammar.h psl_symbols.h \
+	      pslExpr.c pslNode.c pslConv.c \
+	      pslExpr.h   pslInt.h  pslNode.h 
 
 parserpsldir = $(includedir)/nusmv/parser/psl
-parserpsl_HEADERS = pslExpr.h pslNode.h psl_grammar.h
+parserpsl_HEADERS = pslExpr.h pslNode.h psl_grammar.h psl_symbols.h
 
 # -------------------------------------------------------
 

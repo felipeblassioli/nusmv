@@ -24,19 +24,24 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.2 2003/07/31 15:41:06]
 
 
 SUBDIRS = user-man tutorial html
 
+FILES = FAQ
+EXTRA_DIST = $(FILES)
+
 docs:
 	cd user-man && $(MAKE) docs
 	cd tutorial && $(MAKE) docs
 	cd html && $(MAKE) docs
 
+filesdir=$(datadir)/nusmv/doc
+files_DATA = $(FILES)

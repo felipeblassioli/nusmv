@@ -26,36 +26,39 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[1.1.2.2 2003/08/07 15:43:31]
 
+SUBDIRS = sbmc
+
 AUTOMAKE_OPTIONS = subdir-objects
 
-INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
 
-PKG_SOURCES = bmc.h bmcBmc.h bmcCheck.h bmcCmd.h bmcConv.h bmcDump.h \
-	bmcFsm.h bmcGen.h bmcInt.h bmcModel.h bmcPkg.h bmcSatTrace.h \
-	bmcTableau.h bmcUtils.h bmcVarsMgr.h bmcWff.h bmcBmcNonInc.c \
-        bmcBmcInc.c \
-	bmcCheck.c bmcCmd.c bmcConv.c bmcDump.c bmcFsm.c \
-	bmcGen.c bmcInt.c bmcModel.c bmcPkg.c bmcSatTrace.c bmcTableau.c \
-	bmcTableauLTLformula.c bmcTableauPLTLformula.c bmcTest.c \
-	bmcUtils.c bmcVarsMgr.c bmcWff.c 
+INCLUDES = -I. -I.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
 
+PKG_H = bmcBmc.h bmcCmd.h bmcDump.h bmc.h bmcModel.h \
+				bmcTableau.h  bmcCheck.h bmcConv.h bmcGen.h bmcPkg.h \
+				bmcSimulate.h bmcUtils.h
+
+PKG_C = bmcBmcInc.c bmcCmd.c bmcGen.c bmcPkg.c bmcTableau.c bmcTest.c \
+				 bmcBmcNonInc.c bmcConv.c bmcInt.c \
+				bmcTableauLTLformula.c bmcTrace.c bmcCheck.c bmcDump.c bmcModel.c \
+				bmcSimulate.c bmcTableauPLTLformula.c bmcUtils.c bmcOpt.c
+
+PKG_SOURCES = $(PKG_H) bmcInt.h $(PKG_C)
 
 bmcdir = $(includedir)/nusmv/bmc
-bmc_HEADERS = bmc.h bmcBmc.h bmcCmd.h bmcDump.h bmcGen.h bmcPkg.h \
-	      bmcTableau.h bmcVarsMgr.h bmcCheck.h bmcConv.h bmcFsm.h \
-	      bmcModel.h bmcSatTrace.h bmcUtils.h bmcWff.h
-
+bmc_HEADERS = $(PKG_H)
 
 # -------------------------------------------------------
 
 noinst_LTLIBRARIES = libbmc.la
 libbmc_la_SOURCES = $(PKG_SOURCES)
-
+libbmc_la_LIBADD = sbmc/libsbmc.la

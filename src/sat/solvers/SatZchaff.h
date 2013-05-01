@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``sat'' package of NuSMV version 2. 
-  Copyright (C) 2004 by ITC-irst.
+  Copyright (C) 2004 by FBK-irst.
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,13 +31,13 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
-  Revision    [$Id: SatZchaff.h,v 1.1.2.3 2005/11/16 12:09:46 nusmv Exp $]
+  Revision    [$Id: SatZchaff.h,v 1.1.2.2.2.2.6.1 2010-02-18 10:00:03 nusmv Exp $]
 
 ******************************************************************************/
 
@@ -63,10 +63,10 @@ typedef struct SatZchaff_TAG* SatZchaff_ptr;
 /* Macro declarations                                                        */
 /*---------------------------------------------------------------------------*/
 #define SAT_ZCHAFF(x) \
-	 ((SatZchaff_ptr) x)
+         ((SatZchaff_ptr) x)
 
 #define SAT_ZCHAFF_CHECK_INSTANCE(x) \
-	 (nusmv_assert(SAT_ZCHAFF(x) != SAT_ZCHAFF(NULL)))
+         (nusmv_assert(SAT_ZCHAFF(x) != SAT_ZCHAFF(NULL)))
 
 /**AutomaticStart*************************************************************/
 

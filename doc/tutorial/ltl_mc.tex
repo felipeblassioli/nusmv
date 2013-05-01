@@ -1,3 +1,4 @@
+% -*-latex-*-
 \section{Linear Temporal Logic}
 \label{Linear Temporal Logic}
 \index{Linear Temporal Logic}
@@ -60,7 +61,7 @@ MODULE main
    proc1     : process user(semaphore);
    proc2     : process user(semaphore);
  ASSIGN
-   init(semaphore) := 0;
+   init(semaphore) := FALSE;
  LTLSPEC G ! (proc1.state = critical & proc2.state = critical)
  LTLSPEC G (proc1.state = entering -> F proc1.state = critical)
 MODULE user(semaphore)
@@ -74,13 +75,13 @@ MODULE user(semaphore)
        state = entering & !semaphore : critical;
        state = critical              : \{critical, exiting\};
        state = exiting               : idle;
-       1                             : state;
+       TRUE                          : state;
      esac;
    next(semaphore) :=
      case
-       state = entering : 1;
-       state = exiting  : 0;
-       1                : semaphore;
+       state = entering : TRUE;
+       state = exiting  : FALSE;
+       TRUE             : semaphore;
      esac;
  FAIRNESS
    running
@@ -95,7 +96,7 @@ MODULE user(semaphore)
 Trace Description: CTL Counterexample
 Trace Type: Counterexample
 -> State: 1.1 <-
-    semaphore = 0
+    semaphore = FALSE
     proc1.state = idle
     proc2.state = idle
 -> Input: 1.2 <-

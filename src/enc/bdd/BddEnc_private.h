@@ -4,18 +4,17 @@
 
   PackageName [enc.bdd]
 
-  Synopsis    [The Bdd encoding private interface, and BddEnc class 
-  declaration]
+  Synopsis    [Private and protected interface of class 'BddEnc']
 
-  Description []
-                                               
-  SeeAlso     [BddEnc.c, BddEnc.h]
+  Description [This file can be included only by derived and friend classes]
+
+  SeeAlso     [BddEnc.h]
 
   Author      [Roberto Cavada]
 
   Copyright   [
   This file is part of the ``enc.bdd'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2004 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,141 +30,222 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
+
+  Revision    [$Id: BddEnc_private.h,v 1.1.2.7.2.1.2.6.4.15 2009-09-17 11:49:49 nusmv Exp $]
 
 ******************************************************************************/
 
-#ifndef __ENC_BDD_BDD_ENC_PRIVATE_H__
-#define __ENC_BDD_BDD_ENC_PRIVATE_H__
 
-#include "BddEnc.h"
+#ifndef __BDD_ENC_PRIVATE_H__
+#define __BDD_ENC_PRIVATE_H__
+
+
+#include "BddEnc.h" 
 #include "BddEncCache.h"
 
-#include "utils/utils.h"
-#include "utils/assoc.h"
-#include "node/node.h"
-#include "dd/dd.h"
+#include "enc/base/BoolEncClient.h"
+#include "enc/base/BoolEncClient_private.h"
 
+#include "utils/array.h"
+#include "utils/utils.h" 
 
 
 /**Macro***********************************************************************
 
-  Synopsis     [Return value used to indicate that the evaluation of
-  an atom is not yet terminated.]
+  Synopsis    [Initial size of dynamic arrays containing variable indices.]
 
-  Description  ]
+  Description [Initial size of dynamic arrays containing variable indices.]
 
-  SeeAlso      [get_definition]
-
-  SideEffects  []
-
+  SeeAlso     []   
+  
 ******************************************************************************/
-#define EVALUATING ((add_ptr)(-1))
+#define BDD_ENC_INIT_VAR_NUM 4096
 
 
 /**Struct**********************************************************************
 
-  Synopsis    [The BddEnc structure.]
+  Synopsis    [BddEnc class definition derived from
+               class BoolEncClient]
 
-  Description [For the time being, this is just a dummy structure]
+  Description []
+
+  SeeAlso     [Base class BoolEncClient]   
   
 ******************************************************************************/
-typedef struct BddEnc_TAG 
+typedef struct BddEnc_TAG
 {
-  Encoding_ptr senc; 
+  /* this MUST stay on the top */
+  INHERITS_FROM(BoolEncClient); 
+
+  /* -------------------------------------------------- */
+  /*                  Private members                   */
+  /* -------------------------------------------------- */
+  TypeChecker_ptr type_checker; /* used to get the type of expression */
+  
+  VarsHandler_ptr dd_vars_hndr; 
+  DdManager* dd; /* this field is here only for performances */
+  
   BddEncCache_ptr cache;
 
-  DdManager* dd;
+  /* used for grouping of vars */
+  OrdGroups_ptr ord_groups; 
+  hash_ptr layer2groups;
 
-  /* ---------------------------------------------------------------------
-     Warning: all add and bdd members must be accessed via the
-     provided methods! 
-     --------------------------------------------------------------------- */
+  /* used to shuffle the variable ordering */
+  array_t* level2index; /* array of int */
+ 
+  /* used to lock/unlock vars ordering: */ 
+  dd_reorderingtype curr_reord_type;
+  int reord_status;
+  int reord_locked_num;
+  int curr_reorderings; /* number of reorderings so far */
 
-  boolean saved; 
-  /* these members are saved by BddEnc_save */
-  struct {
-    /* The cube of input variables to be used in image forward and backward */
-    add_ptr __input_variables_add; 
-    bdd_ptr __input_variables_bdd;
-    
-    /* The cube of state variables to be used in image forward */
-    add_ptr __state_variables_add; 
-    bdd_ptr __state_variables_bdd;
+  /* number of variables: */
+  int input_vars_num;
+  int state_vars_num;
+  int frozen_vars_num;
 
-    /* The cube of state variables to be used in image backward */
-    add_ptr __next_state_variables_add;
-    bdd_ptr __next_state_variables_bdd;
-
-    /* the size of array minterm_vars */
-    int minterm_input_vars_dim;
-    int minterm_state_vars_dim;
-    int minterm_next_state_vars_dim;
-    int minterm_state_input_vars_dim;
-  
-    node_ptr state_vars_add_list; /* ADDs list of state variables */
-
-    /* The number of boolean state variables created to encode
-       symbolic state variables, current and next */
-    int num_of_state_vars;
-  
-    /* The number of boolean input state variables created to encode
-       symbolic input variables */
-    int num_of_input_vars;
-
-  } state, saved_state;  
-  
-    
-    
   /* The array of symbolic variable names. Each element i contains the
      symbolic name associated to the variable with index i */
-  node_ptr variable_names[MAX_VAR_INDEX];
-  
+  array_t* index2name; /* array of node_ptr */
+  hash_ptr name2index; 
+
   /* These arrays are used to maintain correspondence between current
   and next variables. Position i contains the index of the
   corresponding next state variable. They are used to perform forward
   and backward shifting respectively */
-  int current2next[MAX_VAR_INDEX]; 
-  int next2current[MAX_VAR_INDEX];
-
-  /* Array used to pick up a minterm from a given BDD. This array
+  array_t* current2next; /* array of int */
+  array_t* next2current; /* array of int */
+  
+  /* Arrays used to pick up a minterm from a given BDD. These arrays
      should contain at least all variables in the support of the BDD
-     which we want extract a minterm of */
-  bdd_ptr minterm_input_vars[MAX_VAR_INDEX]; 
-  bdd_ptr minterm_state_vars[MAX_VAR_INDEX]; 
-  bdd_ptr minterm_next_state_vars[MAX_VAR_INDEX]; 
-  bdd_ptr minterm_state_input_vars[MAX_VAR_INDEX]; 
+     which we want extract a minterm of. When a layer is removed,
+     these arrays will be compacted, i.e. no gaps are allowed to
+     exist at any time. 
+     Associtated to each array there is the current frontier. */
+  array_t* minterm_input_vars; /* array of bdd_ptr */
+  int minterm_input_vars_dim;
+
+  /* array sizes are kept explicit here because due to compaction
+     array size and size can be different */
+
+  array_t* minterm_state_vars; /* array of bdd_ptr */
+  int minterm_state_vars_dim;
+
+  array_t* minterm_next_state_vars; /* array of bdd_ptr */
+  int minterm_next_state_vars_dim;
+
+  array_t* minterm_frozen_vars; /* array of bdd_ptr */
+  int minterm_frozen_vars_dim;
+
+  array_t* minterm_state_frozen_vars; /* array of bdd_ptr */
+  int minterm_state_frozen_vars_dim;
+
+  array_t* minterm_state_frozen_input_vars; /* array of bdd_ptr */
+  int minterm_state_frozen_input_vars_dim;
+
+
+  /* This list is intended to hold the indices of variables there were 
+     removed and are then available for reusing. If this list is empty, 
+     there are no gaps at all, and the next available index will be taken 
+     from the number of currently allocated variables. This list 
+     keeps the indices ordered. */
+  NodeList_ptr index_gaps;
+  
+  /* Contains the maximum index that has been used so far to allocate
+     new vars. If there are gaps (i.e. removed vars not yet reused),
+     this value is greater than the number of variables currently
+     allocated. This index is used to allocate new indices when gaps
+     are not available for reuse. Notice that index 0 is never used
+     for variables, as it seems to be reserved by cudds.  
+     
+     DO NOT USE this field directly, call methods
+     bdd_enc_get_avail_state_var_index and bdd_enc_get_avail_input_var_index
+     instead. */
+  int used_indices_frontier; 
+
+  /* These are the cubes of input, state current and state next vars.
+     When a new var is added, only corresponding ADD cubes will be
+     modified, the construction of the BDD is delayed until the BDD
+     cube is required: */  
+
+  /* 1. The cube of input variables to be used in image forward and
+     backward */
+  add_ptr input_vars_add; 
+  bdd_ptr input_vars_bdd;
+  
+  /* 2. The cube of state variables to be used in image forward */
+  add_ptr state_vars_add; 
+  bdd_ptr state_vars_bdd;
+  
+  /* 3. The cube of state variables to be used in image backward */
+  add_ptr next_state_vars_add;
+  bdd_ptr next_state_vars_bdd;
+
+  /* 4. The cube of frozen variables */
+  add_ptr frozen_vars_add; 
+  bdd_ptr frozen_vars_bdd;
+
+  /* 5. The cube of current state variables and frozen variables to be used in image forward */
+  bdd_ptr state_frozen_vars_bdd; 
   
   /* This is a stack of instances of class BddEncPrintInfo, used 
-   to print Bdds */
+     to print Bdds */
   node_ptr print_stack;
-  
+
   /* This variable is used to control the behavior of the
      method bdd_enc_eval (specifically the behavior of its subroutine
      get_definition). */
   boolean enforce_constant;
 
-  /* Used for grouping of variables: */
-  int dyn_reord_flag; 
-  dd_reorderingtype dyn_reord_type;
-  int group_begin_start;
-  MtrNode* group_tree;
 
-  /* masks: */
-  add_ptr __state_vars_mask_add;
-  add_ptr __input_vars_mask_add;
-  add_ptr __state_input_vars_mask_add;
-  bdd_ptr __state_vars_mask_bdd;
-  bdd_ptr __input_vars_mask_bdd;
-  bdd_ptr __state_input_vars_mask_bdd;
+  /* Masks: */
+  add_ptr input_vars_mask_add;
+  add_ptr state_frozen_vars_mask_add;
+  add_ptr state_frozen_input_vars_mask_add;
+
+  bdd_ptr input_vars_mask_bdd;
+  bdd_ptr state_frozen_vars_mask_bdd;
+  bdd_ptr state_frozen_input_vars_mask_bdd;
   
+
+  /* To check failure leaves quickly */
+  hash_ptr failures_hash;
+
+  /* -------------------------------------------------- */
+  /*                  Virtual methods                   */
+  /* -------------------------------------------------- */
+
 } BddEnc;
 
 
+#define BDD_ENC_EVALUATING (ADD_ARRAY(-1))
 
 
-#endif /* __ENC_BDD_BDD_ENC_PRIVATE_H__ */
+/* ---------------------------------------------------------------------- */
+/* Private methods to be used by derivated and friend classes only        */
+/* ---------------------------------------------------------------------- */
+void bdd_enc_init ARGS((BddEnc_ptr self,
+                        SymbTable_ptr symb_table, 
+                        BoolEnc_ptr bool_enc, VarsHandler_ptr dd_vars_hdlr, 
+                        OrdGroups_ptr ord_groups));
+
+void bdd_enc_deinit ARGS((BddEnc_ptr self));
+
+void bdd_enc_commit_layer ARGS((BaseEnc_ptr enc_base, const char* layer_name));
+
+void bdd_enc_remove_layer ARGS((BaseEnc_ptr enc_base, const char* layer_name));
+
+
+/* 
+   Later on this method should be moved to public interface.  
+   At the moment it is used by GAME addon
+*/
+void bdd_enc_shuffle_variables_order ARGS((BddEnc_ptr self,
+                                           NodeList_ptr vars));
+#endif /* __BDD_ENC_PRIVATE_H__ */

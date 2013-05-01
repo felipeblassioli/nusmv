@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``bmc'' package of NuSMV version 2.
-  Copyright (C) 2000-2001 by ITC-irst and University of Trento.
+  Copyright (C) 2000-2001 by FBK-irst and University of Trento.
 
   NuSMV version 2 is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -30,11 +30,11 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -42,11 +42,13 @@
 #include "bmcInt.h"
 #include "bmcModel.h"
 #include "bmcTableau.h"
-#include "bmcWff.h"
 #include "bmcUtils.h"
 #include "bmcConv.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: bmcGen.c,v 1.3.4.1.2.1 2004/07/27 12:12:12 nusmv Exp $";
+#include "wff/wff.h"
+#include "wff/w2w/w2w.h"
+
+static char rcsid[] UTIL_UNUSED = "$Id: bmcGen.c,v 1.3.4.1.2.1.2.2.6.4 2007-03-15 13:47:30 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -87,22 +89,20 @@ static char rcsid[] UTIL_UNUSED = "$Id: bmcGen.c,v 1.3.4.1.2.1 2004/07/27 12:12:
 
   Description        [Builds the negation of
                      (I0 imp P0) and ((P0 and R01) imp P1)
-		     that must be unsatisfiable.]
+                     that must be unsatisfiable.]
 
   SideEffects        []
 
   SeeAlso            [Bmc_Gen_InvarBaseStep, Bmc_Gen_InvarInductStep]
 
 ******************************************************************************/
-be_ptr Bmc_Gen_InvarProblem(const Bmc_Fsm_ptr be_fsm, const node_ptr wff)
+be_ptr Bmc_Gen_InvarProblem(const BeFsm_ptr be_fsm, const node_ptr wff)
 {
-  BmcVarsMgr_ptr vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(BeFsm_get_be_encoding(be_fsm));
   be_ptr base = Bmc_Gen_InvarBaseStep(be_fsm, wff);
   be_ptr induct = Bmc_Gen_InvarInductStep(be_fsm, wff);
-  be_ptr res = Be_Not( BmcVarsMgr_GetBeMgr(vars_mgr),
-		       Be_And(BmcVarsMgr_GetBeMgr(vars_mgr), base, induct) );
-  
-  return res;
+
+  return Be_Not(be_mgr, Be_And(be_mgr, base, induct));
 }
 
 
@@ -119,15 +119,14 @@ be_ptr Bmc_Gen_InvarProblem(const Bmc_Fsm_ptr be_fsm, const node_ptr wff)
   SeeAlso            []
 
 ******************************************************************************/
-be_ptr Bmc_Gen_LtlProblem(const Bmc_Fsm_ptr be_fsm,
-			  const node_ptr ltl_wff,
-			  const int k, const int l)
+be_ptr Bmc_Gen_LtlProblem(const BeFsm_ptr be_fsm,
+                          const node_ptr ltl_wff,
+                          const int k, const int l)
 {
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(Bmc_Fsm_GetVarsManager(be_fsm));
+  Be_Manager_ptr mgr = BeEnc_get_be_manager(BeFsm_get_be_encoding(be_fsm));
   be_ptr path_k = Bmc_Model_GetPathWithInit(be_fsm, k);
   be_ptr tableau = Bmc_Tableau_GetLtlTableau(be_fsm, ltl_wff, k, l);
-  be_ptr res = Be_And(be_mgr, path_k, tableau);
-  return res;
+  return Be_And(mgr, tableau, path_k);
 }
 
 
@@ -143,18 +142,18 @@ be_ptr Bmc_Gen_LtlProblem(const Bmc_Fsm_ptr be_fsm,
   SeeAlso            [Bmc_Gen_InvarInductStep]
 
 ******************************************************************************/
-be_ptr Bmc_Gen_InvarBaseStep(const Bmc_Fsm_ptr be_fsm, const node_ptr wff)
+be_ptr Bmc_Gen_InvarBaseStep(const BeFsm_ptr be_fsm, const node_ptr wff)
 {
-  BmcVarsMgr_ptr vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
 
-  be_ptr P_0 = BmcVarsMgr_ShiftCurrNext2Time(vars_mgr,
-					      Bmc_Conv_Bexp2Be(vars_mgr, wff), 0);
+  be_ptr P_0 = BeEnc_untimed_expr_to_timed(be_enc,
+                                           Bmc_Conv_Bexp2Be(be_enc, wff), 0);
 
   return Be_Implies( be_mgr, Be_And(be_mgr,
-				    Bmc_Model_GetInit0(be_fsm),
-				    Bmc_Model_GetInvarAtTime(be_fsm, 0)),
-		     P_0 );
+                                    Bmc_Model_GetInit0(be_fsm),
+                                    Bmc_Model_GetInvarAtTime(be_fsm, 0)),
+                     P_0 );
 }
 
 
@@ -171,23 +170,54 @@ be_ptr Bmc_Gen_InvarBaseStep(const Bmc_Fsm_ptr be_fsm, const node_ptr wff)
   SeeAlso            [Bmc_Gen_InvarBaseStep]
 
 ******************************************************************************/
-be_ptr Bmc_Gen_InvarInductStep(const Bmc_Fsm_ptr be_fsm,
-			       const node_ptr wff)
+be_ptr Bmc_Gen_InvarInductStep(const BeFsm_ptr be_fsm,
+                               const node_ptr wff)
 {
-  BmcVarsMgr_ptr vars_mgr = Bmc_Fsm_GetVarsManager(be_fsm);
-  Be_Manager_ptr be_mgr = BmcVarsMgr_GetBeMgr(vars_mgr);
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
 
-  be_ptr P = Bmc_Conv_Bexp2Be(vars_mgr, wff);
-  
+  be_ptr P = Bmc_Conv_Bexp2Be(be_enc, wff);
+
   be_ptr trans_01_invar_01 = Bmc_Model_GetPathNoInit(be_fsm, 1);
 
-  be_ptr trans_01_invar_01_P0 = 
+  be_ptr trans_01_invar_01_P0 =
     Be_And(be_mgr,
-	   trans_01_invar_01,
-	   BmcVarsMgr_ShiftCurrNext2Time(vars_mgr, P, 0));
+           trans_01_invar_01,
+           BeEnc_untimed_expr_to_timed(be_enc, P, 0));
 
   return Be_Implies(be_mgr, trans_01_invar_01_P0,
-		    BmcVarsMgr_ShiftCurrNext2Time(vars_mgr, P, 1));
+                    BeEnc_untimed_expr_to_timed(be_enc, P, 1));
+}
+
+
+/**Function********************************************************************
+
+  Synopsis           [Generates i-th fragment of BMC unrolling]
+
+  Description        []
+
+  SideEffects        [None]
+
+  SeeAlso            []
+
+******************************************************************************/
+be_ptr Bmc_Gen_UnrollingFragment(BeFsm_ptr be_fsm, const int i)
+{
+  BeEnc_ptr be_enc = BeFsm_get_be_encoding(be_fsm);
+  Be_Manager_ptr be_mgr = BeEnc_get_be_manager(be_enc);
+  nusmv_assert(0<=i);
+
+  /* Init[0] & Invar[0] */
+  if (0 == i) {
+    return Bmc_Model_GetInit0(be_fsm);
+  }
+
+  /* Invar[i-1] & Trans[i-1] & Invar[i] */
+  return Be_And(be_mgr,
+                Bmc_Model_GetInvarAtTime(be_fsm, i -1),
+                Be_And(be_mgr,
+                       Bmc_Model_GetTransAtTime(be_fsm, i-1),
+                       Bmc_Model_GetInvarAtTime(be_fsm, i)));
 }
 
 

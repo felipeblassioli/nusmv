@@ -15,7 +15,7 @@
 
   Copyright   [
   This file is part of the ``mc'' package of NuSMV version 2. 
-  Copyright (C) 1998-2001 by CMU and ITC-irst. 
+  Copyright (C) 1998-2001 by CMU and FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -31,11 +31,11 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
@@ -44,7 +44,7 @@
 #include "parser/symbols.h"
 #include "utils/error.h"
 
-static char rcsid[] UTIL_UNUSED = "$Id: mcEval.c,v 1.3.6.9 2004/05/07 13:04:49 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: mcEval.c,v 1.3.6.9.4.1.6.2 2007-03-20 19:30:11 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Type declarations                                                         */
@@ -61,8 +61,8 @@ typedef bdd_ptr (*BDDPFFBBII)(BddFsm_ptr, bdd_ptr, bdd_ptr, int, int);
 /*---------------------------------------------------------------------------*/
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
-static bdd_ptr eval_spec_recur ARGS((BddFsm_ptr, BddEnc_ptr enc, 
-				     node_ptr, node_ptr));
+static bdd_ptr eval_ctl_spec_recur ARGS((BddFsm_ptr, BddEnc_ptr enc, 
+					 node_ptr, node_ptr));
 
 static int eval_compute_recur ARGS((BddFsm_ptr, BddEnc_ptr enc, 
 				    node_ptr, node_ptr));
@@ -101,17 +101,19 @@ static bdd_ptr quad_mod_bdd_op ARGS((BddFsm_ptr, BddEnc_ptr, BDDPFFBBII,
   SeeAlso            [eval_compute]
 
 ******************************************************************************/
-bdd_ptr eval_spec(BddFsm_ptr fsm, BddEnc_ptr enc, node_ptr n, node_ptr context)
+bdd_ptr eval_ctl_spec(BddFsm_ptr fsm, BddEnc_ptr enc, 
+		      node_ptr n, node_ptr context)
 {
   bdd_ptr res;
   int temp = yylineno;
 
-  if (n == Nil) return(bdd_one(dd_manager));
+  if (n == Nil) return(bdd_true(dd_manager));
   yylineno = node_get_lineno(n);
-  res = eval_spec_recur(fsm, enc, n, context);
+  res = eval_ctl_spec_recur(fsm, enc, n, context);
   yylineno = temp;
   return(res);
 }
+
 
 /**Function********************************************************************
 
@@ -135,7 +137,8 @@ node_ptr eval_formula_list(BddFsm_ptr fsm, BddEnc_ptr enc,
     return(find_node(CONS, eval_formula_list(fsm, enc, car(nodes), context),
                            eval_formula_list(fsm, enc, cdr(nodes), context)));
   }
-  return(find_node(BDD, (node_ptr) eval_spec(fsm, enc, nodes, context),Nil));
+  return(find_node(BDD, (node_ptr) eval_ctl_spec(fsm, enc, nodes, context),
+		   Nil));
 }
 
 /**Function********************************************************************
@@ -149,7 +152,7 @@ node_ptr eval_formula_list(BddFsm_ptr fsm, BddEnc_ptr enc,
 
   SideEffects        []
 
-  SeeAlso            [eval_spec]
+  SeeAlso            [eval_ctl_spec]
 
 ******************************************************************************/
 int eval_compute(BddFsm_ptr fsm, BddEnc_ptr enc, node_ptr n, node_ptr context) 
@@ -192,30 +195,31 @@ void free_formula_list(DdManager* dd, node_ptr formula_list){
 
 /**Function********************************************************************
 
-  Synopsis           [Recursive step of <code>eval_spec</code>.]
+  Synopsis           [Recursive step of <code>eval_ctl_spec</code>.]
 
-  Description        [Performs the recursive step of <code>eval_spec</code>.]
+  Description [Performs the recursive step of
+  <code>eval_ctl_spec</code>.]
 
   SideEffects        []
 
-  SeeAlso            [eval_spec]
+  SeeAlso            [eval_ctl_spec]
 
 ******************************************************************************/
-static bdd_ptr eval_spec_recur(BddFsm_ptr fsm, BddEnc_ptr enc, node_ptr n, 
-			       node_ptr context)
+static bdd_ptr eval_ctl_spec_recur(BddFsm_ptr fsm, BddEnc_ptr enc, node_ptr n, 
+				   node_ptr context)
 {
-  if (n == Nil) { return bdd_one(BddEnc_get_dd_manager(enc)); }
+  if (n == Nil) { return bdd_true(BddEnc_get_dd_manager(enc)); }
 
   switch (node_get_type(n)) {
-  case CONTEXT: return(eval_spec(fsm, enc, cdr(n),car(n)));
+  case CONTEXT: return(eval_ctl_spec(fsm, enc, cdr(n),car(n)));
   case AND:     return(binary_bdd_op(fsm, enc, bdd_and, n, 1, 1, 1, context));
   case OR:      return(binary_bdd_op(fsm, enc, bdd_or, n, 1, 1, 1, context));
   case XOR:     return(binary_bdd_op(fsm, enc, bdd_xor, n, 1, 1, 1, context));
   case XNOR:    return(binary_bdd_op(fsm, enc, bdd_xor, n, 1, 1, -1, context));
-
   case NOT:     return(unary_bdd_op(fsm, enc, bdd_not, n, 1, 1, context));
   case IMPLIES: return(binary_bdd_op(fsm, enc, bdd_or, n, 1, -1, 1, context));
   case IFF:     return(binary_bdd_op(fsm, enc, bdd_xor, n, -1, 1, 1, context));
+
   case EX:      return(unary_mod_bdd_op(fsm, enc, ex, n,  1,  1, context));
   case AX:      return(unary_mod_bdd_op(fsm, enc, ex, n, -1, -1, context));
   case EF:      return(unary_mod_bdd_op(fsm, enc, ef, n,  1,  1, context));
@@ -235,7 +239,7 @@ static bdd_ptr eval_spec_recur(BddFsm_ptr fsm, BddEnc_ptr enc, node_ptr n,
       bdd_ptr res_bdd = BddEnc_expr_to_bdd(enc, n, context);
       
       if (res_bdd == NULL) {
-        rpterr("eval_spec: res = NULL after a call to \"eval\".");
+        rpterr("eval_ctl_spec: res = NULL after a call to \"eval\".");
         nusmv_exit(1);
       }
       return res_bdd;
@@ -266,13 +270,13 @@ static int eval_compute_recur(BddFsm_ptr fsm, BddEnc_ptr enc,
     res = eval_compute_recur(fsm, enc, cdr(n),car(n)); break;
 
   case MINU: 
-    res = (int) binary_mod_bdd_op_ns(fsm, enc, 
-				     (BDDPFFBB)minu, n, 1, 1, 1, context);
+    res = PTR_TO_INT(binary_mod_bdd_op_ns(fsm, enc, 
+			  (BDDPFFBB)minu, n, 1, 1, 1, context));
     break;
 
   case MAXU: 
-    res = (int) binary_mod_bdd_op_ns(fsm, enc, 
-				     (BDDPFFBB)maxu, n, 1, 1, 1, context);
+    res = PTR_TO_INT(binary_mod_bdd_op_ns(fsm, enc, 
+			  (BDDPFFBB)maxu, n, 1, 1, 1, context));
     break;
 
   default:   
@@ -303,7 +307,7 @@ static bdd_ptr unary_bdd_op(BddFsm_ptr fsm, BddEnc_ptr enc, BDDPFDB op,
 			    node_ptr context)
 {
   bdd_ptr tmp_1, tmp_2, res;
-  bdd_ptr arg = eval_spec(fsm, enc, car(n), context);
+  bdd_ptr arg = eval_ctl_spec(fsm, enc, car(n), context);
   DdManager* dd = BddEnc_get_dd_manager(enc);
 
   set_the_node(n);
@@ -346,8 +350,8 @@ static bdd_ptr binary_bdd_op(BddFsm_ptr fsm, BddEnc_ptr enc, BDDPFDBB op,
 			     int argflag2, node_ptr context)
 {
   bdd_ptr tmp_1, tmp_2, tmp_3, res;
-  bdd_ptr arg1 = eval_spec(fsm, enc, car(n), context);
-  bdd_ptr arg2 = eval_spec(fsm, enc, cdr(n), context);
+  bdd_ptr arg1 = eval_ctl_spec(fsm, enc, car(n), context);
+  bdd_ptr arg2 = eval_ctl_spec(fsm, enc, cdr(n), context);
 
   DdManager* dd = BddEnc_get_dd_manager(enc);
   set_the_node(n);
@@ -387,9 +391,13 @@ static bdd_ptr unary_mod_bdd_op(BddFsm_ptr fsm, BddEnc_ptr enc, BDDPFFB op,
 				node_ptr context)
 {
   bdd_ptr tmp_1, tmp_2, res;
-  bdd_ptr arg = eval_spec(fsm, enc, car(n), context);
-  DdManager* dd = BddEnc_get_dd_manager(enc);
+  bdd_ptr arg;
+  DdManager* dd;
 
+  BDD_FSM_CHECK_INSTANCE(fsm);
+
+  arg = eval_ctl_spec(fsm, enc, car(n), context);
+  dd = BddEnc_get_dd_manager(enc);
   set_the_node(n);
 
   /* compute and ref argument of operation according its sign */
@@ -430,10 +438,15 @@ static bdd_ptr binary_mod_bdd_op(BddFsm_ptr fsm, BddEnc_ptr enc, BDDPFFBB op,
 				 int argflag2, node_ptr context)
 {
   bdd_ptr tmp_1, tmp_2, tmp_3, res;
-  bdd_ptr arg1 = eval_spec(fsm, enc, car(n), context);
-  bdd_ptr arg2 = eval_spec(fsm, enc, cdr(n), context);
-  DdManager* dd = BddEnc_get_dd_manager(enc);
+  bdd_ptr arg1;
+  bdd_ptr arg2;
+  DdManager* dd;
 
+  BDD_FSM_CHECK_INSTANCE(fsm);
+
+  arg1 = eval_ctl_spec(fsm, enc, car(n), context);
+  arg2 = eval_ctl_spec(fsm, enc, cdr(n), context);
+  dd = BddEnc_get_dd_manager(enc);
 
   set_the_node(n);
 
@@ -475,10 +488,15 @@ static bdd_ptr binary_mod_bdd_op_ns(BddFsm_ptr fsm, BddEnc_ptr enc, BDDPFFBB op,
 				    int argflag2, node_ptr context)
 {
   bdd_ptr tmp_1, tmp_2, res;
-  bdd_ptr arg1 = eval_spec(fsm, enc, car(n), context);
-  bdd_ptr arg2 = eval_spec(fsm, enc, cdr(n), context);
-  DdManager* dd = BddEnc_get_dd_manager(enc);
+  bdd_ptr arg1;
+  bdd_ptr arg2;
+  DdManager* dd;
 
+  BDD_FSM_CHECK_INSTANCE(fsm);
+
+  arg1 = eval_ctl_spec(fsm, enc, car(n), context);
+  arg2 = eval_ctl_spec(fsm, enc, cdr(n), context);
+  dd = BddEnc_get_dd_manager(enc);
   set_the_node(n);
 
   tmp_1 = BddEnc_eval_sign_bdd(enc, arg1, argflag1);
@@ -516,11 +534,17 @@ static bdd_ptr ternary_mod_bdd_op(BddFsm_ptr fsm, BddEnc_ptr enc, BDDPFFBII op,
 				  node_ptr context)
 {
   bdd_ptr tmp_1, tmp_2, res;
-  bdd_ptr arg1 = eval_spec(fsm, enc, car(n), context);
-  int arg2 = BddEnc_eval_num(enc, car(cdr(n)), context);
-  int arg3 = BddEnc_eval_num(enc, cdr(cdr(n)), context);
-  DdManager* dd = BddEnc_get_dd_manager(enc);
+  bdd_ptr arg1;
+  int arg2;
+  int arg3;
+  DdManager* dd;
 
+  BDD_FSM_CHECK_INSTANCE(fsm);
+
+  arg1 = eval_ctl_spec(fsm, enc, car(n), context);
+  arg2 = BddEnc_eval_num(enc, car(cdr(n)), context);
+  arg3 = BddEnc_eval_num(enc, cdr(cdr(n)), context);
+  dd = BddEnc_get_dd_manager(enc);
   set_the_node(n);
 
   tmp_1 = BddEnc_eval_sign_bdd(enc, arg1, argflag);
@@ -558,11 +582,19 @@ static bdd_ptr quad_mod_bdd_op(BddFsm_ptr fsm, BddEnc_ptr enc, BDDPFFBBII op,
 			       int argflag2, node_ptr context)
 {
   bdd_ptr tmp_1, tmp_2, tmp_3, res;
-  bdd_ptr arg1 = eval_spec(fsm, enc, car(car(n)), context);
-  bdd_ptr arg2 = eval_spec(fsm, enc, cdr(car(n)), context);
-  int arg3 = BddEnc_eval_num(enc, car(cdr(n)), context);
-  int arg4 = BddEnc_eval_num(enc, cdr(cdr(n)), context);
-  DdManager* dd = BddEnc_get_dd_manager(enc);
+  bdd_ptr arg1;
+  bdd_ptr arg2;
+  int arg3;
+  int arg4;
+  DdManager* dd;
+
+  BDD_FSM_CHECK_INSTANCE(fsm);
+
+  arg1 = eval_ctl_spec(fsm, enc, car(car(n)), context);
+  arg2 = eval_ctl_spec(fsm, enc, cdr(car(n)), context);
+  arg3 = BddEnc_eval_num(enc, car(cdr(n)), context);
+  arg4 = BddEnc_eval_num(enc, cdr(cdr(n)), context);
+  dd = BddEnc_get_dd_manager(enc);
 
   set_the_node(n);
 

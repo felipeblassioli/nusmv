@@ -1,116 +1,126 @@
-/**CFile***********************************************************************
+ /**CFile***********************************************************************
 
   FileName    [Trace.c]
 
   PackageName [trace]
 
-  Synopsis    [Routines related to Trace.]
+  Synopsis    [This module contains the public part of the implementation
+               of the Trace class.]
 
-  Description [ This file contains the definition of \"Trace\" class.]
-		
-  SeeAlso     []
+  Description [A trace is logically defined as follows:
 
-  Author      [Ashutosh Trivedi]
+  T := S (i S) *
+
+  That is, a trace consists of an initial state, optionally followed
+  by an arbitrary number of <input, next state> pairs. The internal
+  representation has been designed to match as closely as possible the
+  logical definition given above.
+
+  A trace is internally represented as a doubly linked list of custom
+  containers called \"frames\".
+
+  The Trace class provides iterators and methods to populate and query
+  its frames. Just for the sake of clarity, A graphical representation
+  of the internal representation follows:
+
+ +----+----+-+   +-+----+----+-+   +-+----+----+-+
+ |    |    |*|<->|*|    |    |*|<->|*|    |    |0| (terminator)
+ | ## | S1 | |   | | i2 | S2 | |   | | i3 | S3 | |
+ |    |    |*|   |*|    |    |*|   |*|    |    |*|
+ +----+----+++   +++----+----+++   +++----+----+++
+            |     |           |     |           |
+            v     v           v     v           v
+ +---+     +-------+         +-------+          +-------+
+ | F |     |  D12  |         |  D23  |          |  D34  |
+ +-+-+     +-------+         +-------+          +-------+
+
+Remarks:
+
+ * The list is doubly-linked. It can be traversed in both directions
+   using iterators.
+
+ * Frozen values (F) are stored in a separate frame. All the
+   steps keep a pointer to the data without reallocating it.
+
+ * Initial step does not contain any input.
+
+ * Defines over (Si, i+1, Si+1) are stored in an auxiliary frame, which
+   is accessible from both steps (i-1, Si), (i, Si+1).
+
+   Defines are functions over a certain set of variables (dependency
+   set). They can be catoegorized according to the kins of variables
+   in their dependency set:
+
+   Thus 7 distinct categories of defines can be distinguished as
+   described in the following table:
+
+  +-------------+--------------+---------------+------------------------------+
+  | curr. state |     input    |  next state   |    Observable category       |
+  +-------------+--------------+---------------+------------------------------+
+  |     N       |      N       |      N        |          CONSTANT            |
+  |     Y       |      N       |      N        |           STATE              |
+  |     N       |      Y       |      N        |           INPUT              |
+  |     Y       |      Y       |      N        |        STATE-INPUT           |
+  |     N       |      N       |      Y        |           NEXT               |
+  |     Y       |      N       |      Y        |        STATE-NEXT            |
+  |     N       |      Y       |      Y        |        INPUT_NEXT            |
+  |     Y       |      Y       |      Y        |     STATE-INPUT-NEXT         |
+  +-------------+--------------+---------------+------------------------------+
+
+  The 2 classes of variables (STATE, INPUT) and the 8 categories of
+  defines described above account for 9 distinct sections of symbols
+  for each step. FROZENVARs are considered as STATE variables and are
+  always prepended in iterators. CONSTANTs are considered as STATE defines]
+
+  SeeAlso     [Trace_private.c]
+
+  Author      [Marco Pensallorto]
 
   Copyright   [
-  This file is part of the ``trace'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  This file is part of the ``trace'' package of NuSMV version 2.
+  Copyright (C) 2010 by FBK.
 
-  NuSMV version 2 is free software; you can redistribute it and/or 
-  modify it under the terms of the GNU Lesser General Public 
-  License as published by the Free Software Foundation; either 
+  NuSMV version 2 is free software; you can redistribute it and/or
+  modify it under the terms of the GNU Lesser General Public
+  License as published by the Free Software Foundation; either
   version 2 of the License, or (at your option) any later version.
 
-  NuSMV version 2 is distributed in the hope that it will be useful, 
-  but WITHOUT ANY WARRANTY; without even the implied warranty of 
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU 
+  NuSMV version 2 is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
   Lesser General Public License for more details.
 
-  You should have received a copy of the GNU Lesser General Public 
-  License along with this library; if not, write to the Free Software 
+  You should have received a copy of the GNU Lesser General Public
+  License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
+#if HAVE_CONFIG_H
+# include "nusmv-config.h"
+#endif
 
+#include "pkg_trace.h"
 #include "pkg_traceInt.h"
-#include "Trace.h"
 #include "Trace_private.h"
-#include "TraceNode.h"
-#include "TraceNode_private.h"
-#include "node/node.h"
-#include "parser/symbols.h"
-#include "enc/bdd/BddEnc.h" /* For BDD Encoder */
-#include "prop/prop.h" /* For Prop_master_get_bdd_fsm */
 
-static char rcsid[] UTIL_UNUSED = "$Id: Trace.c,v 1.1.2.29.2.2 2004/11/11 12:51:45 nusmv Exp $";
+static char rcsid[] UTIL_UNUSED = "$Id: $";
+
 /*---------------------------------------------------------------------------*/
-/* Macro declarations                                                        */
+/* Constant declarations                                                     */
 /*---------------------------------------------------------------------------*/
-#define TRACE_CHECK_OWNERSHIP(x) \
-	  (nusmv_assert(x->ID <= 0 ))
-
-#define TRACE_UNREGISTERED -1
-
-#define TRACE_TYPE_CNTEXAMPLE_STRING "Counterexample"
-#define TRACE_TYPE_SIMULATION_STRING "Simulation"
-#define TRACE_TYPE_INVALID_STRING "Invalid"
+static const char* TRACE_TYPE_UNSPECIFIED_STRING  = "Unspecified";
+static const char* TRACE_TYPE_CNTEXAMPLE_STRING   = "Counterexample";
+static const char* TRACE_TYPE_SIMULATION_STRING   = "Simulation";
+static const char* TRACE_TYPE_EXECUTION_STRING    = "Execution";
 
 /*---------------------------------------------------------------------------*/
 /* Type declarations                                                         */
-/*---------------------------------------------------------------------------*/
-
-/**Struct**********************************************************************
-
-  Synopsis    [Trace Class]
-
-  Description [ This class contains informations about a Trace:<br>
-  	<dl> 
-        <dt><code>ID</code>
-            <dd>  Unique ID of the registered traces. -1 for unregistered
-            traces.
-        <dt><code>desc</code>
-            <dd>  Description of the trace. 
-        <dt><code>dd</code>
-            <dd>  The Decision Diagram Manager.
-        <dt><code>enc</code>
-            <dd>  The BDD Encoder Object.
-        <dt><code>length</code>
-            <dd>  Diameter of the trace.
-        <dt><code>type</code>
-            <dd>  Type of the trace.
-        <dt><code>first_node</code>
-            <dd>  Pointer to the first node of the doubly linked list of
-            TraceNodes.
-        <dt><code>last_node</code>
-            <dd> Pointer to the last node of the doubly linked list of
-            TraceNodes. 
-	</dl>
-	<br>
-	]
-
-  SeeAlso     []   
-  
-******************************************************************************/
-typedef struct Trace_TAG
-{
-  int ID;
-  char* desc;               
-  DdManager* dd;		       
-  BddEnc_ptr enc;         
-  int length;			        
-  TraceType type;		      
-  TraceNode_ptr first_node;	
-  TraceNode_ptr last_node;
-} Trace;
-
-/*---------------------------------------------------------------------------*/
-/* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
 
 /*---------------------------------------------------------------------------*/
@@ -118,340 +128,690 @@ typedef struct Trace_TAG
 /*---------------------------------------------------------------------------*/
 
 /*---------------------------------------------------------------------------*/
-/* Definition of external functions                                          */
+/* Macro declarations                                                        */
 /*---------------------------------------------------------------------------*/
+
+
+/**AutomaticStart*************************************************************/
+
+/*---------------------------------------------------------------------------*/
+/* Static function prototypes                                                */
+/*---------------------------------------------------------------------------*/
+
+/**AutomaticEnd***************************************************************/
+
+
+/*---------------------------------------------------------------------------*/
+/* Definition of exported functions                                          */
+/*---------------------------------------------------------------------------*/
+
 /**Function********************************************************************
 
-  Synopsis    [\"Trace\" class Constructor.]
+  Synopsis    [Trace class constructor]
 
-  Description [Allocates and initializes a trace. As arguments this function
-  takes pointer to the DdManager \"dd\", description of the trace \"desc\",
-  type of the Trace \"type\" and initial state of the trace \"start_state\". It
-  returns a pointer to the allocated Trace object.
-  /"start state/" bdd is referenced by this function.]
+  Description [Allocates and initializes a trace.  In NuSMV, a trace
+               is an engine-independent description of a computation
+               path for some FSM.  The newly created trace is
+               associated with a language, that is a set of symbols
+               (variables and defines) that can occur in the trace. In
+               addition, a description and a type can be given to a
+               trace.
+
+               If the trace is not volatile, all input parameters are
+               internally duplicated in an independent copy.  The
+               caller is responsible for freeing them. Same for
+               volatile traces, made exception for the symbol table,
+               since only a reference will be retained. In this case,
+               the caller is responsible for freeing them, and take
+               care of the symbol table, which must NOT be freed until
+               the created trace instance is destroyed.
+
+               Remarks:
+
+               * First step is already allocated for the returned
+                 trace.  Use Trace_first_iter to obtain a valid
+                 iterator pointing to the initial step. Use
+                 Trace_add_step to append further steps.]
 
   SideEffects []
 
-  SeeAlso     [Trace_destroy]
+  SeeAlso     [Trace_first_iter, Trace_append_step, Trace_destroy]
 
 ******************************************************************************/
-Trace_ptr Trace_create(BddEnc_ptr enc, const char* desc, const TraceType type,
-                       BddStates start_state) 
+Trace_ptr Trace_create (const SymbTable_ptr st, const char* desc,
+                        const TraceType type, const NodeList_ptr symbols,
+                        boolean is_volatile)
 {
-  Trace_ptr self = ALLOC(Trace, 1);
-  TraceNode_ptr tmp;
+  return trace_create(st, desc, type, symbols, is_volatile);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Trace class copy constructor]
+
+  Description [Returns an independent copy of \"self\" trace. If a
+               non-NULL \"until_here\" iterator is passed copying
+               process halts when \"until_here\" iterator has been
+               reached.  To obtain a full copy, pass TRACE_END_ITER as
+               the \"until_here\" paramter. Loopback information is
+               propagated to the copy only if a full copy is required.
+
+               If the trace is not volatile, all trace structures are
+               internally duplicated in an independent copy. Same for
+               volatile traces, made exception for the symbol table,
+               since only a reference of the original trace's symbol
+               table will be retained. In this case, the caller must
+               take care of the original trace symbol table, which
+               must NOT be freed until the created trace instance is
+               destroyed. In detail:
+
+               - If the original trace is volatile, then it's copy is
+                 valid unless the symbol table given at creation time
+                 is destroyed. In all other cases, the returned trace
+                 is valid.
+
+               - If the original trace is not volatile, then the
+                 returned copy is valid as long as the original trace
+                 is valid.
+
+               Notice that a volatile copy "C" of a volatile copy "B"
+               of a non-volatile trace "A" needs "A" to exist, and so
+               on.
+
+
+               Remarks:
+
+               * The full copy of a frozen trace is a frozen
+               trace. Partial copies are always thawed.]
+
+  SideEffects []
+
+  SeeAlso     [Trace_thaw, Trace_freeze, Trace_destroy]
+
+******************************************************************************/
+Trace_ptr
+Trace_copy (const Trace_ptr self, const TraceIter until_here,
+            boolean is_volatile)
+{
   TRACE_CHECK_INSTANCE(self);
-  nusmv_assert(type != TRACE_TYPE_INVALID);
+  return trace_copy(self, until_here, is_volatile);
+}
 
-  self->ID = TRACE_UNREGISTERED;		
 
-  self->desc = ALLOC(char, strlen(desc) + 1);
-  nusmv_assert(self->desc != (char*) NULL);
-  strncpy(self->desc, desc, strlen(desc) + 1);
+/**Function********************************************************************
 
-  self->enc = enc;
-  self->dd = BddEnc_get_dd_manager(enc);
-  self->type = type;
-  self->length = 0; /* Length of a trace is number of inputs it has seen */
+  Synopsis    [Trace concatenation]
 
-  /* A Trace contains at least one Trace Node for the initial state. */
-  tmp = TraceNode_create();
-  TraceNode_set_state(tmp, self->dd, start_state);
-  self->first_node = tmp;
-  self->last_node = tmp;
+  Description [*Destructively* concatenates \"other\" to
+               \"self\". That is, \"self\" is appended all available
+               data about variables and defines from
+               \"*other\". Frozen vars and state vars of the
+               conjunction state for both \"self\" and \"other\"
+               traces are synctactically checked for
+               consistency. Their values are merged in the resulting
+               trace.
 
-  return self;
+               Warning: an internal error is raised if an
+               inconsistency is detected.
+
+               Returned valued is \"self\".]
+
+  SideEffects [\"self\" is extended, \"*other\" is destroyed and its
+               pointer is set to NULL.]
+
+  SeeAlso     []
+
+******************************************************************************/
+Trace_ptr
+Trace_concat (Trace_ptr self, Trace_ptr* other)
+{
+  TRACE_CHECK_INSTANCE(self);
+  return trace_concat(self, other);
 }
 
 /**Function********************************************************************
 
-  Synopsis    [The \"Trace\" class destructor.]
+  Synopsis    [Trace class destructor]
 
-  Description [This function destroys the trace and all the trace node
-  instances inside it. In order to destroy a trace directly, it should not be
-  registered with TraceManager because in that case it's ownership is with
-  TraceManager and only that can destroy it. ]
+  Description [Frees all the resources used by \"self\" trace instance]
 
   SideEffects []
 
-  SeeAlso     [Trace_create]
+  SeeAlso     [Trace_create, Trace_copy]
 
 ******************************************************************************/
 void Trace_destroy(Trace_ptr self)
 {
-  TraceIterator_ptr iter;
-
   TRACE_CHECK_INSTANCE(self);
-  TRACE_CHECK_OWNERSHIP(self);	/* Can not be destroyed if TraceManager holds
-                                   the ownership */ 
-                                   
-  iter = Trace_begin(self);
-
-  while (!TraceIterator_is_end(iter)) {
-    TraceNode_ptr trace_node = iter;
-
-    iter = TraceIterator_get_next(iter);
-    TraceNode_destroy(trace_node, self->dd);
-  }
-
-  FREE(self->desc);
-  FREE(self);
+  trace_destroy(self);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [Creates the Trace from a list of states.]
+  Synopsis    [Returns a trace iterator pointing to the first step of the trace]
 
-  Description [ Trace constructor. It takes a list of states and construct a
-  trace out of it (all the inputs are bdd_one)]
+  Description [A step is a container for incoming input and next
+               state(i.e. it has the form <i, S>)
+
+               The returned step can be used as parameter to all
+               Trace_step_xxx functions.
+
+               Remarks:
+
+                 * the first step holds *no* input information.]
+
+  SideEffects []
+
+  SeeAlso     [Trace_last_iter]
+
+*****************************************************************************/
+inline TraceIter
+Trace_first_iter (const Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+  return trace_first_iter(self);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns a trace iterator pointing to the i-th step of the trace]
+
+  Description [Returns a trace iterator pointing to the i-th step of
+               the trace.  Counting starts at 1. Thus, here is the
+               sequence of first k steps for a trace.
+
+               S1 i2 S2 i3 S3 ... ik Sk
+
+               Remarks:
+
+                 * the first step holds *no* input information.]
+
+  SideEffects []
+
+  SeeAlso     [Trace_first_iter, Trace_last_iter]
+
+*****************************************************************************/
+inline TraceIter
+Trace_ith_iter (const Trace_ptr self, unsigned i)
+{
+ TRACE_CHECK_INSTANCE(self);
+ nusmv_assert(i > 0);
+
+ return trace_ith_iter(self, i);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns a trace iterator pointing to the last step of the trace]
+
+  Description [A step is a container for incoming input and next
+               state(i.e. it has the form <i, S>)
+
+               The returned step can be used as parameter to all
+               Trace_step_xxx functions]
+
+  SideEffects []
+
+  SeeAlso     [Trace_first_iter]
+
+*****************************************************************************/
+inline TraceIter
+Trace_last_iter (const Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+  return trace_last_iter(self);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns a trace iterator pointing to the next step of the
+               trace]
+
+  Description [Returns a trace iterator pointing to the next step of
+               the trace. TRACE_END_ITER is returned if no such
+               iterator exists]
+
+  SideEffects []
+
+  SeeAlso     [TraceIter_get_prev]
+
+*****************************************************************************/
+inline TraceIter
+TraceIter_get_next (const TraceIter iter)
+{
+  TRACE_ITER_CHECK_INSTANCE(iter);
+  return trace_iter_get_next(iter);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns a trace iterator pointing to the previous
+               step of the trace]
+
+  Description [Returns a trace iterator pointing to the previous step
+               of the trace. TRACE_END_ITER is returned if no such
+               iterator exists]
+
+  SideEffects []
+
+  SeeAlso     [TraceIter_get_next]
+
+*****************************************************************************/
+inline TraceIter
+TraceIter_get_prev (const TraceIter iter)
+{
+  TRACE_ITER_CHECK_INSTANCE(iter);
+  return trace_iter_get_prev(iter);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Iterator-at-end-of-trace predicate]
+
+  Description []
+
+  SideEffects []
+
+  SeeAlso     []
+
+*****************************************************************************/
+inline boolean
+TraceIter_is_end(const TraceIter iter)
+{
+  return (TRACE_END_ITER == iter);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Extends a trace by adding a new step to it]
+
+  Description [A step is a container for incoming input and next
+               state(i.e. it has the form <i, S>)
+
+               The returned step can be used as parameter to all
+               Trace_step_xxx functions]
+
+  SideEffects []
+
+  SeeAlso     [Trace_create, Trace_step_put_value, Trace_step_get_value,
+               Trace_step_get_iter, Trace_step_get_next_value]
+
+*****************************************************************************/
+TraceIter
+Trace_append_step(Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+  return trace_append_step(self);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Tests whether state is \"step\" is a loopback state w.r.t the
+               last state in \"self\".]
+
+  Description [This function behaves accordingly to two different modes a trace
+               can be: frozen or thawed(default).
+
+               If the trace is frozen, permanent loopback information
+               is used to determine if \"step\" has a loopback state.
+               No further loopback computation is made.
+
+               If the trace is thawed, dynamic loopback calculation
+               takes place, using a variant of Rabin-Karp pattern
+               matching algorithm]
+
+  SideEffects []
+
+  SeeAlso     [Trace_create, Trace_step_put_value, Trace_step_get_value,
+               Trace_step_get_iter, Trace_step_get_next_value]
+
+*****************************************************************************/
+boolean
+Trace_step_is_loopback ARGS((Trace_ptr self, TraceIter step))
+{
+  TRACE_CHECK_INSTANCE(self);
+  if (TRACE_END_ITER == step) return false;
+
+  return trace_step_is_loopback(self, step);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Determine whether the \"self\" trace is volatile]
+
+  Description [A volatile trace does not own a symbol table instance,
+               so it is valid as long as the symbol table does not
+               change and is available. A non-volatile trace instead
+               owns a copy of the symbol table given at construction
+               time and is completely independand among system changes
+               over time]
 
   SideEffects []
 
   SeeAlso     []
 
 ******************************************************************************/
-Trace_ptr Trace_create_from_state_list(BddEnc_ptr enc, const char* desc, 
-				       const TraceType type, 
-				       node_ptr path)
+boolean Trace_is_volatile (const Trace_ptr self)
 {
-  Trace_ptr res;
-  DdManager* dd = BddEnc_get_dd_manager(enc);
-  BddInputs all_inputs = BDD_INPUTS(bdd_one(dd));
-
-  nusmv_assert(path != Nil); 
-  
-  res = Trace_create(enc, desc, type, BDD_STATES(car(path)));
-
-  path = cdr(path);
-  while (path != Nil) {
-    Trace_append(res, all_inputs, BDD_STATES(car(path)));
-    path = cdr(path);
-  } 
-
-  bdd_free(dd, all_inputs);
-  return res;
+  TRACE_CHECK_INSTANCE(self);
+  return trace_is_volatile(self);
 }
 
 
 /**Function********************************************************************
 
-  Synopsis    [Creates the Trace from a list of states.]
+  Synopsis    [Determine whether the \"self\" trace is frozen]
 
-  Description [ Trace constructor. It takes a list of states and construct a
-  trace out of it. path is a sequence of "states (inputs states)*"]
+  Description [A frozen trace holds explicit information about
+              loopbacks and can not be appended a step, or added a
+              variable value.
 
-  SideEffects []
+              Warning: after freezing no automatic looback calculation
+              will be performed: it is up to the owner of the trace to
+              manually add loopback information using
+              Trace_step_force_loopback.]
 
-  SeeAlso     []
+  SideEffects [required]
+
+  SeeAlso     [optional]
 
 ******************************************************************************/
-
-Trace_ptr Trace_create_from_state_input_list(BddEnc_ptr enc, const char* desc, 
-					     const TraceType type, 
-					     node_ptr path)
+boolean Trace_is_frozen (const Trace_ptr self)
 {
-  Trace_ptr res;
-  DdManager* dd = BddEnc_get_dd_manager(enc);
+  TRACE_CHECK_INSTANCE(self);
+  return trace_is_frozen(self);
+}
 
-  if (path == Nil) {
-    /* Trivially false */
-    bdd_ptr one = bdd_one(dd);
-    res = Trace_create(enc, desc, type, BDD_STATES(one));
-    bdd_free(dd, one);
-  }
-  else {
-    res = Trace_create(enc, desc, type, BDD_STATES(car(path)));
+/**Function********************************************************************
 
-    path = cdr(path);
-    while (path != Nil) {
-      bdd_ptr input;
-      bdd_ptr state;
+  Synopsis    [Determine whether the \"self\" trace is thawed]
 
-      input = BDD_INPUTS(car(path));
-      path = cdr(path);
-      state = BDD_STATES(car(path)); 
+  Description [A thawed trace holds no explicit information about
+              loopbacks and can be appended a step and
 
-      Trace_append(res, input, state);
-   
-      path = cdr(path);
-    } 
-  }
+              Warning: after thawing the trace will not persistently
+              retain any loopback information. In particular it is
+              *illegal* to force a loopback on a thawed trace.]
 
-  return res;
+  SideEffects [required]
+
+  SeeAlso     [optional]
+
+******************************************************************************/
+boolean
+Trace_is_thawed (const Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+  return trace_is_thawed(self);
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Freezes a trace]
+
+  Description [A frozen trace holds explicit information about
+              loopbacks. Its length and assignments are immutable,
+              that is it cannot be appended more steps, nor can it
+              accept more values that those already stored in it.
+
+              Still it is possible to register/unregister the trace
+              and to change its type or description.]
+
+              Warning: After freezing no automatic looback calculation
+              will be performed: it is up to the owner of the trace to
+              manually add loopback information using
+              Trace_step_force_loopback.]
+
+  SideEffects [required]
+
+  SeeAlso     [optional]
+
+******************************************************************************/
+void Trace_freeze (Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+  trace_freeze(self);
+}
+
+/**Function********************************************************************
+
+  Synopsis    [Thaws a trace]
+
+  Description [A thawed traces holds no explicit information about
+              loopbacks and can be appended a step and added values in
+              the customary trace building process.
+
+              Warning: after thawing the trace will not persistently
+              retain any loopback information. In particular it is
+              *illegal* to force a loopback on a thawed trace.]
+
+  SideEffects [required]
+
+  SeeAlso     [optional]
+
+******************************************************************************/
+void Trace_thaw (Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+  trace_thaw(self);
 }
 
 
 /**Function********************************************************************
 
-  Synopsis    [Appends a new input and a new state to the trace.]
+  Synopsis    [Equality predicate between traces]
 
-  Description [This function takes next input \"inp_i\" and the next state
-  \"state_i\" and appends it to the "self". The BDDs state_i and inp_i would be
-  referenced.]
+  Description [Two traces are equals iff:
 
-  SideEffects []
+              1. They're the same object or NULL.
 
-  SeeAlso     []
+              or
+
+              2. They have exactly the same language, length,
+                 assignments for all variables in all times and
+                 the same loopbacks.
+
+                 (Defines are not taken into account for equality.)
+
+              They need not be both frozen of thawed, neither being
+              both registered or unregistered. (Of course two traces
+              *cannot* have the same ID).]
+
+  SideEffects [required]
+
+  SeeAlso     [optional]
 
 ******************************************************************************/
-void Trace_append(Trace_ptr self, BddInputs inp_i, BddStates state_i)
+boolean Trace_equals(const Trace_ptr self, const Trace_ptr other)
 {
-  TraceNode_ptr tmp;
+  return trace_equals(self, other);
+}
 
+
+/**Function********************************************************************
+
+  Synopsis    [Forces a loopback on a frozen trace]
+
+  Description [Use this function to store explicit loopback information
+               in a frozen trace. The trace will retain loopback data
+               until being thawed again.]
+
+  SideEffects [required]
+
+  SeeAlso     [optional]
+
+******************************************************************************/
+void Trace_step_force_loopback (const Trace_ptr self, TraceIter step)
+{
+  TRACE_CHECK_INSTANCE(self);
+  TRACE_ITER_CHECK_INSTANCE(step);
+
+  trace_step_force_loopback(self, step);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Tests whether a symbol is \"self\"'s language]
+
+  Description [Returns true iff symb is part of the language defined
+               for \"self\" defined at creation time.]
+
+  SideEffects [required]
+
+  SeeAlso     [optional]
+
+******************************************************************************/
+boolean Trace_symbol_in_language (Trace_ptr self, node_ptr symb)
+{
   TRACE_CHECK_INSTANCE(self);
 
-  tmp = TraceNode_create();
-
-  TraceNode_set_state(tmp, self->dd, state_i);
-  trace_node_set_prev(tmp, self->last_node);
-
-  TraceNode_set_input(self->last_node, self->dd, inp_i);
-  trace_node_set_next(self->last_node, tmp);
-
-  self->last_node = tmp;
-  self->length = self->length + 1;
+  return trace_symbol_in_language(self, symb);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [Appends  to a trace from a list of states.]
+  Synopsis    [Exposes Trace internal symbol table]
 
-  Description [All the BDDs inside the list /"path/" are referenced. So that
-  caller of this function can safely destroy the list. The first element of 
-  the list is supposed to be the initial state, and will be skipped since 
-  it is supposed to be already set in the Trace]
+  Description [Returns the trace symbol table. The symbol table is
+               owned by the trace and should *not* be modified in any
+               way.]
 
-  SideEffects []
+  SideEffects [required]
 
-  SeeAlso     []
+  SeeAlso     [optional]
 
 ******************************************************************************/
-void Trace_append_from_list_state(Trace_ptr self, node_ptr path)
+SymbTable_ptr Trace_get_symb_table(Trace_ptr self)
 {
-  BddInputs all_inputs = BDD_INPUTS(bdd_one(self->dd));
+  TRACE_CHECK_INSTANCE(self);
 
-  nusmv_assert(path != Nil);
-
-  path = cdr(path);
-  while (path != Nil) {
-    Trace_append(self, all_inputs, BDD_STATES(car(path)));
-    path = cdr(path);
-  } 
-
-  bdd_free(self->dd, all_inputs);
+  return trace_get_symb_table(self);
 }
 
 
 /**Function********************************************************************
 
-  Synopsis    [Appends  to a trace from a list of states.]
+  Synopsis    [Exposes the list of symbols in trace language]
 
-  Description [All the BDDs inside the list /"path/" are referenced. So that
-  caller of this function can safely destroy the list. The first element of 
-  the list is supposed to be the initial state, and will be skipped since 
-  it is supposed to be already set in the Trace]
+  Description [Returned list belongs to \"self\". Do not change or dispose it.]
 
-  SideEffects []
+  SideEffects [required]
 
-  SeeAlso     []
+  SeeAlso     [optional]
 
 ******************************************************************************/
-void Trace_append_from_list_input_state(Trace_ptr self, node_ptr path)
+NodeList_ptr Trace_get_symbols (const Trace_ptr self)
 {
-  nusmv_assert(path != Nil);
+  TRACE_CHECK_INSTANCE(self);
 
-  path = cdr(path);
-  while (path != Nil) {
-    Trace_append( self, BDD_INPUTS(car(path)), BDD_STATES(car(cdr(path))) );
-    path = cdr(cdr(path));
-  } 
+  return trace_get_symbols(self);
 }
 
 
 /**Function********************************************************************
 
-  Synopsis    [Checks the validity of the given trace.]
+  Synopsis    [Exposes the list of state vars in trace language]
 
-  Description [ This function checks the validity of a trace by checking if the
-  starting state of the trace is initial state and consecutive states are
-  related by transition relation.]
+  Description [Returned list belongs to \"self\". Do not change or dispose it.]
 
-  SideEffects []
+  SideEffects [required]
 
-  SeeAlso     []
+  SeeAlso     [optional]
 
 ******************************************************************************/
-boolean Trace_is_valid(Trace_ptr self)
+NodeList_ptr Trace_get_s_vars (const Trace_ptr self)
 {
-  BddStates initial_states;
-  BddStates start_state;
-  boolean res = true;
-  BddFsm_ptr fsm = Prop_master_get_bdd_fsm();
+  TRACE_CHECK_INSTANCE(self);
 
-  /* 0- Check If NULL */
-  if (self == TRACE(NULL)) return false;
+  return trace_get_s_vars(self);
+}
 
-  start_state = Trace_get_ith_state(self, 0);
-  /* 1- Check Start State */
-  {
-    bdd_ptr init_bdd = BddFsm_get_init(fsm);
-    bdd_ptr invar_bdd = BddFsm_get_state_constraints(fsm);
-    initial_states = bdd_and(self->dd, init_bdd, invar_bdd);
-    bdd_free(self->dd, init_bdd);
-    bdd_free(self->dd, invar_bdd);
 
-    res = bdd_entailed(self->dd, start_state, initial_states);
-    if (!res) {
-      fprintf(nusmv_stderr, 
-              "Warning!! starting state is not initial state \n");
-    }
+/**Function********************************************************************
 
-    bdd_free(self->dd, initial_states);
-    bdd_free(self->dd, start_state);
-  }
+  Synopsis    [Exposes the list of state-frozen vars in trace language]
 
-  /* 2- Check Consecutive States are related by transition relation */
-  if (res) {
-    TraceIterator_ptr iter = Trace_begin(self);
-    BddStates curr_state, next_state, next_states;
-    BddInputs input; 
+  Description [Returned list belongs to \"self\". Do not change or dispose it.]
 
-    curr_state = TraceNode_get_state(Trace_get_node(self, iter));
-    input = TraceNode_get_input(Trace_get_node(self, iter));
+  SideEffects [required]
 
-    iter = TraceIterator_get_next(iter); 
-    while (iter != TRACE_ITERATOR(NULL)) {
-      nusmv_assert(input != BDD_INPUTS(NULL));
+  SeeAlso     [optional]
 
-      next_state = TraceNode_get_state(Trace_get_node(self, iter)); 
-      next_states = BddFsm_get_constrained_forward_image(fsm, curr_state, 
-							 input);
+******************************************************************************/
+NodeList_ptr Trace_get_sf_vars (const Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
 
-      res = bdd_entailed(self->dd, next_state, next_states);
-      
-      bdd_free(self->dd, curr_state);
-      curr_state = bdd_dup(next_state);
-      bdd_free(self->dd, next_state);
-      bdd_free(self->dd, next_states);
-      bdd_free(self->dd, input);
+  return trace_get_sf_vars(self);
+}
 
-     
-      if (!res) {
-	fprintf(nusmv_stderr, "Warning!! consecutive states are improper \n");
-	break;
-      }
 
-      input = TraceNode_get_input(Trace_get_node(self, iter));
-      iter = TraceIterator_get_next(iter); 
-    } /* loop on state/input airs */
-  }
+/**Function********************************************************************
 
-  return res;
+  Synopsis    [Exposes the list of input vars in trace language]
+
+  Description [Returned list belongs to \"self\". Do not change or dispose it.]
+
+  SideEffects [required]
+
+  SeeAlso     [optional]
+
+******************************************************************************/
+NodeList_ptr Trace_get_i_vars (const Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+
+  return trace_get_i_vars(self);
 }
 
 /**Function********************************************************************
 
-  Synopsis    [Copies "self" to "other".]
+  Synopsis     [Checks if a Trace is complete on the given set of vars]
+
+  Description  [Checks if a Trace is complete on the given set of vars]
+
+                A Trace is complete iff in every node, all vars are
+                given a value
+
+                Remarks:
+
+                * Only input and state section are taken into account.
+                Input vars are not taken into account in the first
+                step. Defines are not taken into account at all.
+
+                * If result is false and parameter 'report' is true
+                then a message will be output in nusmv_stderr with
+                some explanation of why the trace is not complete]
+
+  SideEffects   [None]
+
+  SeeAlso       []
+
+******************************************************************************/
+boolean Trace_is_complete (Trace_ptr self, NodeList_ptr vars, boolean report)
+{
+  TRACE_CHECK_INSTANCE(self);
+
+  FILE* err = (report) ? nusmv_stderr : NIL(FILE);
+  return trace_is_complete_vars(self, vars, err);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Returns a string corresponding to a TraceType.]
 
   Description []
 
@@ -460,269 +820,250 @@ boolean Trace_is_valid(Trace_ptr self)
   SeeAlso     []
 
 ******************************************************************************/
-Trace_ptr Trace_copy_prefix_until_iterator(const Trace_ptr self, 
-                                           const TraceIterator_ptr until_here)
+const char* TraceType_to_string(const TraceType trace_type)
 {
-  Trace_ptr result;
-  BddStates start_state;
-  TraceIterator_ptr iter;
-
-  TRACE_CHECK_INSTANCE(self);
-
-  start_state = Trace_get_ith_state(self, 0);
-  result = Trace_create(self->enc, self->desc,
-                        self->type, start_state);
-  if (start_state != BDD_STATES(NULL)) bdd_free(self->dd, start_state);
-
-  iter = Trace_begin(self);
-  while (iter != until_here && iter != TRACE_ITERATOR(NULL)) {
-    BddStates curr_state;
-    BddInputs curr_input;
-
-    curr_input = TraceNode_get_input(iter);
-    iter = TraceIterator_get_next(iter);
-
-    if (iter == TRACE_ITERATOR(NULL)) {
-      nusmv_assert(until_here == TRACE_ITERATOR(NULL));
-      if (curr_input != BDD_INPUTS(NULL)) bdd_free(self->dd, curr_input);
-      break;
-    }
-
-    curr_state = TraceNode_get_state(iter);
-    Trace_append(result, curr_input, curr_state);
-
-    if (curr_state != BDD_STATES(NULL)) bdd_free(self->dd, curr_state);
-    if (curr_input != BDD_INPUTS(NULL)) bdd_free(self->dd, curr_input);
-  }
-  
-  if (iter != until_here) nusmv_assert(iter != TRACE_ITERATOR(NULL));
-
-  return result;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Returns a copy of the trace.]
-
-  Description [Copy constructor.]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-Trace_ptr Trace_copy(const Trace_ptr self)
-{
-  return Trace_copy_prefix_until_iterator(self, TRACE_END_ITERATOR);
-}
-
-/**Function********************************************************************
-
-  Synopsis    [This function returns the first node of the \"self\" having same
-  state as the last node.]
-
-  Description [It returns a pointer to the first trace node having same state
-  as the last one. It returns NULL otherwise. The ownership of the returned
-  traceNode object is not transferred to the caller. Caller must not free the
-  returned object.]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-TraceNode_ptr Trace_get_loopback(const Trace_ptr self)
-{
-  BddStates last_state;
-  TraceNode_ptr result = TRACE_NODE(NULL);
-  TraceIterator_ptr iter;
-
-
-  TRACE_CHECK_INSTANCE(self);
-
-  last_state = TraceNode_get_state(self->last_node);
-
-  iter = Trace_begin(self);
-  while (!TraceIterator_is_end(iter)) {
-    BddStates curr_state = TraceNode_get_state(iter);
-
-    if ((curr_state == last_state) && 
-        (Trace_get_node(self, iter) != self->last_node)) {
-      result = Trace_get_node(self, iter);
-
-      if (curr_state != BDD_STATES(NULL)) bdd_free(self->dd, curr_state);
-      break;
-    }
-
-    if (curr_state != BDD_STATES(NULL)) bdd_free(self->dd, curr_state);
-    iter = TraceIterator_get_next(iter);
+  switch (trace_type){
+  case TRACE_TYPE_UNSPECIFIED : return TRACE_TYPE_UNSPECIFIED_STRING;
+  case TRACE_TYPE_CNTEXAMPLE: return TRACE_TYPE_CNTEXAMPLE_STRING;
+  case TRACE_TYPE_SIMULATION: return TRACE_TYPE_SIMULATION_STRING;
+  case TRACE_TYPE_EXECUTION: return TRACE_TYPE_EXECUTION_STRING;
+  default: internal_error("%s:%d:%s: unexpected trace type. (%d)",
+                          __FILE__, __LINE__, __func__, trace_type);
   }
 
-  if (last_state != BDD_STATES(NULL)) bdd_free(self->dd, last_state);
-
-  return result;
+  error_unreachable_code(); /* unreachable */
+  return (const char*)(NULL);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [It returns all loopbacks from last state.]
+  Synopsis    [Stores an assignment into a trace step]
 
-  Description [This function returns an array of TraceNodes containing pointers
-  to the TraceNodes which have same state as the last one.]
+  Description [A step is a container for incoming input and next
+               state(i.e. it has the form <i, S>)
+
+               \"step\" must be a valid step for the trace.  If symb
+               belongs to the language associated to the trace at
+               creation time, the normalized value of \"value\" is
+               stored into the step. Assignment is checked for type
+               correctness.
+
+               Returns true iff the value was succesfully assigned to symb
+               in given step of self.
+
+               Remarks:
+
+               * Assignments to symbols not in trace language are
+               silently ignored.]
 
   SideEffects []
 
-  SeeAlso     []
+  SeeAlso     [Trace_append_step, Trace_step_get_value]
 
-******************************************************************************/
-array_t* Trace_get_all_loopbacks(const Trace_ptr self)
+*****************************************************************************/
+EXTERN boolean Trace_step_put_value (Trace_ptr self, TraceIter step,
+                                     node_ptr symb, node_ptr value)
 {
-  BddStates last_state;
-  array_t* result = (array_t *) NULL;
-  TraceIterator_ptr iter;
-
   TRACE_CHECK_INSTANCE(self);
-
-  result = array_alloc(TraceNode_ptr, 1);
-  nusmv_assert(result != (array_t *) ARRAY_OUT_OF_MEM);
-
-  last_state = TraceNode_get_state(self->last_node);
-
-  iter = Trace_begin(self);
-  while (!TraceIterator_is_end(iter)) {
-    BddStates curr_state = TraceNode_get_state(iter);
-
-    if ((curr_state == last_state) && 
-        (Trace_get_node(self, iter) != self->last_node)) {
-      array_insert_last(TraceNode_ptr, result, 
-                        Trace_get_node(self, iter));
-    }
-    if (curr_state != BDD_STATES(NULL)) bdd_free(self->dd, curr_state);
-
-    iter = TraceIterator_get_next(iter);
+  if (TRACE_END_ITER == step) {
+    internal_error("%s:%d:%s: invalid iterator.",
+                   __FILE__, __LINE__, __func__);
   }
 
-  if (last_state != BDD_STATES(NULL)) bdd_free(self->dd, last_state);
-
-  return result;
+  return trace_step_put_value(self, step, symb, value);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [Returns the state corresponding to the ith traceNode.]
+  Synopsis    [Retrieves an assignment from a trace step]
 
-  Description [returned BDD is referenced. Please note that initial state is 0th
-  state.]
+  Description [A step is a container for incoming input and next
+               state(i.e. it has the form <i, S>)
+
+               \"step\" must be a valid step for the trace.  \"symb\"
+               must belong to the language associated to the trace at
+               creation time. The value stored into the step is
+               returned or Nil if no such value exists.
+
+               Remarks: An internal error is raised if \"symb\" is not
+               in trace lanaguage.]
 
   SideEffects []
 
-  SeeAlso     []
+  SeeAlso     [Trace_create, Trace_step_put_value, Trace_step_get_value,
+               Trace_step_get_iter, Trace_step_get_next_value]
 
-******************************************************************************/
-BddStates Trace_get_ith_state(const Trace_ptr self, int i)
+*****************************************************************************/
+EXTERN node_ptr Trace_step_get_value (Trace_ptr self, TraceIter step,
+                                      node_ptr symb)
 {
-  TraceIterator_ptr iter;
-  int cnt;
-
-  TRACE_CHECK_INSTANCE(self);
-
-  nusmv_assert(i >= 0);
-  nusmv_assert(i <= self->length);
-
-  iter = Trace_begin(self);
-  for (cnt = 0; cnt < i; ++cnt) {
-    iter = TraceIterator_get_next(iter); 
+ TRACE_CHECK_INSTANCE(self);
+  if (TRACE_END_ITER == step) {
+    internal_error("%s:%d:%s: invalid iterator.",
+                   __FILE__, __LINE__, __func__);
   }
 
-  nusmv_assert(!TraceIterator_is_end(iter)); 
-
-  return TraceNode_get_state(iter);
+  return trace_step_get_value(self, step, symb);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [Returns the ith traceNode.]
+  Synopsis    [Step iterator factory constructor]
 
-  Description [The ownership of the returned node is not transfered to the
-  caller. Caller must not free the returned TraceNode object.]
+  Description [A step is a container for incoming input and next
+               state(i.e. it has the form <i, S>)
+
+               \"step\" must be a valid step for the trace. An
+               iterator over the assignments in \"step\" is returned.
+               This iterator can be used with Trace_step_iter_fetch.
+
+               Hint: do not use this function. Use TRACE_STEP_FOREACH
+               macro instead (it is way easier and more readable).]
 
   SideEffects []
 
-  SeeAlso     []
+  SeeAlso     [TRACE_STEP_FOREACH]
 
-******************************************************************************/
-TraceNode_ptr Trace_get_ith_node(const Trace_ptr self, int i)
+*****************************************************************************/
+EXTERN TraceStepIter Trace_step_iter (const Trace_ptr self, const TraceIter step,
+                                      const TraceIteratorType iter_type)
 {
-  TraceIterator_ptr iter;
-  int cnt;
-
   TRACE_CHECK_INSTANCE(self);
-
-  nusmv_assert(i >= 0);
-  nusmv_assert(i <= self->length);
-
-  iter = Trace_begin(self);
-  for (cnt = 0; cnt < i; ++cnt) {
-    iter = TraceIterator_get_next(iter); 
+  if (TRACE_END_ITER == step) {
+    internal_error("%s:%d:%s: invalid iterator.",
+                   __FILE__, __LINE__, __func__);
   }
 
-  nusmv_assert(!TraceIterator_is_end(iter)); 
-
-  return Trace_get_node(self, iter);
+  return trace_step_iter(self, step, iter_type);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [Checks equality between \"self\" and \"other\".]
+  Synopsis    [Symbols iterator factory constructor]
 
-  Description [Returns true if they are equal, false otherwise.]
+  Description [An iterator over the symbols in \"self\" is returned.
+               This iterator can be used with Trace_symbols_iter_fetch.
+
+               Hint: do not use this function. Use TRACE_SYMBOLS_FOREACH
+               macro instead (it is way easier and more readable).]
+
+  SideEffects []
+
+  SeeAlso     [TRACE_SYMBOLS_FOREACH]
+
+*****************************************************************************/
+EXTERN TraceSymbolsIter Trace_symbols_iter (const Trace_ptr self,
+                                            TraceIteratorType iter_type)
+{
+  TRACE_CHECK_INSTANCE(self);
+
+  return trace_symbols_iter(self, iter_type);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Step iterator next function]
+
+  Description [A step iterator is a stateful iterator which yields
+               an single assignment at each call of this function.
+
+               \"step_iter\" must be a valid step iterator for the
+               trace. If a valid assignment was found, True is
+               returned.  Otherwise False is returned. This indicates
+               end of iteration.
+
+               Hint: do not use this function. Use TRACE_SYMBOLS_FOREACH
+               macro instead (it is way easier and more readable).]
+
+  SideEffects []
+
+  SeeAlso     [Trace_step_get_iter]
+
+*****************************************************************************/
+EXTERN boolean Trace_step_iter_fetch(TraceStepIter* step_iter,
+                                     node_ptr* symb, node_ptr* value)
+{
+  if (NULL == step_iter) return false;
+  return trace_step_iter_fetch(step_iter, symb, value);
+}
+
+
+
+/**Function********************************************************************
+
+  Synopsis    [Symbols iterator next function]
+
+  Description [A symbols iterator is a stateful iterator which yields
+               a symbols in the trace language at each call of this function.
+
+               \"symbols_iter\" must be a valid symbols iterator for
+               the trace. If a symbols is found, True is returned.
+               Otherwise False is returned. This indicates end of
+               iteration.
+
+               Hint: do not use this function. Use TRACE_SYMBOLS_FOREACH
+               macro instead (it is way easier and more readable).]
+
+  SideEffects []
+
+  SeeAlso     [Trace_symbols_get_iter]
+
+*****************************************************************************/
+extern boolean Trace_symbols_iter_fetch(TraceSymbolsIter* symbols_iter,
+                                        node_ptr* symb)
+{
+  return trace_symbols_iter_fetch(symbols_iter, symb);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Gets the id of given trace.]
+
+  Description [Returns the ID of given trace. A valid id is a
+               non-negative number.]
 
   SideEffects []
 
   SeeAlso     []
 
 ******************************************************************************/
-boolean Trace_is_equal(const Trace_ptr self, const Trace_ptr other)
+int Trace_get_id(Trace_ptr self)
 {
-  boolean result = true;
-  TraceIterator_ptr self_iter = Trace_begin(self);
-  TraceIterator_ptr other_iter = Trace_begin(other);
+  TRACE_CHECK_INSTANCE(self);
 
-  if (self->length != other->length) result = false;
-  if (self->dd != other->dd) result = false;
-
-  while (!TraceIterator_is_end(self_iter) && result) {
-    TraceNode_ptr self_node = Trace_get_node(self, self_iter);
-    TraceNode_ptr other_node = Trace_get_node(other, other_iter);
-    BddStates self_state, other_state;
-    BddInputs self_input, other_input;
-
-    self_state = TraceNode_get_state(self_node);
-    other_state = TraceNode_get_state(other_node);
-
-    if (self_state != other_state) result = false; 
-
-    if (self_state != BDD_STATES(NULL)) bdd_free(self->dd, self_state);
-    if (other_state != BDD_STATES(NULL)) bdd_free(other->dd, other_state);
-
-    self_input = TraceNode_get_input(self_node);
-    other_input = TraceNode_get_input(other_node);
-
-    if (self_input != other_input) result = false; 
-
-    if (self_input != BDD_INPUTS(NULL)) bdd_free(self->dd, self_input);
-    if (other_input != BDD_INPUTS(NULL)) bdd_free(other->dd, other_input);
-
-    self_iter = TraceIterator_get_next(self_iter);
-    other_iter = TraceIterator_get_next(other_iter);
-  }
-
-  return result;
+  return trace_get_id(self);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [Returns an iterator to iterate the \"self\".]
+  Synopsis    [Sets the id of given trace.]
+
+  Description [Sets the ID of the given trace. A valid ID is a
+               non-negative number.]
+
+  SideEffects []
+
+  SeeAlso     []
+
+******************************************************************************/
+void Trace_register(Trace_ptr self, int id)
+{
+  TRACE_CHECK_INSTANCE(self);
+
+  trace_register(self, id);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Unregisters a trace]
 
   Description []
 
@@ -731,228 +1072,13 @@ boolean Trace_is_equal(const Trace_ptr self, const Trace_ptr other)
   SeeAlso     []
 
 ******************************************************************************/
-TraceIterator_ptr Trace_begin(const Trace_ptr self)
-{
-  TraceIterator_ptr iter;
-  TRACE_CHECK_INSTANCE(self);
-
-  iter = TRACE_ITERATOR(self->first_node);
-  return iter;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Returns an iterator pointing to the given trace-node of  the
-  \"self\".]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-TraceIterator_ptr Trace_get_iterator(const Trace_ptr self, 
-                                     const TraceNode_ptr node)
-{
-  TraceIterator_ptr iter;
-  TRACE_CHECK_INSTANCE(self);
-
-  iter = TRACE_ITERATOR(node);
-  return iter;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [ It returns the Trace node currently pointed by TraceIterator.]
-
-  Description [The ownership of the returned node is not transfered to the
-  caller. Caller must not free the returned TraceNode object.]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-TraceNode_ptr Trace_get_node(const Trace_ptr self, 
-                             const TraceIterator_ptr iter)
-{
-  TRACE_ITERATOR_CHECK_INSTANCE(iter);
-
-  return TRACE_NODE(iter);
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Returns the length of the trace.]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-int Trace_get_length(const Trace_ptr self)
+void Trace_unregister(Trace_ptr self)
 {
   TRACE_CHECK_INSTANCE(self);
 
-  return self->length;
+  trace_unregister(self);
 }
 
-/**Function********************************************************************
-
-  Synopsis    [Returns the ID of the trace.]
-
-  Description [This ID correspond to the index of the trace inside the trace
-  manager. If the trace is not registeres with the trace manager, this ID would
-  be TRACE_UNREGISTERED.]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-int Trace_get_id(const Trace_ptr self)
-{
-  TRACE_CHECK_INSTANCE(self);
-
-  return self->ID;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Returns the description associated with the trace.]
-
-  Description [Returned string must not be freed.]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-const char* Trace_get_desc(const Trace_ptr self)
-{
-  TRACE_CHECK_INSTANCE(self);
-
-  return self->desc;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Returns the type of the trace.]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-TraceType Trace_get_type(const Trace_ptr self)
-{
-  TRACE_CHECK_INSTANCE(self);
-
-  return self->type;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Returns the last node of the trace.]
-
-  Description [The ownership of the returned object is not transfered to the
-  caller of this function. It means that caller of this function must not free
-  the returned traceNode. ]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-TraceNode_ptr Trace_get_last_node(const Trace_ptr self)
-{
-  TRACE_CHECK_INSTANCE(self);
-
-  return self->last_node;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Returns the bdd encoder associated with the trace.]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-BddEnc_ptr Trace_get_enc(Trace_ptr self)
-{
-  TRACE_CHECK_INSTANCE(self);
-
-  return self->enc;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Sets the start state of the Trace.]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-void Trace_set_start_state(Trace_ptr self, BddStates s)
-{
-  TRACE_CHECK_INSTANCE(self);
-
-  TraceNode_set_state(self->first_node, self->dd, s);
-}
-
-/**Function********************************************************************
-
-  Synopsis    [ Sets the description of the trace.]
-
-  Description [It allocates the memory for the description string. So the
-  ownership of the passed desc string remains with the caller.]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-void Trace_set_desc(Trace_ptr self, const char* desc)
-{
-  TRACE_CHECK_INSTANCE(self);
-
-  FREE(self->desc);
-
-  self->desc = ALLOC(char, strlen(desc) + 1);
-
-  nusmv_assert(self->desc != (char*) NULL);
-  strncpy(self->desc, desc, strlen(desc) + 1);
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Set the type of the trace.]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-void Trace_set_type(Trace_ptr self, const TraceType type)
-{
-  TRACE_CHECK_INSTANCE(self);
-
-  self->type = type;
-}
 
 /**Function********************************************************************
 
@@ -969,12 +1095,13 @@ boolean Trace_is_registered(const Trace_ptr self)
 {
   TRACE_CHECK_INSTANCE(self);
 
-  return (self->ID != TRACE_UNREGISTERED);
+  return trace_is_registered(self);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [Returns a string corresponding to a TraceType.]
+  Synopsis    [Gets the description of given trace.]
 
   Description []
 
@@ -983,125 +1110,112 @@ boolean Trace_is_registered(const Trace_ptr self)
   SeeAlso     []
 
 ******************************************************************************/
-const char* TraceType_to_string(const TraceType self)
-{
-  char* result;
-
-  switch (self){
-  case TRACE_TYPE_CNTEXAMPLE: result = TRACE_TYPE_CNTEXAMPLE_STRING; break;
-  case TRACE_TYPE_SIMULATION: result = TRACE_TYPE_SIMULATION_STRING; break;
-
-  default: result = TRACE_TYPE_INVALID_STRING; /*Invalid Type */ 
-  }
-
-  return result; 
-}
-
-/**Function********************************************************************
-
-  Synopsis    [Returns a TraceType object from the given string.]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-TraceType TraceType_from_string(const char* str)
-{
-  TransType result;
-
-  if (strncmp(str, TRACE_TYPE_CNTEXAMPLE_STRING, strlen(str)) == 0) {
-    result = TRACE_TYPE_CNTEXAMPLE;
-  }
-  if (strncmp(str, TRACE_TYPE_SIMULATION_STRING, strlen(str)) == 0) {
-    result = TRACE_TYPE_SIMULATION;
-  }
-  else result = TRACE_TYPE_INVALID;
-
-  return result;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [This function takes an iterator to a trace and advances it by
-  one.]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-TraceIterator_ptr TraceIterator_get_next(const TraceIterator_ptr self)
-{
-  TraceIterator_ptr res;
-
-  TRACE_ITERATOR_CHECK_INSTANCE(self);
-  
-  res = TRACE_ITERATOR(trace_node_get_next(TRACE_NODE(self)));
-
-  return res;
-}
-
-/**Function********************************************************************
-
-  Synopsis    [This function checks if the iterator is at the end of the
-  trace.]
-
-  Description []
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-boolean TraceIterator_is_end(const TraceIterator_ptr self)
-{
-  return (self == TRACE_END_ITERATOR);
-}
-
-/*---------------------------------------------------------------------------*/
-/* Static functions definitions                                              */
-/*---------------------------------------------------------------------------*/
-/**Function********************************************************************
-
-  Synopsis    [Assign an identifier to the trace.]
-
-  Description [ TraceManager uses this function to assign a unique identifier ID
-  to each registered trace. ONLY TraceManager and Trace  should use this
-  function.]
-
-  SideEffects []
-
-  SeeAlso     []
-
-******************************************************************************/
-void Trace_set_ID(Trace_ptr self, int ID)
+const char* Trace_get_desc (const Trace_ptr self)
 {
   TRACE_CHECK_INSTANCE(self);
 
-  self->ID = ID;
+  return trace_get_desc(self);
 }
+
 
 /**Function********************************************************************
 
-  Synopsis    [Unregisters the given trace.]
+  Synopsis    [Sets the description of given trace.]
 
-  Description [Only TraceManager should access this function. This function
-  resets the Trace ID to TRACE_UNREGISTERED (-1).]
+  Description [The string in \"desc\" is duplicated inside the
+               trace. The caller can dispose the actual parameter.
+
+               Remarks: NIL(char) is accepted as a non-descriptive
+               description.]
 
   SideEffects []
 
   SeeAlso     []
 
 ******************************************************************************/
-void Trace_unregister(Trace_ptr self)
+void Trace_set_desc (Trace_ptr self, const char* desc)
 {
   TRACE_CHECK_INSTANCE(self);
-  Trace_set_ID(self, TRACE_UNREGISTERED);
-  return;
+
+  trace_set_desc(self, desc);
 }
 
+
+/**Function********************************************************************
+
+  Synopsis    [Gets the type of the trace.]
+
+  Description [For a list of see definition of TraceType enum]
+
+  SideEffects []
+
+  SeeAlso     [TraceType]
+
+******************************************************************************/
+TraceType Trace_get_type (const Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+
+  return trace_get_type(self);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Sets the type of the trace.]
+
+  Description [For a list of see definition of TraceType enum]
+
+  SideEffects []
+
+  SeeAlso     [TraceType]
+
+******************************************************************************/
+void Trace_set_type(const Trace_ptr self, TraceType trace_type)
+{
+  TRACE_CHECK_INSTANCE(self);
+
+  trace_set_type(self, trace_type);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Gets the length of the trace.]
+
+  Description [Length for a trace is defined as the number of the
+               transitions in it. Thus, a trace consisting only of an
+               initial state is a 0-length trace. A trace with two
+               states is a 1-length trace and so forth.]
+
+  SideEffects []
+
+  SeeAlso     [TraceType]
+
+******************************************************************************/
+unsigned Trace_get_length (const Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+
+  return trace_get_length(self);
+}
+
+
+/**Function********************************************************************
+
+  Synopsis    [Checks whether the trace is empty or not]
+
+  Description [A trace is empty if the length is 0 and there are no
+               assignments in the initial states]
+
+  SideEffects []
+
+  SeeAlso     [TraceType]
+
+******************************************************************************/
+boolean Trace_is_empty (const Trace_ptr self)
+{
+  TRACE_CHECK_INSTANCE(self);
+
+  return trace_is_empty(self);
+}

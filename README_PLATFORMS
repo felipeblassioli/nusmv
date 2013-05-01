@@ -2,13 +2,13 @@ This file contains specific information for building NuSMV under the
 most used platforms. NuSMV have been successfully built and tested
 under these platforms/operating systems:
 
-1) Pc/Linux
+1) Pc/Linux 32 and 64 bit architectures
 2) Ultrasparc 5/Solaris
 3) Apple Mac/Mac OS X Panther
 4) Pc/Microsoft Windows
 
 If you experience any problem while trying to build NuSMV, please get
-in touch with us using the e-mail address <nusmv-users@irst.itc.it>.
+in touch with us using the e-mail address <nusmv-users@fbk.eu>.
 
 
 ======================================================================
@@ -86,7 +86,7 @@ in touch with us using the e-mail address <nusmv-users@irst.itc.it>.
    1) Go to CUDD's direcory and build the package, by using 
       Mac OS X specific makefile:
 
-      $> cd cudd-2.3.0.1
+      $> cd cudd-2.4.1.1
       $> make -f Makefile_os_x
 
    2) Go to the NuSMV directory and proceed as for Linux:
@@ -135,7 +135,7 @@ in touch with us using the e-mail address <nusmv-users@irst.itc.it>.
       -------------------
       Binary distribution has been tested for MS Windows XP and 
       MS Windows 2000 Operating Systems. 
-      Following steps must be followed to have NuSMV-2.2 working under
+      Following steps must be followed to have NuSMV working under
       Windows:
 
    1. Download and install binary package expat_win32bin from: 

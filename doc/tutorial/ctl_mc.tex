@@ -1,3 +1,4 @@
+% -*-latex-*-
 The main purpose of a model checker is to verify that a model satisfies
 a set of desired properties specified by the user.
 In \nusmv, the specifications to be checked can be expressed in
@@ -109,7 +110,7 @@ MODULE main
    proc1     : process user(semaphore);
    proc2     : process user(semaphore);
  ASSIGN
-   init(semaphore) := 0;
+   init(semaphore) := FALSE;
  SPEC AG ! (proc1.state = critical & proc2.state = critical)
  SPEC AG (proc1.state = entering -> AF proc1.state = critical)
 MODULE user(semaphore)
@@ -123,13 +124,13 @@ MODULE user(semaphore)
        state = entering & !semaphore : critical;
        state = critical              : \{critical, exiting\};
        state = exiting               : idle;
-       1                             : state;
+       TRUE                          : state;
      esac;
    next(semaphore) :=
      case
-       state = entering : 1;
-       state = exiting  : 0;
-       1                : semaphore;
+       state = entering : TRUE;
+       state = exiting  : FALSE;
+       TRUE             : semaphore;
      esac;
  FAIRNESS
    running
@@ -146,7 +147,7 @@ we obtain the following output:
 -- is false
 -- as demonstrated by the following execution sequence
 -> State: 1.1 <-
-    semaphore = 0
+    semaphore = FALSE
     proc1.state = idle
     proc2.state = idle
 -> Input: 1.2 <-
@@ -161,7 +162,7 @@ we obtain the following output:
 -> Input: 1.4 <-
     _process_selector_ = proc2
 -> State: 1.4 <-
-    semaphore = 1
+    semaphore = FALSE
     proc2.state = critical
 -> Input: 1.5 <-
     _process_selector_ = proc1
@@ -173,7 +174,7 @@ we obtain the following output:
 -> Input: 1.7 <-
     _process_selector_ = proc2
 -> State 1.7 <-
-    semaphore = 0
+    semaphore = FALSE
     proc2.state = idle
 \end{alltt}
 Note that \texttt{\_process\_selector\_} is a special variable which

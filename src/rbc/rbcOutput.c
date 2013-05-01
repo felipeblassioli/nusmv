@@ -34,18 +34,18 @@
   License along with this library; if not, write to the Free Software
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
-
-  Revision    [v. 1.0]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #include "rbc/rbcInt.h"
 
+
+static char rcsid[] UTIL_UNUSED = "$Id: rbcOutput.c,v 1.5.2.1.2.1.2.1.6.5 2010-02-18 10:00:03 nusmv Exp $";
 
 /*---------------------------------------------------------------------------*/
 /* Constant declarations                                                     */
@@ -99,20 +99,20 @@ typedef struct SexprDfsData SexprDfsData_t;
 /* Static function prototypes                                                */
 /*---------------------------------------------------------------------------*/
 
-static int DaVinciSet(Rbc_t * f, char * daVinciData, int sign);
-static void DaVinciFirst(Rbc_t * f, char * DaVinciData, int sign);
-static void DaVinciBack(Rbc_t * f, char * daVinciData, int sign);
-static void DaVinciLast(Rbc_t * f, char * daVinciData, int sign);
+static int DaVinciSet(Rbc_t * f, char * daVinciData, nusmv_ptrint sign);
+static void DaVinciFirst(Rbc_t * f, char * DaVinciData, nusmv_ptrint sign);
+static void DaVinciBack(Rbc_t * f, char * daVinciData, nusmv_ptrint sign);
+static void DaVinciLast(Rbc_t * f, char * daVinciData, nusmv_ptrint sign);
 
-static int GdlSet(Rbc_t * f, char * GdlData, int sign);
-static void GdlFirst(Rbc_t * f, char * GdlData, int sign);
-static void GdlBack(Rbc_t * f, char * GdlData, int sign);
-static void GdlLast(Rbc_t * f, char * GdlData, int sign);
+static int GdlSet(Rbc_t * f, char * GdlData, nusmv_ptrint sign);
+static void GdlFirst(Rbc_t * f, char * GdlData, nusmv_ptrint sign);
+static void GdlBack(Rbc_t * f, char * GdlData, nusmv_ptrint sign);
+static void GdlLast(Rbc_t * f, char * GdlData, nusmv_ptrint sign);
 
-static int SexprSet(Rbc_t * f, char * SexprData, int sign);
-static void SexprFirst(Rbc_t * f, char * SexprData, int sign);
-static void SexprBack(Rbc_t * f, char * SexprData, int sign);
-static void SexprLast(Rbc_t * f, char * SexprData, int sign);
+static int SexprSet(Rbc_t * f, char * SexprData, nusmv_ptrint sign);
+static void SexprFirst(Rbc_t * f, char * SexprData, nusmv_ptrint sign);
+static void SexprBack(Rbc_t * f, char * SexprData, nusmv_ptrint sign);
+static void SexprLast(Rbc_t * f, char * SexprData, nusmv_ptrint sign);
 
 /**AutomaticEnd***************************************************************/
 
@@ -230,7 +230,7 @@ static int
 DaVinciSet(
  Rbc_t  * f,
  char   * daVinciData,
- int      sign)
+ nusmv_ptrint sign)
 {
 
   static char      * symbols[RBCIFF + 1] = {"", "", "/\\\\", "<-->"};
@@ -264,7 +264,7 @@ DaVinciSet(
     f -> gRef = ALLOC(char, LABEL_SZ);
     switch (f -> symbol) {
     case RBCVAR :
-      sprintf(f -> gRef, "x%d", (int)(f -> data));
+      sprintf(f -> gRef, "x%d", PTR_TO_INT(f -> data));
       break;
     case RBCAND :
       sprintf(f -> gRef, "and_%d", sd -> label);
@@ -315,14 +315,12 @@ static void
 DaVinciFirst(
  Rbc_t  * f,
  char   * DaVinciData,
- int      sign)
+ nusmv_ptrint sign)
 {
-
   /* Set the user-defined integer data to 1 to remember operands. */
-  f -> iRef = (f->outList!=(lsList)NULL)? lsLength(f->outList):0;
+  f -> iRef = (f->outList!=(Dag_Vertex_t**)NULL) ? f->numSons : 0;
 
   return;
-
 } /* End of DaVinciFirst. */
 
 
@@ -341,7 +339,7 @@ static void
 DaVinciBack(
  Rbc_t  * f,
  char   * daVinciData,
- int      sign)
+ nusmv_ptrint sign)
 {
   DaVinciDfsData_t * sd   = (DaVinciDfsData_t*)daVinciData;
 
@@ -370,7 +368,7 @@ static void
 DaVinciLast(
  Rbc_t  * f,
  char   * daVinciData,
- int      sign)
+ nusmv_ptrint sign)
 {
   DaVinciDfsData_t * sd   = (DaVinciDfsData_t*)daVinciData;
 
@@ -396,7 +394,7 @@ static int
 SexprSet(
  Rbc_t  * f,
  char   * SexprData,
- int      sign)
+ nusmv_ptrint sign)
 {
 
   /* Always visit (a simple expression is a tree). */
@@ -420,7 +418,7 @@ static void
 SexprFirst(
  Rbc_t  * f,
  char   * SexprData,
- int      sign)
+ nusmv_ptrint sign)
 {
   SexprDfsData_t * sd   = (SexprDfsData_t*)SexprData;
 
@@ -437,8 +435,11 @@ SexprFirst(
   case RBCIFF:
     fprintf(sd -> outFile, "(IFF ");
     break;
+  case RBCITE:
+    fprintf(sd -> outFile, "(ITE ");
+    break;
   case RBCVAR:
-    fprintf(sd -> outFile, "X%d", (int)(f -> data));
+    fprintf(sd -> outFile, "X%d", PTR_TO_INT(f -> data));
     break;
   default:
     break;
@@ -467,7 +468,7 @@ static void
 SexprBack(
  Rbc_t  * f,
  char   * SexprData,
- int      sign)
+ nusmv_ptrint sign)
 {
   SexprDfsData_t * sd   = (SexprDfsData_t*)SexprData;
 
@@ -496,7 +497,7 @@ static void
 SexprLast(
  Rbc_t  * f,
  char   * SexprData,
- int      sign)
+ nusmv_ptrint sign)
 {
   SexprDfsData_t * sd   = (SexprDfsData_t*)SexprData;
 
@@ -602,7 +603,7 @@ static int
 GdlSet(
  Rbc_t  * f,
  char   * GdlData,
- int      sign)
+ nusmv_ptrint sign)
 {
 
 #if 0 /* this is disabled */
@@ -644,7 +645,7 @@ GdlSet(
     f -> gRef = ALLOC(char, LABEL_SZ);
     switch (f -> symbol) {
     case RBCVAR :
-      sprintf(f -> gRef, "x%d", (int)(f -> data));
+      sprintf(f -> gRef, "x%d", PTR_TO_INT(f -> data));
       break;
     case RBCAND :
       sprintf(f -> gRef, "and_%d", sd -> label);
@@ -709,7 +710,7 @@ static void
 GdlFirst(
  Rbc_t  * f,
  char   * GdlData,
- int      sign)
+ nusmv_ptrint sign)
 {
 
   /* Set the user-defined integer data to 1 to remember operands. */
@@ -734,7 +735,7 @@ static void
 GdlBack(
  Rbc_t  * f,
  char   * GdlData,
- int      sign)
+ nusmv_ptrint sign)
 {
 #if 0 /* this is disabled */
   GdlDfsData_t * sd   = (GdlDfsData_t*) GdlData;
@@ -766,7 +767,7 @@ static void
 GdlLast(
  Rbc_t  * f,
  char   * GdlData,
- int      sign)
+ nusmv_ptrint sign)
 {
 #if 0 /* this is disabled */
   GdlDfsData_t * sd   = (GdlDfsData_t*)GdlData;

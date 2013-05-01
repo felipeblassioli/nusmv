@@ -24,22 +24,28 @@
 # License along with this library; if not, write to the Free Software 
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 #
-# For more information of NuSMV see <http://nusmv.irst.itc.it>
-# or email to <nusmv-users@irst.itc.it>.
-# Please report bugs to <nusmv-users@irst.itc.it>.
+# For more information on NuSMV see <http://nusmv.fbk.eu>
+# or email to <nusmv-users@fbk.eu>.
+# Please report bugs to <nusmv-users@fbk.eu>.
 #
-# To contact the NuSMV development board, email to <nusmv@irst.itc.it>.]
+# To contact the NuSMV development board, email to <nusmv@fbk.eu>.]
 #
 # Revision	[v 1.1.2.1 2003/11/27 09:11:47]
 
-INCLUDES = -I../.. -I$(top_srcdir)/src -I$(top_srcdir)/../cudd-2.3.0.1/include
+CUDD_NAME = $(cuddname)
+CUDD_DIR = ../$(CUDD_NAME)
+
+INCLUDES = -I. -I../.. -I$(top_srcdir)/src -I$(top_srcdir)/$(CUDD_DIR)/include
 
 BUILT_SOURCES = ord_grammar.h ord_grammar.c ord_input.c 
 
 MOSTLYCLEANFILES = ord_grammar.h ord_grammar.c ord_input.c
 
 AM_YFLAGS = -d -p parser_ord_
+
+if USE_LEGACY_FLEX
 AM_LFLAGS = -l
+endif
 
 PKG_SOURCES = ord_grammar.y ord_input.l ordInt.h  \
               ParserOrd.h  ParserOrd_private.h  ParserOrd.c

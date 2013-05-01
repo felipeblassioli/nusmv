@@ -22,7 +22,6 @@ extern FILE* nusmv_stdin;
 
 EXTERN int parser_ord_lineno;
 EXTERN FILE* parser_ord_in;
-EXTERN options_ptr options;
 
 
 /*---------------------------------------------------------------------------*/
@@ -45,7 +44,7 @@ parser_ord__switch_to_buffer ARGS((YY_BUFFER_STATE new_buffer));
 EXTERN YY_BUFFER_STATE 
 parser_ord__create_buffer ARGS((FILE* file, int size));
 
-EXTERN void yy_delete_buffer ARGS((YY_BUFFER_STATE buf));
+EXTERN void parser_ord__delete_buffer ARGS((YY_BUFFER_STATE buf));
 
 EXTERN YY_BUFFER_STATE 
 parser_ord__scan_string ARGS((const char* str));

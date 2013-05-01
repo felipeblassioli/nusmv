@@ -14,7 +14,7 @@
 
   Copyright   [
   This file is part of the ``enc'' package of NuSMV version 2. 
-  Copyright (C) 2003 by ITC-irst. 
+  Copyright (C) 2003 by FBK-irst. 
 
   NuSMV version 2 is free software; you can redistribute it and/or 
   modify it under the terms of the GNU Lesser General Public 
@@ -30,16 +30,19 @@
   License along with this library; if not, write to the Free Software 
   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307  USA.
 
-  For more information of NuSMV see <http://nusmv.irst.itc.it>
-  or email to <nusmv-users@irst.itc.it>.
-  Please report bugs to <nusmv-users@irst.itc.it>.
+  For more information on NuSMV see <http://nusmv.fbk.eu>
+  or email to <nusmv-users@fbk.eu>.
+  Please report bugs to <nusmv-users@fbk.eu>.
 
-  To contact the NuSMV development board, email to <nusmv@irst.itc.it>. ]
+  To contact the NuSMV development board, email to <nusmv@fbk.eu>. ]
 
 ******************************************************************************/
 
 #ifndef __ENC_INT_H__
 #define __ENC_INT_H__
+
+#include "enc/utils/OrdGroups.h"
+#include "enc/bool/BoolEnc.h"
 
 #include "utils/utils.h"
 #include "node/node.h"
@@ -58,12 +61,8 @@
 /* Variable declarations                                                     */
 /*---------------------------------------------------------------------------*/
 
-EXTERN options_ptr options; 
 EXTERN int yylineno;
-EXTERN node_ptr proc_selector_internal_vname;
-EXTERN node_ptr running_atom;
 EXTERN node_ptr boolean_range; 
-EXTERN node_ptr boolean_type;
 
 EXTERN DdManager * dd_manager;
 
@@ -74,7 +73,18 @@ EXTERN FILE* nusmv_stderr;
 /*---------------------------------------------------------------------------*/
 /* Functions declarations                                                    */
 /*---------------------------------------------------------------------------*/
+EXTERN OrdGroups_ptr 
+enc_utils_parse_ordering_file ARGS((const char* order_filename, 
+                                    const BoolEnc_ptr bool_enc));
 
-EXTERN void encoding_quit_boolean_type ARGS((void));
+EXTERN void enc_add_commands ARGS((void));
+
+EXTERN void Enc_append_bit_to_sorted_list ARGS((SymbTable_ptr symb_table, 
+                                                NodeList_ptr sorted_list,
+                                                node_ptr var,
+                                                node_ptr* sorting_cache));
+EXTERN OrdGroups_ptr 
+enc_utils_create_vars_ord_groups ARGS((BoolEnc_ptr bool_enc,
+                                       NodeList_ptr vars));
 
 #endif /* __ENC_INT_H__ */
