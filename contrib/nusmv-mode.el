@@ -530,7 +530,7 @@ fully loaded."
 ;; no SMV keywords. Only nusmv keywords.
 (defconst nusmv-keywords
   '("MODULE" "VAR" "IVAR" "TRANS" "ASSIGN" "INVAR" "DEFINE" "SPEC"
-    "LTLSPEC" "INVARSPEC" "FAIRNESS" "JUSTICE" "COMPASSION"
+    "LTLSPEC" "CTLSPEC" "INVARSPEC" "FAIRNESS" "JUSTICE" "COMPASSION"
     "process" "array" "of" "case" "esac"
     "next" "init" "INIT" "ISA"
     "in" "union" "COMPUTE" "MAX" "MIN")
@@ -616,7 +616,7 @@ fully loaded."
 (defconst nusmv-declaration-keywords
   '("MODULE" "VAR" "IVAR" "ASSIGN" "TRANS" "INIT" "INVAR" "DEFINE"
     "ISA" "FAIRNESS" "JUSTICE" "COMPASSION" "SPEC" "INVARSPEC" "LTLSPEC"
-    "COMPUTE")
+    "CTLSPEC" "COMPUTE")
   "The list of keywords that open a declaration.")
 
 (defconst nusmv-declaration-keywords-regexp
@@ -2462,8 +2462,9 @@ This is either this buffer's process or this buffer output buffer's process."
     (define-key nusmv-mode-map "\C-c;"  'comment-region)
     (define-key nusmv-mode-map "\C-c:"  'nusmv-uncomment-region)
 
-    (modify-frame-parameters (selected-frame)
-                              '((menu-bar-lines . 2)))
+    (if menu-bar-mode
+        (modify-frame-parameters (selected-frame)
+                                 '((menu-bar-lines . 2))))
 
      ;; Make a menu keymap (with a prompt string)
      ;; and make it the menu bar item's definition.
@@ -2628,8 +2629,9 @@ Please send bugs and suggestions to <villemaire.roger@uqam.ca>."
   ;; Define the major mode
   (setq major-mode 'nusmv-mode)
   (setq mode-name "NuSMV")
-  
-  (run-hooks 'nusmv-mode-hook))
+
+  (font-lock-mode) ; Enable syntax highlighting
+  (run-hooks 'nusmv-mode-hook 'prog-mode-hook)) ; Also run prog-mode-hook so that everything that applies to other programming modes applies here
 
 
 (defun nusmv-m4-mode ()
