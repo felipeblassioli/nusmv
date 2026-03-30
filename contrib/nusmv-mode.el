@@ -530,7 +530,7 @@ fully loaded."
 ;; no SMV keywords. Only nusmv keywords.
 (defconst nusmv-keywords
   '("MODULE" "VAR" "IVAR" "TRANS" "ASSIGN" "INVAR" "DEFINE" "SPEC"
-    "LTLSPEC" "INVARSPEC" "FAIRNESS" "JUSTICE" "COMPASSION"
+    "LTLSPEC" "CTLSPEC" "INVARSPEC" "FAIRNESS" "JUSTICE" "COMPASSION"
     "process" "array" "of" "case" "esac"
     "next" "init" "INIT" "ISA"
     "in" "union" "COMPUTE" "MAX" "MIN")
@@ -616,7 +616,7 @@ fully loaded."
 (defconst nusmv-declaration-keywords
   '("MODULE" "VAR" "IVAR" "ASSIGN" "TRANS" "INIT" "INVAR" "DEFINE"
     "ISA" "FAIRNESS" "JUSTICE" "COMPASSION" "SPEC" "INVARSPEC" "LTLSPEC"
-    "COMPUTE")
+    "CTLSPEC" "COMPUTE")
   "The list of keywords that open a declaration.")
 
 (defconst nusmv-declaration-keywords-regexp
